@@ -1,0 +1,46 @@
+{
+  "id":"nexasoft",
+  "short_name":"NexaHIMS",
+  "name":"NexaSoft HMIS",
+  "description":"Manage your clinic's client data, staff portfolios, assets and finances in a single app",
+  "icons":[
+    {
+      "src":"/images/manifest/nexasoft4.jpg",
+      "sizes":"1366x720",
+      "type":"image/png",
+      "form_factor":"wide"
+    },
+    {
+      "src":"/images/manifest/nexasoft.jpg",
+      "sizes":"500x500",
+      "type":"image/png"
+    },
+    {
+      "src":"/images/manifest/nexahims2.png",
+      "sizes":"1354x572",
+      "type":"image/png"
+    }
+  ],
+  "screenshots":[
+    {
+      "src":"/images/manifest/nexahims1.png",
+      "sizes":"1366x720",
+      "type":"image/png",
+      "label":"Login interface"
+    },
+    {
+      "src":"/images/manifest/nexahims2.png",
+      "sizes":"1354x572",
+      "type":"image/png",
+      "label":"Doctors' consultation landing page"
+    }
+  ],
+  "scope":".",
+  "start_url":".",
+  "display":"standalone",
+  "display_overide":["window-controls-overlay","standalone","minimal-ui","browser","fullscreen"],
+  "orientation":"natural",
+  "theme_color":"#0ea5e9",
+  "background_color":"#0ea5e9",
+  "categories":["health","medical"]
+}

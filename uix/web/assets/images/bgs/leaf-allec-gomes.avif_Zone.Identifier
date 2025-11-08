@@ -1,0 +1,4 @@
+[ZoneTransfer]
+ZoneId=3
+ReferrerUrl=https://cloudconvert.com/
+HostUrl=https://eu-central.storage.cloudconvert.com/tasks/4d5ce3b6-9eaf-4b52-b4b8-aec5a269d6fc/allec-gomes-UcWUMqIsld8-unsplash.avif?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=cloudconvert-production%2F20250910%2Ffra%2Fs3%2Faws4_request&X-Amz-Date=20250910T101630Z&X-Amz-Expires=86400&X-Amz-Signature=03b6c3b672efcb8e42130111cd699c5246cd6aa5d95d44f08b0fc7d2409dca02&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%3D%22allec-gomes-UcWUMqIsld8-unsplash.avif%22&response-content-type=image%2Favif&x-id=GetObject

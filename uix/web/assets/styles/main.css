@@ -1,0 +1,104 @@
+/* IMPORTS */
+@import url("animations.css");
+
+
+
+/*STYLES */
+/* DISPLAYS */
+.multi-line {white-space: pre-line;}
+.show-hide {display: none;}
+
+.lg-flex {display:none;}
+.lg-grid {display:none;}
+.lg-show {display:none;}
+.btn-reload {background-color: inherit;}
+
+.btn-reload:active {
+  background-color: inherit !important;
+  color: #119dff !important;
+  animation: spin 3s linear infinite;
+}
+@media (min-width:992px){
+  .lg-show {display: block;}
+}
+@media (min-width: 992px) {
+  .show-hide {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .lg-flex {display: flex;}
+}
+
+#media (min-width:992px){
+  .lg-grid {display:grid;}
+}
+
+/* COLORS */
+.bg-harmony {background-color: #07004d !important;}
+.text-harmony {color: #07004d !important;}
+
+.dialog-bg {
+  background: linear-gradient(180deg, #04fafd 5%, #119dff 70%, #030423);
+  backdrop-filter: blur(1px);
+  overflow-y: hidden;
+}
+
+.dark-blur {
+  background-color: rgba(30,30, 30, 0.2);
+  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(1px);
+}
+
+
+
+.light-blur {
+  background-color: rgba(255, 255, 255, 1);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  z-index: 20;
+}
+
+
+/* TYPOGRAPHY */
+.small-caps {
+  font-variant: small-caps;
+}
+
+
+
+.typing {
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typing 3s ease-out;
+}
+  
+
+/* BODY */
+.login-bg {
+  height: 100%;
+  width: 100%;
+  background-image:url('/images/bgs/leaves.avif');
+  background-position: center;
+  background-size: cover;
+  animation: 600s parallax infinite linear;
+  }
+
+.dashboard-bg {
+  height:100%;
+  width:100%;
+  background-color:#07004d;
+}
+
+  /* DISPLAYS */
+  .login-blur {
+  background-color: inherit;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  }
+
+
+  /* MISC */
+  .padless :deep(.q-stepper__header){
+    padding: 0 !important;
+  }
