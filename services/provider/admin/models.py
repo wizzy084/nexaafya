@@ -95,13 +95,14 @@ class Inventory(SQLModel,table=True,extend_existing=True):
   receiver_previous_amount:int = 0
   receiver_current_amount:int = 0
 
-  receiving:bool = False
+  received:bool = False
   transfer:bool = False
-  dispensing:bool = False
-  physical_count:bool = False
+  dispensed:bool = False
+  count:bool = False
   default:bool = False
 
   date:datetime = datetime.now()
+  logger:str|None = None
 
   medicine:Formulary|None = Relationship(back_populates="inventory")
 
@@ -186,6 +187,7 @@ class Medicine(SQLModel,table=True,extend_existing=True):
   dispensing_balance:float = 0
   physical_count:float = 0
   count_unit:str|None = None
+  counted_by:str = "nexasoft"
   physical_count_date:datetime|None = None
 
   requisition:Requisition|None = Relationship(back_populates="medicines")

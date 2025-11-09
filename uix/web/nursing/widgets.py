@@ -2,12 +2,13 @@
 
 #GENERAL IMPORTS
 import math
+from uuid import uuid4
 
 #NiceGUI IMPORTS
 from nicegui import html,ui
 
 #APP IMPORTS
-from services.provider.admin.db import register_medicine,update_requisition,update_medicine
+from services.provider.admin.db import register_medicine,update_requisition,update_medicine,register_inventory
 from services.provider.admin.processor import get_staff as staff,get_requisitions,get_formulary
 from services.provider.clients.db import update_medicine as update_client_medicine,register_triage,update_triage
 from services.provider.clients.processor import get_active_visits,get_pharmacy_visits
@@ -592,6 +593,7 @@ class DispensingManagementDisplay():
     for requisition_medicine in requisition_medicines:
       for medicine in visit_medicines:
         if medicine["name"] == requisition_medicine["name"]:
+          medicine["medicine_id"] = requisition_medicine["medicine_id"]
           medicine["dispensing_balance"] = requisition_medicine["dispensing_balance"]
           medicine["requisition_medicine_id"] = requisition_medicine["requisition_medicine_id"]
     #Format for UI view
@@ -618,6 +620,7 @@ class DispensingManagementDisplay():
     
     medicine = {
       "visit_id":medicine["visit_id"],
+      "medicine_id":medicine["medicine_id"],
       "requisition_medicine_id":medicine["requisition_medicine_id"],
       "medication_id":medicine["medication_id"] if "medication_id" in medicine else None,
       "medical_item_id":medicine["medical_item_id"] if "medical_item_id" in medicine else None,
@@ -627,6 +630,16 @@ class DispensingManagementDisplay():
     
     #Update database
     status = update_client_medicine(medicine)
+    register_inventory(
+      inventory={
+        "medicine_id":medicine["medicine_id"],
+        "invoice":None,
+        "logger":self.user.username,
+        "issuer":"dispensing store",
+        "receiver":medicine["visit_id"].split("v")[0],
+        "amount":count
+      },dispensed=True
+    )
     
     #Failure notification
     ui.notify(message=status["message"],type=status["type"],position=status["position"])

@@ -1,7 +1,9 @@
 """A module for creating and updating rows in the database tables """
 
 #GENERAL IMPORTS
+from collections import namedtuple
 from sqlmodel import SQLModel,Session
+from uuid import uuid4
 
 #PROJECT IMPORTS
 from services.provider.configs import database_engine
@@ -51,7 +53,6 @@ def populate_db():
         register_medicine(medicine)
         update_medicine(medicine=medicine,order=True,receive=True)
 
-  
 #REGISTER FUNCTIONS
 def register_staff(staff:dict):
   """A function to add a new row in users table and populate it with data from 'staff' dictionary"""
@@ -152,10 +153,6 @@ def register_formulary(medicines:list[dict]):
         else:
           session.add(db_medicine)
           session.commit()
-      
-      #Register inventory
-      inventory = {"medicine_id":medicine["medicine_id"],"default":True}
-      register_inventory(inventory)
 
       #Initiate Schemes
       schemes = medicine["schemes"]
@@ -166,39 +163,40 @@ def register_formulary(medicines:list[dict]):
   except:
     return {"message":"Medicine couldn't be added!","position":"center","type":"negative"}
 
-def register_inventory(inventory:dict):
+def register_inventory(inventory:dict,count:bool=False,dispensed:bool=False,transfer:bool=False,received:bool=False):
   """Adds a new row in inventory table and populates columns with corresponding data from inventory dictionary"""
-  
-  if "default" in inventory:
-    db_inventory = Inventory(
-      medicine_id = inventory["medicine_id"],
-      default = True
-    )
-  
-    with Session(database_engine) as session:
-      session.add(db_inventory)
-      session.commit()
 
-  else:
-    db_inventory = Inventory(
-      medicine_id = inventory["medicine_id"],
-      invoice = inventory["invoice"],
-      issuer = inventory["issuer"],
-      receiver = inventory["receiver"],
-      issuer_previous_amount = inventory["issuer_previous_amount"],
-      issuer_current_amount = inventory["issuer_current_amount"],
-      receiver_previous_amount = inventory["receiver_previous_amount"],
-      receiver_current_amount = inventory["receiver_current_amount"],
-      receiving = inventory["receiving"] if "receiving" in inventory else False,
-      transfer = inventory["transfer"] if "transfer" in inventory else False,
-      dispensing = inventory["dispensing"] if "dispensing" in inventory else False,
-      physical_count = inventory["physical_count"] if "physical_count" in inventory else False,
-    )
-
+  #FXS
+  def last_inventory(inventory_tag:str):
+    data = namedtuple("Data",["first","previous_amount"])
     with Session(database_engine) as session:
-      db_inventory_entries:Inventory = session.exec(select(Inventory).where(Inventory.medicine_id == db_inventory.medicine_id)).last()
-      session.add(db_inventory)
-      session.commit()
+      db_inventory:Inventory = session.exec(select(Inventory).where(Inventory.medicine_id == inventory["medicine_id"].lower()).where((Inventory.issuer == inventory_tag.lower())|(Inventory.receiver == inventory_tag.lower())).order_by(Inventory.date.desc()).limit(1)).first()
+
+      if db_inventory:
+        return data(first=False,previous_amount=db_inventory.issuer_current_amount if db_inventory.issuer == inventory_tag.lower() else db_inventory.receiver_current_amount)
+      else:
+        return data(first=True,previous_amount=0)
+      
+  db_inventory = Inventory(
+    medicine_id = inventory["medicine_id"],
+    invoice = inventory["invoice"],
+    issuer = inventory["issuer"],
+    receiver = inventory["receiver"],
+    issuer_previous_amount = last_inventory(inventory["issuer"]).previous_amount,
+    issuer_current_amount = inventory["issuer_amount"] if count else last_inventory(inventory["issuer"]).previous_amount - inventory["amount"],
+    receiver_previous_amount = last_inventory(inventory["receiver"]).previous_amount,
+    receiver_current_amount = inventory["receiver_amount"] if count else last_inventory(inventory["receiver"]).previous_amount + inventory["amount"],
+    logger = inventory["logger"],
+    received = received,
+    transfer = transfer,
+    dispensed = dispensed,
+    count = count,
+  )
+
+  with Session(database_engine) as session:
+    session.add(db_inventory)
+    session.commit()
+
 
 def register_scheme(scheme:dict):
   """"""
@@ -526,6 +524,19 @@ def update_medicine(medicine:dict,transfer:bool=False,count:bool=False,cancel:bo
       session.commit()
 
   if receive:
+    #Updating inventory
+    register_inventory(
+      inventory={
+        "medicine_id":medicine["medicine_id"],
+        "invoice":medicine["invoice"],
+        "issuer":"vendor",
+        "receiver":"main store",
+        "logger":medicine["received_by"],
+        "amount":medicine["received_amount"]
+      },received=True
+    )
+
+    #Updating requisition
     with Session(database_engine) as session:
       db_medicine:Medicine = list(session.exec(select(Medicine).where(Medicine.requisition_medicine_id == medicine['requisition_medicine_id'])))[0]
 
@@ -561,6 +572,19 @@ def update_medicine(medicine:dict,transfer:bool=False,count:bool=False,cancel:bo
       session.commit()
 
   if transfer:
+    #Updating Inventory table
+    register_inventory(
+      inventory={
+        "medicine_id":medicine["medicine_id"],
+        "invoice":str(uuid4()).split("-")[0],
+        "issuer":"main store",
+        "receiver":"dispensing store",
+        "logger":medicine["transferred_by"],
+        "amount":medicine["transfer_balance"]
+      },transfer=True
+    )
+
+    #Updating requisition medicine
     with Session(database_engine) as session:
       db_medicine:Medicine = list(session.exec(select(Medicine).where(Medicine.requisition_medicine_id == medicine['requisition_medicine_id'])))[0]
     
@@ -570,6 +594,30 @@ def update_medicine(medicine:dict,transfer:bool=False,count:bool=False,cancel:bo
       session.commit()
 
   if count:
+    inventories = [
+      {
+        "medicine_id":medicine["medicine_id"],
+        "invoice":str(uuid4()).split("-")[0],
+        "issuer":"main store",
+        "receiver":"main store",
+        "logger":medicine["counted_by"],
+        "issuer_amount":medicine["store_balance"],
+        "receiver_amount":medicine["store_balance"]
+      },
+      {
+        "medicine_id":medicine["medicine_id"],
+        "invoice":str(uuid4()).split("-")[0],
+        "issuer":"dispensing store",
+        "receiver":"dispensing store",
+        "logger":medicine["counted_by"],
+        "issuer_amount":medicine["dispensing_balance"],
+        "receiver_amount":medicine["dispensing_balance"]
+      }
+    ]
+    for inventory in inventories:
+      register_inventory(inventory=inventory,count=True)
+
+    #Update Requisition count
     with Session(database_engine) as session:
       db_medicine:Medicine = list(session.exec(select(Medicine).where(Medicine.requisition_medicine_id == medicine['requisition_medicine_id'])))[0]
     
@@ -578,6 +626,7 @@ def update_medicine(medicine:dict,transfer:bool=False,count:bool=False,cancel:bo
       db_medicine.physical_count = medicine["physical_count"]
       db_medicine.active = True if medicine["physical_count"] else False
       db_medicine.count_unit = medicine["count_unit"]
+      db_medicine.counted_by = medicine["counted_by"]
       db_medicine.physical_count_date = datetime.now()
 
       session.commit()

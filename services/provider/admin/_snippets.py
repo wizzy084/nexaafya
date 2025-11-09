@@ -146,7 +146,7 @@ def unmodel_formulary(db_formulary:Formulary):
 
 def unmodel_inventory(db_inventory:Inventory):
   """"""
-  inventory = namedtuple("InventoryEntry",["medicine_id","invoice","issuer","receiver","issuer_previous_amount","issuer_current_amount","receiver_previous_amount","receiver_current_amount","receiving","transfer","dispensing","physical_count","default","date"])
+  inventory = namedtuple("InventoryEntry",["medicine_id","invoice","issuer","receiver","issuer_previous_amount","issuer_current_amount","receiver_previous_amount","receiver_current_amount","received","transfer","dispensed","count","default","date"])
   
   return inventory(
     medicine_id = db_inventory.medicine_id,
@@ -157,11 +157,11 @@ def unmodel_inventory(db_inventory:Inventory):
     issuer_current_amount = db_inventory.issuer_current_amount,
     receiver_previous_amount = db_inventory.receiver_previous_amount,
     receiver_current_amount = db_inventory.receiver_current_amount,
-    receiving = db_inventory.receiving,
+    received = db_inventory.received,
     transfer = db_inventory.transfer,
-    physical_count = db_inventory.physical_count,
+    count = db_inventory.count,
     default = db_inventory.default,
-    dispensing = db_inventory.dispensing,
+    dispensed = db_inventory.dispensed,
     date = db_inventory.date
   )
 
@@ -255,6 +255,7 @@ def unmodel_medicine(db_medicine:Medicine) -> dict[str,Any]:
     "dispensing_balance":db_medicine.dispensing_balance,
     "physical_count":db_medicine.physical_count,
     "count_unit":db_medicine.count_unit,
+    "counted_by":db_medicine.counted_by,
     "physical_count_date":db_medicine.physical_count_date,
     "initial_store_balance":db_medicine.initial_store_balance
   }

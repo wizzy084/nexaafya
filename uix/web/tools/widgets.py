@@ -286,7 +286,9 @@ class Requisitions():
 
     #Transfer
     if transfer:
-      medicine["store_balance"] -= medicine["dispensing_balance"]
+      medicine["store_balance"] -= medicine["transfer_balance"]
+      medicine["dispensing_balance"] += medicine["transfer_balance"]
+      medicine["transferred_by"] = self.user.username
       update_medicine(medicine=medicine,transfer=True)
 
       for self_medicine in self.medicines:
@@ -298,6 +300,7 @@ class Requisitions():
     if count:
       medicine["count_unit"] = self.last_medicine(medicine)["count_unit"]
       medicine["physical_count"] = medicine["store_balance"] + medicine["dispensing_balance"]
+      medicine["counted_by"] = self.user.username
       medicine["physical_count_date"] = datetime.now()
 
       update_medicine(medicine=medicine,count=True)
@@ -328,6 +331,7 @@ class Requisitions():
           index = self.medicines.index(self_medicine)
           self.medicines.remove(medicine)
       
+      medicine["invoice"] = None
       medicine["count_unit"] = self.last_medicine(medicine)["count_unit"]
       medicine["received"] = True if medicine["received_amount"] else False
       medicine["active"] = True if medicine["received_amount"] else False
@@ -932,6 +936,7 @@ class Requisitions():
     
     #DATA
     medicine = medicine
+    medicine["transfer_balance"] = 0
     if not requisition["received"]:
       medicine["received_amount"] = medicine["ordered_amount"]
       medicine["received_price"] = medicine["ordered_price"]
@@ -970,7 +975,7 @@ class Requisitions():
               with ui.label("DISPENSING:").classes(add="bg-inherit text-center text-yellow-50 text-bold text-xl lg:text-3xl"):
                 ui.label(f"{medicine['dispensing_balance']:,.0f}").classes(add="inline ml-0.5 bg-inherit text-yellow-500 text-bold text-xl lg:text-3xl")
             with html.div().classes(add="w-full flex flex-row justify-center gap-5 p-0.5"):
-              ui.number(label=f"No of {medicine['order_unit']}s",min=1,max=medicine["store_balance"]).bind_value(medicine,"dispensing_balance").props(add=f"{'' if medicine['store_balance'] else 'disable'} label-color='#07004d' input-class='font-medium'").classes(add="w-40 rounded shadow-md shadow-[#07004d] px-5 bg-sky-50 text-lg")
+              ui.number(label=f"No of {medicine['order_unit']}s",min=1,max=medicine["store_balance"]).bind_value(medicine,"transfer_balance").props(add=f"{'' if medicine['store_balance'] else 'disable'} label-color='#07004d' input-class='font-medium'").classes(add="w-40 rounded shadow-md shadow-[#07004d] px-5 bg-sky-50 text-lg")
               ui.button(text="TRANSFER",color="",on_click=lambda e:self.update_medicine(medicine=medicine,requisition=requisition,transfer=True)).props(add=f"{'' if medicine['store_balance'] else 'disable'} glossy").classes(add="bg-harmony text-yellow-500 text-bold text-xl")
           
           #Physical count
