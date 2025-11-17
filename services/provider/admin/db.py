@@ -197,7 +197,6 @@ def register_inventory(inventory:dict,count:bool=False,dispensed:bool=False,tran
     session.add(db_inventory)
     session.commit()
 
-
 def register_scheme(scheme:dict):
   """"""
   #REGISTERING SERVICE SCHEMES
@@ -226,24 +225,28 @@ def register_scheme(scheme:dict):
 def register_pricing(pricing:dict):
   """Adds a row in pricing table from data in 'pricing' dictionary"""
   #Turn off the previous pricing
-  update_pricing(pricing)
+  updatable = update_pricing(pricing)
   
-  #Enter new pricing
-  db_pricing = Pricing(
-    scheme_id = pricing["scheme_id"] if "scheme_id" in pricing else None,
-    logger = pricing["logger"] if "logger" in pricing else "nexasoft",
-    copayment = pricing["copayment"] if "copayment" in pricing else False,
-    price_range = pricing["price_range"] if "price_range" in pricing else False,
-    min = pricing["min"] if "min" in pricing else 0,
-    max = pricing["max"] if "max" in pricing else 0, 
-    standard = pricing["standard"] if "standard" in pricing else 0,
-    priority = pricing["priority"] if "priority" in pricing else pricing["standard"] if "standard" in pricing else 0,
-    topup = pricing["topup"] if "topup" in pricing else 0
-  )
+  if updatable:
+    #Enter new pricing
+    db_pricing = Pricing(
+      scheme_id = pricing["scheme_id"] if "scheme_id" in pricing else None,
+      logger = pricing["logger"] if "logger" in pricing else "nexasoft",
+      copayment = pricing["copayment"] if "copayment" in pricing else False,
+      price_range = pricing["price_range"] if "price_range" in pricing else False,
+      min = pricing["min"] if "min" in pricing else 0,
+      max = pricing["max"] if "max" in pricing else 0, 
+      standard = pricing["standard"] if "standard" in pricing else 0,
+      priority = pricing["priority"] if "priority" in pricing else pricing["standard"] if "standard" in pricing else 0,
+      topup = pricing["topup"] if "topup" in pricing else 0
+    )
 
-  with Session(database_engine) as session:
-    session.add(db_pricing)
-    session.commit()
+    with Session(database_engine) as session:
+      session.add(db_pricing)
+      session.commit()
+  
+  else:
+    return
 
 def register_requisition(requisition:dict):
   """A function to create row in requisition table and populate it in database table"""
@@ -437,19 +440,25 @@ def update_service(service:dict):
   """"""
   
   try:
+    #UPDATE SERVICE
     with Session(database_engine) as session:
-      db_service:Service = list(session.exec(select(Service).where(Service.service_id == service["service_id"])))[0]
-
+      db_service:Service = session.exec(select(Service).where(Service.service_id == service["service_id"].lower())).first()
+      
+      db_service.name = service["name"].lower()
       db_service.alternative_name = service["alternative_name"]
-      db_service.type = service["type"]
+      db_service.type = service["type"].lower()
       db_service.active = service["active"]
-
+      
       session.commit()
 
-      return {"status":True,"message":"Service updated successfully!","type":"positive","position":"top"}
+    #UPDATE SCHEMES & PRICINGS
+    schemes = service["schemes"]
+    update_schemes(schemes)
+
+    return {"status":True,"message":"Service updated successfully!","type":"positive","position":"top"}
   
   except:
-    return {"status":True,"message":"Service not updated!","type":"negative","position":"center"}
+    return {"status":False,"message":"Service not updated!","type":"negative","position":"top"}
 
 def update_formulary(medicine:dict,delete:bool=False):
   """"""
@@ -481,32 +490,44 @@ def update_formulary(medicine:dict,delete:bool=False):
 
       return {"status":True,"message":"Formulary updated successfully!","type":"positive","position":"top"}
 
+def update_schemes(schemes:list[dict]):
+  """Updating schemes of a particular services"""
+  
+  for scheme in schemes:
+    #UPDATING SCHEME
+    with Session(database_engine) as session:
+      db_scheme:Scheme = session.exec(select(Scheme).where(Scheme.scheme_id == scheme["scheme_id"])).first()
+      
+      db_scheme.medicine_id = scheme["medicine_id"] if "medicine_id" in scheme else None
+      db_scheme.service_id = scheme["service_id"] if "service_id" in scheme else None
+      db_scheme.scheme_name = scheme["scheme_name"]
+      db_scheme.scheme_item_code = scheme["scheme_item_code"]
+      db_scheme.restricted = scheme["restricted"]
+      session.commit()
+      
+    #UPDATING PRICINGS
+    pricings = scheme["prices"]
+    for pricing in pricings:
+      register_pricing(pricing)
+
 def update_pricing(pricing:dict):
-
-  if "medicine_id" in pricing:
-    with Session(database_engine) as session:
-      db_pricings:list[Pricing] = list(session.exec(select(Pricing).where(Pricing.payment_scheme_id == pricing["payment_scheme_id"])))
-      
-      if db_pricings:
-        db_pricing = sorted(db_pricings,key=lambda pricing:pricing.log_date,reverse=True)[0]
+  
+  def _changed(db_pricing:Pricing):
+    if db_pricing.copayment == pricing["copayment"] and db_pricing.price_range == pricing["price_range"] and db_pricing.min == pricing["min"] and db_pricing.max == pricing["max"] and db_pricing.standard == pricing["standard"] and db_pricing.priority == pricing["priority"] and db_pricing.topup == pricing["topup"]:
+      return False
+    else:
+      return True
+  
+  with Session(database_engine) as session:
+    db_pricing:Pricing = session.exec(select(Pricing).where(Pricing.scheme_id == pricing["scheme_id"].lower()).where(Pricing.active)).first()
+    if db_pricing:
+      if _changed(db_pricing):
         db_pricing.active = False
+        session.commit()
+        return True
       else:
         return
       
-      session.commit()
-
-  if "service_id" in pricing:
-    with Session(database_engine) as session:
-      db_pricings:list[Pricing] = list(session.exec(select(Pricing).where(Pricing.service_id == pricing["service_id"])))
-      
-      if db_pricings:
-        db_pricing = sorted(db_pricings,key=lambda pricing:pricing.log_date,reverse=True)[0]
-        db_pricing.active = False
-      else:
-        return
-      
-      session.commit()
-
 def update_medicine(medicine:dict,transfer:bool=False,count:bool=False,cancel:bool=False,receive:bool=False,order:bool=False):
   """A function to update a row in medicine table and populate it with data from 'medicine' dictionary"""
   """"""
@@ -696,6 +717,20 @@ def close_requisitions():
         db_requisition.closed = True
   
     session.commit()
+
+def update_service_prices(service_id:str,nhif:bool=False):
+  """Retrieves updated prices from the respective"""
+
+  pricings = []
+
+  try:
+    pass
+  except:
+    pass
+  finally:
+    pass
+
+
 
 #CANCEL FUNCTIONS
 def cancel_requisition(requisition:dict):

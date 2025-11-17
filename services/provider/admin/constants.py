@@ -27,8 +27,6 @@ MOS = [2,4]
 
 YEARS = [2025,2026,2027,2028,2029,2030]
 
-
-
 YEARS = [2025]
 
 #CLIENT DETAILS
@@ -51,7 +49,6 @@ OCCUPATIONS = sorted([
 ])
 
 RELATIONSHIP = ["Mother","Father","Sister","Brother","Spouse","Husband","Wife","Friend","Colleague"]
-
 
 
 

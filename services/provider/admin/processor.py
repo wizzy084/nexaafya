@@ -1,6 +1,7 @@
 """A module to analyze the retrieved dicons based on the request provides in .routes.py"""
 
 #GENERAL IMPORTS
+from collections import namedtuple
 import simple_icd_10 as icd_10
 
 #PROJECT IMPORTS
@@ -120,3 +121,41 @@ def get_pricings(all:bool=False):
       return [unmodel_pricing(db_pricing) for db_pricing in list(session.exec(select(Pricing)))]
     else:
       return [unmodel_pricing(db_pricing) for db_pricing in list(session.exec(select(Pricing).where(Pricing.active)))]
+
+def get_template_services(verbose:bool=False) -> list:
+  """Returns list of template services to be registered in the system"""
+  from .template import services
+  if verbose:
+    return []
+  else:
+    return [service["name"].title() for service in services]
+
+def get_template_service(service:str) -> dict:
+  """Return a namedtuple with details of service"""
+
+  with Session(database_engine) as session:
+    db_service:Service = session.exec(select(Service).where(Service.name == service.lower())).first()
+    return unmodel_service(db_service)
+
+def retrieve_updated_prices(data:dict,nhif:bool=False):
+  """Retrieves prices of a service from NHIF API"""
+
+  data = data
+
+  if nhif:
+    nhif_api_data = None
+    data["nhif"] = {
+      "service_id":data["service_id"],
+      "scheme_id":f"nhif={data['service_id']}",
+      "logger":data["logger"],
+      "copayment":False,
+      "price_range":False,
+      "min":0,
+      "max":0,
+      "standard":0,
+      "priority":0,
+      "topup":0
+    }
+
+  return data
+

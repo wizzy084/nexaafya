@@ -30,7 +30,6 @@ class ManagementDisplay():
     self.initial_data()
 
     sections = ["dashboard","settings","staff","services","formulary","inventory","assets"]
-
     #UI
     with html.div().classes(add="w-full h-full p-0 flex flex-col") as self.master_container:
       #Small Screen
@@ -43,7 +42,7 @@ class ManagementDisplay():
         
         #Panels
         with html.div().classes(add="order-first grow w-full rounded-br flex flex-col"):
-          with ui.tab_panels(tabs=small_management_tabs,value=sections[3]).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='700'").classes(add="bg-inherit grow w-full grid grid-cols-1"):
+          with ui.tab_panels(tabs=small_management_tabs,value=sections[4]).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='700'").classes(add="bg-inherit grow w-full grid grid-cols-1"):
             #Dashboard
             with ui.tab_panel(name="dashboard").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col gap-0.5"):
               ui.label('dashbodi')
@@ -62,7 +61,7 @@ class ManagementDisplay():
             
             #Formulary Management
             with ui.tab_panel(name="formulary").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-around gap-0.5"):
-              ui.label('Fomulali')
+              FacilityFormulary()
             
             #Inventory Management
             with ui.tab_panel(name="inventory").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-between gap-0.5"):
@@ -82,7 +81,7 @@ class ManagementDisplay():
         
         #Panels
         with html.div().classes(add="grow rounded-br flex flex-col"):
-          with ui.tab_panels(tabs=management_tabs,value=sections[3]).props(add="animated infinite transition-prev='jump-down' transition-next='jump-up' transition-duration='500'").classes(add="bg-inherit grow w-full grid grid-cols-1"):
+          with ui.tab_panels(tabs=management_tabs,value=sections[4]).props(add="animated infinite transition-prev='jump-down' transition-next='jump-up' transition-duration='500'").classes(add="bg-inherit grow w-full grid grid-cols-1"):
             #Dashboard
             with ui.tab_panel(name="dashboard").classes(add="w-full h-full p-1 rounded-br flex flex-col lg:justify-around") as self.hpi_panel:
               ui.label('dashbodi')
@@ -101,7 +100,7 @@ class ManagementDisplay():
             
             #Formulary Management
             with ui.tab_panel(name="formulary").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-around gap-0.5"):
-              ui.label('fomula')
+              FacilityFormulary()
             
             #Inventory
             with ui.tab_panel(name="inventory").classes(add="w-full h-full p-0.5 rounded-0 grid grid-cols-2 gap-0.5"):
