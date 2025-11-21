@@ -254,7 +254,7 @@ class Dashboard():
     #
     with html.div().classes(add="w-full h-full overflow-hidden bbg-inherit"):
       #Stats for VERO usage
-      with ui.tab_panels(tabs=tab_header,value=tab_header_labels[1]).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='300'").classes(add="h-full bg-inherit"):
+      with ui.tab_panels(tabs=tab_header,value=tab_header_labels[0]).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='300'").classes(add="h-full bg-inherit"):
         #Director
         if "director" in user.roles:
           #Services
