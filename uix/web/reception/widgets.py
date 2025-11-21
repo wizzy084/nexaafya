@@ -4,8 +4,7 @@
 from time import sleep
 
 #APP IMPORTS
-from services.provider.admin.constants import *
-from services.provider.admin.processor import get_staffs,get_staff,get_staff_username,get_services
+from services.provider.admin.processor import get_facility_data,get_staffs,get_staff,get_staff_username,get_services
 from services.provider.clients.db import register_triage,update_payment
 from services.provider.clients.processor import get_clients,get_active_visits
 
@@ -34,7 +33,7 @@ class ClientsManagementDisplay():
       self.Carousel(clients=True)  
 
   def initial_data(self):
-    
+    self.basics = get_facility_data(minimal=True)
     self.consultants = [f"{staff['first_name']} {staff['last_name']}".title() for staff in get_staffs() if "doctor" in staff["roles"]]
     self.services = {
       "Consultation":["consultant",[service["name"].split(" ")[0] for service in get_services() if service["type"] == "consultation"]],
@@ -610,8 +609,8 @@ class ClientsManagementDisplay():
     #DATA
     if client:
       details = {
-        "name":f"{client['first_name']} {client['middle_name']} {client['last_name']}",
-        "short_name":f"{client['first_name'].capitalize()} {client['middle_name'][0].capitalize() if client['middle_name'] else ''}. {client['last_name'].capitalize()}",
+        "name":f"{client['first_name']} {client['middle_name'] if client['middle_name'] else ''} {client['last_name']}",
+        "short_name":f"{client['first_name'].capitalize()} {client['middle_name'][0].capitalize() if client['middle_name'] else ''} {client['last_name'].capitalize()}",
         "age":format_age(client["birthdate"]),
         "gender":client["gender"],
         "address":client["address"],
@@ -741,7 +740,7 @@ class ClientsManagementDisplay():
     #DATA
     self.client_data = {
       "client_id":client["client_id"] if client else self.format_client_id(),
-      "payment_mode":client["payment_mode"] if client else PAYMENT_MODES[0],
+      "payment_mode":client["payment_mode"] if client else self.basics.active_payment_modes[0],
       "card_no":client["card_no"] if client else "",
       "first_name":client["first_name"].capitalize() if client else "",
       "middle_name":client["middle_name"].capitalize() if client else "",
@@ -756,7 +755,7 @@ class ClientsManagementDisplay():
       "kin":{"first_name":"","last_name":"","relation":"","dial_code":"+255","mobile_no":""}
     }
     insurance_data = {
-      "scheme":self.client_data["payment_mode"] if client else PAYMENT_MODES[0],
+      "scheme":self.client_data["payment_mode"] if client else self.basics.active_payment_modes[0],
       "id_type":"",
       "id_number":self.client_data["card_no"] if client else ""
       }
@@ -774,9 +773,9 @@ class ClientsManagementDisplay():
         #Payment
         with html.form().classes(add="lg:col-span-3 w-full grid grid-cols-6 gap-3 p-2 animate__animated animate__fadeIn"):
           #Scheme
-          self.scheme_selectable = ui.select(options=PAYMENT_MODES,label="SCHEME",value=insurance_data["scheme"].upper()).props(add="bordered").classes(add="col-span-3 md:col-span-1 shadow-md shadow-[#07004d] px-2 bg-white rounded-sm text-lg").bind_value_to(insurance_data,"scheme").bind_value_to(self.client_data,"payment_mode")
+          self.scheme_selectable = ui.select(options=self.basics.active_payment_modes,label="SCHEME",value=insurance_data["scheme"]).props(add="bordered popup-content-class='uppercase'").classes(add="col-span-3 md:col-span-1 shadow-md shadow-[#07004d] px-2 bg-white rounded-sm text-lg uppercase").bind_value_to(insurance_data,"scheme").bind_value_to(self.client_data,"payment_mode")
           #ID Type
-          ui.select(options=ID_MODES,label="ID TYPE",value=ID_MODES[0]).props(add="bordered").classes(add="col-span-3 md:col-span-1 shadow-md shadow-[#07004d] px-3 bg-white rounded-sm text-lg").bind_value_to(insurance_data,"id_type").bind_visibility_from(self.scheme_selectable,"value",lambda v: v.lower() != "cash")
+          ui.select(options=self.basics.id_number_types,label="ID TYPE",value=self.basics.id_number_types[0]).props(add="bordered popup-content-class='uppercase'").classes(add="col-span-3 md:col-span-1 shadow-md shadow-[#07004d] px-3 bg-white rounded-sm text-lg uppercase").bind_value_to(insurance_data,"id_type").bind_visibility_from(self.scheme_selectable,"value",lambda v: v.lower() != "cash")
           #ID No input
           self.id_number_input = ui.input(label="ID NUMBER").props(add="bordered").classes(add="col-span-4 md:col-span-3  shadow-md shadow-[#07004d] bg-white rounded-sm px-3 text-lg").bind_value(self.client_data,"card_no").bind_visibility_from(self.scheme_selectable,"value",lambda v: v.lower() != "cash")
           #Data Button
@@ -790,42 +789,27 @@ class ClientsManagementDisplay():
           #Details
           with html.div().classes(add="w-full grid grid-cols-2 lg:grid-cols-3 gap-3"):
             #First Name
-            ui.input(label="First Name",placeholder="Enter First Name").props(add="bordered").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"first_name")
+            ui.input(label="FIRST NAME").props(add="bordered stack-label").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"first_name")
             #Middle Name
-            ui.input(label="Middle Name",placeholder="Enter Middle Name").props(add="bordered").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"middle_name")
+            ui.input(label="MIDDLE NAME").props(add="bordered stack-label").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"middle_name")
             #Last Name
-            ui.input(label="Last Name",placeholder="Enter Last Name").props(add="bordered").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"last_name")
+            ui.input(label="LAST NAME").props(add="bordered stack-label").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"last_name")
             #Birthdate
-            with ui.input(label="Birthdate").props(add="bordered readonly").classes(add="shadow-md shadow-[#07004d] bg-white rounded px-2 text-lg") as bdate_display:
+            with ui.input(label="BIRTHDATE").props(add="bordered readonly stack-label").classes(add="shadow-md shadow-[#07004d] bg-white rounded px-2 text-lg") as bdate_display:
               with ui.dialog() as calendar:
                 ui.date(mask="DD-MM-YYYY",on_change=lambda e:calendar.close()).props(add=f"bordered square today-btn color='harmony' event-color='orange' first-day-of-week='1' navigation-max-year-month='{datetime.now().strftime("%Y/%m")}'").bind_value(bdate_display).bind_value(self.client_data,"birthdate")
                 with bdate_display.add_slot("append"):
                   ui.icon("fas fa-cake-candles",color="pink-500").on("click",calendar.open)
             #Gender
-            ui.select(options=["Male","Female"],value="Female",label="Gender").props(add="bordered").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"gender")
+            ui.select(options=["Male","Female"],value="Female",label="GENDER").props(add="bordered stack-label").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"gender")
             #Marital status
-            ui.select(options=MARITAL_STATUSES,label="Marital Status",value=MARITAL_STATUSES[0]).props(add=" bordered").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"marital_status")
+            ui.select(options=self.basics.marital_statuses,label="MARITAL STATUS",value=self.basics.marital_statuses[0]).props(add=" bordered stack-label").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg uppercase").bind_value(self.client_data,"marital_status")
             #Occupation
-            ui.select(options=OCCUPATIONS,label="Occupation",with_input=True).props(add="bordered").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"occupation")
+            ui.select(options=self.basics.occupations,label="OCCUPATION",with_input=True).props(add="bordered stack-label").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg uppercase").bind_value(self.client_data,"occupation")
             #Address
-            ui.input(label="Address",placeholder="Enter client's location").props(add="bordered type='text'").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"address")
+            ui.input(label="ADDRESS").props(add="bordered stack-label type='text'").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"address")
             #Mobile No
-            with ui.input(label="Mobile No",placeholder="eg.787000111").props(add="bordered type='tel' minlength=9 maxlength=9").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"mobile_no") as phone_input:
-              with phone_input.add_slot("prepend"):
-                ui.select(options=[f"+{code}" for code in range(1,260)],value="+255",with_input=True).classes(add="w-16 bg-white my-1 text-lg text-bold").bind_value(self.client_data["kin"],"dial_code")
-
-        #Next of Kin Details
-        with html.div().classes(add="lg:col-start-3 hidden w-full p-2 flex flex-col gap-3"):
-          ui.label("NEXT OF KIN").classes(add="w-full rounded-sm shadow-md shadow-[#07004d] p-2 small-caps text-2xl text-bold text-gray-500")
-          with html.div().classes(add="w-full grid grid-cols-2 gap-3"):
-            #First Name
-            ui.input(label="First Name",placeholder="Enter First Name").props(add="bordered").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data["kin"],"first_name")
-            #Last Name
-            ui.input(label="Last Name",placeholder="Enter Last Name").props(add="bordered").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data["kin"],"last_name")
-            #Relationship
-            ui.select(options=RELATIONSHIP,label="Relation",with_input=True).props(add="bordered").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data["kin"],"relation")
-            #Mobile No
-            with ui.input(label="Mobile No",placeholder="eg.787000111").props(add="type='tel' minlength=9 maxlength=9").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data["kin"],"mobile_no") as phone_input:
+            with ui.input(label="MOBILE NO",placeholder="eg.787000111").props(add="bordered stack-label type='tel' minlength=9 maxlength=9").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"mobile_no") as phone_input:
               with phone_input.add_slot("prepend"):
                 ui.select(options=[f"+{code}" for code in range(1,260)],value="+255",with_input=True).classes(add="w-16 bg-white my-1 text-lg text-bold").bind_value(self.client_data["kin"],"dial_code")
 
@@ -838,8 +822,8 @@ class ClientsManagementDisplay():
     #DATA
     if client:
       details = {
-        "name":f"{client['first_name'].capitalize()} {client['middle_name'].capitalize()} {client['last_name'].capitalize()}",
-        "short_name":f"{client['first_name'].capitalize()} {client['middle_name'][0].capitalize()}. {client['last_name'].capitalize()}",
+        "name":f"{client['first_name'].capitalize()} {client['middle_name'].capitalize() if client['middle_name'] else ''} {client['last_name'].capitalize()}",
+        "short_name":f"{client['first_name'].capitalize()} {client['middle_name'][0].capitalize() if client['middle_name'] else ''} {client['last_name'].capitalize()}",
         "age":format_age(client["birthdate"],short=True),
         "gender":client["gender"].capitalize(),
         "address":client["address"].capitalize(),
@@ -1008,8 +992,8 @@ class ClientsManagementDisplay():
     """Shows a dialog for initiating or ending visit"""
     #DATA
     details = {
-      "name":f"{client['first_name']} {client['middle_name']} {client['last_name']}",
-      "short_name":f"{client['first_name']} {client['middle_name'][0]}. {client['last_name']}",
+      "name":f"{client['first_name']} {client['middle_name'] if client['middle_name'] else ''} {client['last_name']}",
+      "short_name":f"{client['first_name']} {client['middle_name'][0] if client['middle_name'] else ''} {client['last_name']}",
       "age":format_age(client["birthdate"],short=True),
       "gender":client["gender"],
       "address":client["address"],
@@ -1081,7 +1065,7 @@ class ClientsManagementDisplay():
           #Payment
           with html.div().classes(add="col-span-2 w-full grid grid-cols-2 gap-3"):
             payment_mode = ui.select(options=payment_options,value=payment_options[0],label="PAYMENT MODE").props(add="bordered").classes(add="shadow-md shadow-[#07004d] bg-sky-50 rounded px-2 text-lg").bind_value_to(visit_data,"payment_mode")   #payment mode
-            ui.select(options=PAYMENT_PACKAGES,value=PAYMENT_PACKAGES[0],label="PACKAGE").props(add="bordered ").classes(add="shadow-md shadow-[#07004d] bg-sky-50 rounded px-2 text-lg uppercase").bind_value_to(visit_data,"package")
+            ui.select(options=self.basics.payment_packages,value=self.basics.payment_packages[0],label="PACKAGE").props(add="bordered popup-content-class='uppercase'").classes(add="shadow-md shadow-[#07004d] bg-sky-50 rounded px-2 text-lg uppercase").bind_value_to(visit_data,"package")
             ui.input(label="CARD/NIDA NO",value=client["card_no"]).props(add="type='text' bordered readonly").bind_visibility_from(payment_mode,"value",lambda v:v != "CASH").classes(add="bg-white shadow-md shadow-[#07004d] rounded-sm px-2 text-lg").bind_value_to(visit_data,"card_no")     #Card No
             authorize_button = ui.button(text="authorize",color="#07004d",on_click=get_authorization_number).props(add="bordered glossy").bind_visibility_from(payment_mode,"value",lambda v:v != "CASH").classes(add="rounded shadow-md shadow-[#07004d] text-sky-300 text-lg lg:text-xl text-bold")   #Authorize button
             self.auth_number = ui.input(label="AUTHORIZATION NO").props(add="bordered glossy readonly").bind_visibility_from(payment_mode,"value",lambda v:v != "CASH").classes(add="col-span-2 w-3/4 justify-self-center bg-white shadow-md shadow-[#07004d] rounded-sm px-2 text-xl text-green-700").bind_value(visit_data,"authorization_no")          #Authorization Number
@@ -1249,8 +1233,8 @@ class ClientsManagementDisplay():
     """Shows a dialog for initiating or ending visit"""
     #DATA
     details = {
-      "name":f"{client['first_name']} {client['middle_name']} {client['last_name']}",
-      "short_name":f"{client['first_name']} {client['middle_name'][0]}. {client['last_name']}",
+      "name":f"{client['first_name']} {client['middle_name'] if client['middle_name'] else ''} {client['last_name']}",
+      "short_name":f"{client['first_name']} {client['middle_name'][0] if client['middle_name'] else ''} {client['last_name']}",
       "age":format_age(client["birthdate"],short=True),
       "gender":client["gender"],
       "address":client["address"],

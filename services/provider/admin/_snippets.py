@@ -79,7 +79,7 @@ def db_display_change(changed_value:str,target:Any,target_value_options:list[str
 def unmodel_facility_subscription(db_facility_subscription:FacilitySubscription):
   """A function to convert FacilitySubscription model details into a namedtuple"""
 
-  Subscription = namedtuple("Subscription",["facility_id","tier","active","cost","paid_amount","pending_amount","start_time","end_time"])
+  Subscription = namedtuple("Subscription",["facility_id","receipt","tier","active","cost","paid_amount","pending_amount","start_time","end_time"])
 
   return Subscription(
     facility_id = db_facility_subscription.facility_id,
@@ -96,7 +96,7 @@ def unmodel_facility_subscription(db_facility_subscription:FacilitySubscription)
 def unmodel_facility(db_facility:Facility):
   """A function to convert Facility model details into a namedtuple"""
 
-  Facility = namedtuple("Facility",["facility_id","name","postcode","registration_time","service","subscriptions"])
+  Facility = namedtuple("Facility",["facility_id","name","postcode","registration_time","category","level","certifications","designations","primary_roles","secondary_roles","services","medicine_types","vendors","mos","titles","marital_statuses","occupations","relationships","id_number_types","years_of_existence","active_payment_modes","payment_packages","subscriptions"])
 
   return Facility(
     facility_id = db_facility.facility_id,

@@ -270,8 +270,8 @@ class Dashboard():
           with ui.tab_panel(name=tab_header_labels[0]).classes(add="h-screen p-0 gap-0.5 bg-inherit"):
             ClientsManagementDisplay(user=self.user)
           #Reports
-          with ui.tab_panel(name=tab_header_labels[1]).classes(add="h-screen p-0 gap-0.5 bg-inherit"):
-            ReportsDisplay()
+          #with ui.tab_panel(name=tab_header_labels[1]).classes(add="h-screen p-0 gap-0.5 bg-inherit"):
+          #  ReportsDisplay()
         
         #Doctor
         elif "doctor" in user.roles:
@@ -279,8 +279,8 @@ class Dashboard():
           with ui.tab_panel(name=tab_header_labels[0]).classes(add="h-screen p-0 gap-0.5 bg-inherit"):
             ServicesManagementDisplay(user=user)
           #Reports
-          with ui.tab_panel(name=tab_header_labels[1]).classes(add="h-screen p-0 gap-0.5 bg-inherit"):
-            ClinicianReportsManagementDisplay()
+          #with ui.tab_panel(name=tab_header_labels[1]).classes(add="h-screen p-0 gap-0.5 bg-inherit"):
+          #  ClinicianReportsManagementDisplay()
         
         #Radiology
         elif "radiographer" in user.roles:
@@ -291,8 +291,8 @@ class Dashboard():
           #with ui.tab_panel(name=tab_header_labels[1]).classes(add="h-screen p-0 gap-0.5 bg-inherit"):
            # ui.label("Resources!!")
           #Reports
-          with ui.tab_panel(name=tab_header_labels[1]).classes(add="h-screen p-0 gap-0.5 bg-inherit"):
-            ImagingReportdisplay(user=user)
+          #with ui.tab_panel(name=tab_header_labels[1]).classes(add="h-screen p-0 gap-0.5 bg-inherit"):
+          #  ImagingReportdisplay(user=user)
         
         #Nurse
         elif "nurse" in user.roles:
@@ -304,8 +304,8 @@ class Dashboard():
             StoresManagementDisplay(user=user)
             pass
           #Orders & Reports
-          with ui.tab_panel(name=tab_header_labels[2]).classes(add="h-screen p-0 gap-0.5 bg-inherit"):
-            PharmacyReportDisplay(user=user)
+          #with ui.tab_panel(name=tab_header_labels[2]).classes(add="h-screen p-0 gap-0.5 bg-inherit"):
+          #  PharmacyReportDisplay(user=user)
         
         
 

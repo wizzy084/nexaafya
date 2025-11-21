@@ -9,11 +9,13 @@ from ._snippets import *
 
 
 ##
-def get_facility_data():
+def get_facility_data(minimal:bool=False):
   with Session(database_engine) as session:
-    db_facility:Facility = session.exec(select(Facility)).first()
-
-    return unmodel_facility(db_facility)
+    db_facility = unmodel_facility(session.exec(select(Facility)).first())
+    if minimal:
+      return db_facility._replace(subscriptions=[])
+    else:
+      return unmodel_facility(db_facility)
 
 def subscription_countdown():
   """Returns number of days remaining between current datetime and 'end_time' value in the facilitysubscription table with with active column set to 't'.If it's past 'now', the negative values will be returned."""

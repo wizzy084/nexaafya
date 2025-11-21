@@ -64,6 +64,7 @@ def populate_db():
       #Initial medicines
       for medicine in template.medicines:
         medicine["active"] = True
+        medicine["invoice"],medicine["delivery_note"] = "inv001","dn001"
         register_medicine(medicine)
         update_medicine(medicine=medicine,order=True,receive=True)
 
