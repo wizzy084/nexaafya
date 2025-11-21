@@ -76,6 +76,55 @@ def db_display_change(changed_value:str,target:Any,target_value_options:list[str
 
 
 ###UNMODELS
+def unmodel_facility_subscription(db_facility_subscription:FacilitySubscription):
+  """A function to convert FacilitySubscription model details into a namedtuple"""
+
+  Subscription = namedtuple("Subscription",["facility_id","tier","active","cost","paid_amount","pending_amount","start_time","end_time"])
+
+  return Subscription(
+    facility_id = db_facility_subscription.facility_id,
+    receipt = db_facility_subscription.receipt,
+    tier = db_facility_subscription.tier,
+    active = db_facility_subscription.active,
+    cost = db_facility_subscription.cost,
+    paid_amount = db_facility_subscription.paid_amount,
+    pending_amount = db_facility_subscription.pending_amount,
+    start_time = db_facility_subscription.start_time,
+    end_time = db_facility_subscription.end_time
+  )
+
+def unmodel_facility(db_facility:Facility):
+  """A function to convert Facility model details into a namedtuple"""
+
+  Facility = namedtuple("Facility",["facility_id","name","postcode","registration_time","service","subscriptions"])
+
+  return Facility(
+    facility_id = db_facility.facility_id,
+    name = db_facility.name,
+    postcode = db_facility.postcode,
+    registration_time = db_facility.registration_time,
+    category = db_facility.category,
+    level = db_facility.level,
+    certifications = json.loads(db_facility.certifications),
+    designations = json.loads(db_facility.designations),
+    primary_roles = json.loads(db_facility.primary_roles),
+    secondary_roles = json.loads(db_facility.secondary_roles),
+    services = json.loads(db_facility.services),
+    medicine_types = json.loads(db_facility.medicine_types),
+    vendors = json.loads(db_facility.vendors),
+    mos = json.loads(db_facility.mos),
+    titles = json.loads(db_facility.titles),
+    marital_statuses = json.loads(db_facility.marital_statuses),
+    occupations = json.loads(db_facility.occupations),
+    relationships = db_facility.relationships,
+    id_number_types = json.loads(db_facility.id_number_types),
+    years_of_existence = json.loads(db_facility.years_of_existence),
+    active_payment_modes = json.loads(db_facility.active_payment_modes),
+    payment_packages = json.loads(db_facility.payment_packages),
+    subscriptions = [unmodel_facility_subscription(db_facility_subscription) for db_facility_subscription in db_facility.subscriptions]
+  )
+  
+
 def unmodel_login(db_login:Login):
   """A function to convert a Login model instance into a dictionary"""
 

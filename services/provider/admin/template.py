@@ -1,8 +1,33 @@
 """A module to store initial values for various database models in the app"""
 #IMPORTS
-from datetime import datetime,date
+from datetime import datetime,date,timedelta
 
 ###
+facility = {
+  "facility_id":f"dental-futuresmile",          #
+  "name":"future smile specialized dental clinic",
+  "postcode":67102,
+  "category":"dental",
+  "level":"clinic",
+  "certifications":["NTA 4:Basic Technician Certificate","NTA 5:Technician Certificate","NTA 6:Ordinary Diploma","NTA 7:Higher Diploma","NTA 8:Bachelor's Degree","NTA 9:Master's Degree","NTA 10:Doctorate Degree"],
+  "designations":["MDent","DDS","ADO","DT","Pharm Tech","Pharmacist","Medical Doctor","Receptionist","Radiographer","Radiologist","Registered Nurse","Enrolled Nurse","Medical Attendant","Laboratory Technician"],
+  "primary_roles":["Doctor","Nurse","Receptionist","Radiographer","Office Cleaner"],
+  "secondary_roles":[None,"Director"],
+  "services":["Consultation","Imaging","Procedure","Surgery"],
+  "medicine_types":["Antibiotic","Analgesic","Antiseptic","Antifungal","Accessory"],
+  "vendors":[],
+  "mos":[2,4],
+  "occupations":["Business","Child","Student","Housewife","Farmer","Transportation","Restaurant","Reception","Cashier","Doctor","Nurse","Pharmacist","Laboratory Technician","Dentist","Physiotherap","Banker","Manager","Director","Accountant","Teacher","Lecturer","Headmaster","Headmistress","Police","Human Resource Officer","Software Developer","IT Officer"],
+  "years_of_existence":[datetime.now().year],
+}
+
+default_subscription = {
+  "facility_id":"dental-futuresmile",
+  "receipt":"trial001",
+  "tier":"standard",
+  "cost":0,"paid_amount":0,"pending_amount":0,"end_time":datetime.now() + timedelta(days=30)
+}
+
 services = [
   {
     "service_id":"consult-dds",
@@ -855,7 +880,6 @@ services = [
     ]
   },
 ]
-
 
 users = [
   {

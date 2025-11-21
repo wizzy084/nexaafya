@@ -1515,9 +1515,9 @@ class StockAnalysisDisplay():
                   ui.label(f"{medicine['dispensing_balance']:,.0f}").classes(add="inline ml-1 text-sky-700")
 
 class FacilityFormulary():
-  def __init__(self,formulary=None,parent=None):
+  def __init__(self,user,formulary=None,parent=None):
     #DATA
-    self.parent = parent
+    self.user = user
     self.initial_data()
 
     #UI
@@ -1533,12 +1533,10 @@ class FacilityFormulary():
           #ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=self.parent.formulary_dialog.close if self.parent.formulary_dialog else None).classes(add="lg:hidden size-8 bg-inherit text-red-500")
       
       #Body
-      with html.div().classes(add="grow w-full grid grid-cols-1 lg:grid-cols-2 justify-center content-center") as self.formulary_panel:
+      with html.div().classes(add="grow w-full flex flex-col justify-center content-center") as self.formulary_panel:
         if self.medicines:
-          with html.div().classes(add="grow flex flex-col"):
-            self.FormularyAggrid(self.medicines)
-          with html.div().classes(add="lg-flex h-full"):
-            ui.label('weka apaaaaaaaa')
+          self.FormularyAggrid(self.medicines)
+          
         else:
           with html.div().classes(add=""):
             ui.label("There is no hospital formulary!").classes(add="m-5 text-rose-500 text-center text-2xl lg:text-3xl italic font-semibold fa-fade")
@@ -1547,6 +1545,47 @@ class FacilityFormulary():
   #FUNCTIONALITIES
   def initial_data(self):
     self.medicines = get_formulary()
+    self.template_medicines = get_formulary_medicines()
+
+  def retrieve_medicine(self,medicine:str):
+    """A method that retrieves service details and populate details in ServiceDetailsForm"""
+    if not medicine:
+      return
+    
+    medicine = get_formulary_medicine(medicine.lower())
+    medicine["payment"] = self.pricings(medicine)
+    
+    self.MedicineDetailsForm(medicine)
+
+
+  def pricings(self,medicine:dict):
+    """Returns a namedtuple object with prices of a 'medicine'"""
+
+    for scheme in medicine["schemes"]:
+      for pricing in scheme["prices"]:
+        pricing["scheme_item_code"] = scheme["scheme_item_code"]
+        pricing["restricted"] = scheme["restricted"]
+    
+    output = {scheme["scheme_name"]:[pricing for pricing in scheme["prices"] if pricing["active"]][0] for scheme in medicine["schemes"] if scheme.get("active")}
+    output["logger"] = self.user.username
+    output["medicine_id"] = medicine["medicine_id"]
+    if "nhif" in output:
+      output["insured"] = True
+    else:
+      output["insured"] = False
+      output["nhif"] = {
+        "scheme_id":f"cash-{medicine['medicine_id'].lower()}",
+        "scheme_item_code":"",
+        "copayment":False,
+        "price_range":False,
+        "min":0,
+        "max":0,
+        "standard":0,
+        "priority":0,
+        "topup":0
+      }
+
+    return output
 
   def update_formulary(self,data,edit:bool=False,delete:bool=False):
     """"""
@@ -1570,122 +1609,194 @@ class FacilityFormulary():
   def FormularyAggrid(self,formulary:list[dict]):
     """"""
     #FXS
-    def StatusDot(medicine:dict):
-      """A function to return a styled icon based on status of medicine's status"""
+    def Status(medicine,lg:bool=False):
+      _status = medicine["active"]
+      status = ""
+      if lg:
+        if _status:
+          status = "<span class='text-green-600 text-bold' >Active</span>"
+        else:
+          status = "<span class='text-red-600 text-bold' >Inactive</span>"
+      else:
+        if _status:
+          status = "<span class='fa-solid fa-circle-dot text-green-600 text-bold' ></span>"
+        else:
+          status = "<span class='fa-solid fa-circle-dot text-red-600 text-bold' ></span>"
+      
+      return status
 
-      status = medicine["active"]
-      return f"<span class='fa-solid fa-circle { 'text-green-600' if status else 'text-red-600'}'></span>"
+    def MiniPayment(medicine):
+      pricings = self.pricings(medicine)
+      pricings.pop("logger")
+      pricings.pop("medicine_id")
+      pricings.pop("insured")
+      return f"<div class='grid grid-cols-2 gap-2 text-bold uppercase'>{''.join([f'<div class="w-full text-center {'col-start-1 text-harmony' if scheme == 'cash' else 'col-start-2 text-yellow-700'}">{scheme}</div>' for scheme,pricing in pricings.items() if pricing['standard'] or pricing["price_range"]])}</div"
     
+    def Payment(medicine:dict,cash:bool=False,nhif:bool=False):
+      def _format_price(price):
+        return f"{price:,.2f}"
+
+      pricings = self.pricings(medicine)
+      if cash:
+        price = pricings.get("cash")
+        if price["price_range"]:
+          return f"<div class='text-harmony font-semibold'>{price['min']:,.2f} - {price['max']:,.2f}</div>"
+        else:
+          return f"<div class='text-harmony font-semibold'>{price['standard']:,.2f}</div>"
+      
+      if nhif:
+        if "nhif" in pricings:
+          price = pricings.get("nhif")
+          return f"<div class='grid grid-cols-2 gap-5 font-semibold'><div class='grid grid-cols-2 gap-1' ><span class='text-yellow-800' >STANDARD</span><span class='justify-self-end' >{_format_price(price['standard']) if price['standard'] else '---'}</span></div><div class='grid grid-cols-2 gap-1' ><span class='text-yellow-800' >PRIORITY</span><span class='justify-self-end' >{_format_price(price['priority']) if price['priority'] else '---'}</span></div></div>"
+        else:
+          return f"<div class='grid grid-cols-2 gap-3 font-semibold'><div class='grid grid-cols-2 gap-1' ><span class='text-yellow-800' >STANDARD</span><span class='justify-self-end' >---</span></div><div class='grid grid-cols-2 gap-1' ><span class='text-yellow-800' >PRIORITY</span><span class='justify-self-end' >---</span></div></div>"
+
     #UI
     self.formulary_panel.clear()
-    with self.formulary_panel:
+    with self.formulary_panel.classes(add=""):
       #Small Screen
       ui.aggrid(
         options={
           "columnDefs":[
             {"headerName":"","field":"status","width":40},
             {"headerName":"NAME","field":"name","sortable":True,"filter":True,"floatingFilter":True,"width":500},
-            {"headerName":"TYPE","field":"type","width":200}
+            {"headerName":"TYPE","field":"type","width":200},
+            {"headerName":"","field":"prices"}
           ],
           "rowData":[
             {
               "name":medicine["name"].upper(),
-              "status":StatusDot(medicine),
+              "status":Status(medicine),
               "type":medicine["type"].title(),
+              "prices":MiniPayment(medicine),
               "medicine_id":medicine["medicine_id"]
             } for medicine in formulary
           ]
         },
         theme="quartz",
-        html_columns=[0]
+        html_columns=[0,3]
       ).classes(add="lg:hidden grow w-full bg-inherit text-sm animate__animated animate__fadeIn").on("cellClicked",lambda e:self.MedicineDialog(medicine=[medicine for medicine in formulary if medicine['medicine_id'] == e.args['data']['medicine_id'].lower()][0]))
 
       #Large Screen
       ui.aggrid(
         options={
           "columnDefs":[
-            {"headerName":"","field":"status","width":40},
+            {"headerName":"","field":"sno","width":75},
             {"headerName":"NAME","field":"name","sortable":True,"filter":True,"floatingFilter":True,"width":500},
-            {"headerName":"TYPE","field":"type","width":200}
+            {"headerName":"TYPE","field":"type","width":150},
+            {"headerName":"LEVEL","field":"prescription_level","width":100},
+            {"headerName":"STATUS","field":"status","width":100},
+            {"headerName":"CASH (TZS)","field":"cash_prices","width":150},
+            {"headerName":"NHIF PRICES","field":"nhif_prices","width":500}
           ],
           "rowData":[
             {
+              "sno":formulary.index(medicine) + 1,
               "name":medicine["name"].upper(),
-              "status":StatusDot(medicine),
-              "type":medicine["type"].title(),
+              "status":Status(medicine=medicine,lg=True),
+              "type":medicine["type"].upper(),
+              "prescription_level":medicine["prescription_level"].upper() if medicine["prescription_level"] else "-",
+              "cash_prices":Payment(medicine=medicine,cash=True),
+              "nhif_prices":Payment(medicine=medicine,nhif=True),
               "medicine_id":medicine["medicine_id"]
             } for medicine in formulary
           ]
         },
         theme="quartz",
-        html_columns=[0]
+        html_columns=[4,5,6]
       ).classes(add="lg-show grow w-full bg-inherit text-sm animate__animated animate__fadeIn").on("cellClicked",lambda e:self.MedicineDialog(medicine=[medicine for medicine in formulary if medicine['medicine_id'] == e.args['data']['medicine_id'].lower()][0]))
-
 
   def MedicineDialog(self,medicine:dict|None=None):
     """A method to display dialog for medicine editing"""
+    #DATA
+    if medicine:
+      medicine["payment"] = self.pricings(medicine=medicine)
+
     # UI
-    with ui.dialog().props(add="transition-show='jump-up' transition-hide='jump-down' transition-duration='500'") as self.medicine_dialog,html.div().style(add="min-width:40%;").classes(add="p-0.5 rounded bg-sky-100 flex flex-col"):
+    with ui.dialog().props(add="transition-show='jump-up' transition-hide='jump-down' transition-duration='500'") as self.medicine_dialog,html.div().style(add="min-width:40%;min-height:70%;").classes(add="p-0.5 rounded bg-sky-100 flex flex-col"):
       #Header
       with html.div().classes(add="bg-harmony rounded-t p-1 flex flex-row justify-between"):
         ui.label("MEDICINE DETAILS").classes(add="bg-inherit grow text-yellow-500 text-2xl lg:text-3xl text-bold")
         ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=self.medicine_dialog.close).classes(add="size-8 bg-inherit text-rose-500")
+      
       #Body
-      with html.div().classes(add="grow p-1 flex flex-col"):
+      with html.div().classes(add="grow p-1 flex flex-col gap-5"):
         if medicine:
-          self.MedicineDetailsForm(medicine=medicine)
+          self.MedicineDetailsForm(medicine=medicine,edit=True)
         else:
-          self.MedicineDetailsForm()
+          ui.select(label="MEDICINE NAME",options=self.template_medicines,with_input=True,on_change=lambda e:self.retrieve_medicine(medicine=e.value)).props(add=f"popup-content-class='uppercase'").classes(add="px-1 bg-white shadow-md shadow-[#07004d] rounded text-lg")
+          with html.div().classes(add="w-full grow flex flex-row justify-center items-center"):
+            ui.label("Choose medicine above to add to the formulary").classes(add="text-red-600 text-xl italic font-semibold fa-fade")
     
     self.medicine_dialog.open()
   
-  def MedicineDetailsForm(self,medicine:dict|None=None):
+  def MedicineDetailsForm(self,medicine:dict|None=None,edit:bool=False):
     #DATA
-    MEDICINE_OPTIONS = [option.capitalize() for option in constants.MEDICINE_TYPES]
-
-    if medicine:
+    tab_sections = ["general","pricing"]
+    
+    if edit:
       data = medicine
       for key,value in data.items():
         if type(value) == str:
           data[key] = value.title()
     
     else:
+      if medicine:
+        data = medicine
       data = {
         "medicine_id":None,"name":None,"type":None,"drug_class":None,"active":True,
         "fda_pregnancy_category_1":None,"pregnancy_category_2":None,"fda_pregnancy_category_3":None,"prescription_level":None,
       }
-
+    
     #UI
     with html.form().classes(add="grow w-full px-1 flex flex-col gap-3"):
       #General Details
-      with html.section().classes(add="w-full grid grid-cols-6 gap-3"):
-        ui.input(label="NAME").props(add="type='text'").classes(add="col-span-6 w-full px-2 rounded shadow-md shadow-[#07004d] text-lg").bind_value(data,"name")
-        ui.input(label="MEDICINE ID").props(add=f"{'readonly' if medicine else ''} type='text'").classes(add="col-span-2 px-2 rounded shadow-md shadow-[#07004d] text-lg").bind_value(data,"medicine_id")
-        ui.select(label="TYPE",options=MEDICINE_OPTIONS).props(add="type='text'").classes(add="col-span-2 px-2 rounded shadow-md shadow-[#07004d] text-lg").bind_value(data,"type")
-        ui.switch(text="ACTIVE").bind_value(data,"active").props(add="dense left-label checked-icon='check' unchecked-icon='clear' color='green-600'").style(add="text-shadow:1px 2px gray").classes(add=f"col-span-2 pr-3 rounded shadow-md shadow-[#07004d] text-harmony text-bold text-lg lg:text-xl")
+      ui.input(label="NAME").props(add="type='text'").props(add="readonly").classes(add="col-span-2 w-full px-2 rounded bg-white shadow-sm shadow-[#07004d] text-lg uppercase").bind_value(data,"name")
       
-      #Prices
-      with html.section().classes(add="w-full p-1 flex flex-col justify-between gap-3"):
-        #Pregnancy Category (1st Trimester)
-        with html.div().classes(add="p-1 rounded shadow-md shadow-[#07004d]"):
-          ui.label("PREGNANCY CATEGORY (1st Trimester))").props(add="inline").classes(add="font-medium")
-          ui.radio(options=[None,"A","B","C","D","X"]).props(add="inline left-label").bind_value(data,"fda_pregnancy_category_1")
+      #Tabs
+      with html.div().classes(add="w-full p-0 rounded-b shadow-sm shadow-[#07004d]"):
+        with ui.tabs(value=tab_sections[0]).props(add="inline-label mobile-arrows outside-arrows active-class='text-sky-500'").classes(add="w-full rounded-b bg-harmony py-1 text-yellow-500 font-bold") as medicine_tabs:
+          for section in tab_sections:
+            ui.tab(name=section).props(add="dense")
+      
+      #Panels
+      with html.div().classes(add="grow w-full rounded-br flex flex-col"):
+        with ui.tab_panels(tabs=medicine_tabs,value=tab_sections[0]).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='700'").classes(add="bg-inherit grow w-full grid grid-cols-1"):
+          #Profile
+          with ui.tab_panel(name="general").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col gap-0.5"):
+            #General
+            with html.section().classes(add="w-full grid grid-cols-2 gap-3"):
+              ui.input(label="TYPE").props(add="type='text'").props(add="readonly").classes(add="w-full px-2 rounded bg-white shadow-sm shadow-[#07004d] text-lg").bind_value(data,"type")
+              ui.toggle(options={True:"active",False:"inactive"},value=True,on_change=lambda e:ui.notify(e.value)).props(add="glossy spread size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="w-full bg-harmony font-semibold")
+            
+            #Other details
+            with html.section().classes(add="w-full p-1 flex flex-col justify-between gap-3"):
+              #Pregnancy Category (1st Trimester)
+              with html.div().classes(add="p-1 rounded bg-sky-50 shadow-sm shadow-[#07004d]"):
+                ui.label("PREGNANCY CATEGORY (1ST TIMESTER))").props(add="inline").classes(add="font-medium")
+                ui.radio(options=[None,"A","B","C","D","X"]).props(add="inline left-label").classes(add="").bind_value(data,"fda_pregnancy_category_1")
 
-        #Pregnancy Category (2nd Trimester)
-        with html.div().classes(add="p-1 rounded shadow-md shadow-[#07004d]"):
-          ui.label("PREGNANCY CATEGORY (2nd Trimester)").classes(add="font-medium")
-          ui.radio(options=[None,"A","B","C","D","X"]).props(add="inline left-label").bind_value(data,"fda_pregnancy_category_2")
-        
-        #Pregnancy Category (3rd Trimester)
-        with html.div().classes(add="p-1 rounded shadow-md shadow-[#07004d]"):
-          ui.label("PREGNANCY CATEGORY (3rd Trimester)").classes(add="font-medium")
-          ui.radio(options=[None,"A","B","C","D","X"]).props(add="inline left-label").bind_value(data,"fda_pregnancy_category_3")
-        
-        #Prescription Level
-        with html.div().classes(add="p-1 rounded shadow-md shadow-[#07004d]"):
-          ui.label("PRESCRIPTION LEVEL").classes(add="")
-          ui.radio(options=[None,"A","B","C","D","S"]).props(add="inline left-label").bind_value(data,"prescription_level")
+              #Pregnancy Category (2nd Trimester)
+              with html.div().classes(add="p-1 rounded bg-sky-50 shadow-sm shadow-[#07004d]"):
+                ui.label("PREGNANCY CATEGORY (2ND TRIMESTER)").classes(add="font-medium")
+                ui.radio(options=[None,"A","B","C","D","X"]).props(add="inline left-label").classes(add="").bind_value(data,"fda_pregnancy_category_2")
+              
+              #Pregnancy Category (3rd Trimester)
+              with html.div().classes(add="p-1 rounded bg-sky-50 shadow-sm shadow-[#07004d]"):
+                ui.label("PREGNANCY CATEGORY (3RD TRIMESTER)").classes(add="font-medium")
+                ui.radio(options=[None,"A","B","C","D","X"]).props(add="inline left-label").classes(add="").bind_value(data,"fda_pregnancy_category_3")
+              
+              #Prescription Level
+              with html.div().classes(add="p-1 rounded bg-sky-50 shadow-sm shadow-[#07004d]"):
+                ui.label("PRESCRIPTION LEVEL").classes(add="font-medium")
+                ui.radio(options=[None,"A","B","C","D","S"]).props(add="inline left-label").classes(add="").bind_value(data,"prescription_level")
 
+          
+          #Logs
+          with ui.tab_panel(name="pricing").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col gap-0.5"):
+            pass
+        
+      
       #Buttons
       with html.div().classes(add=f"w-full flex flex-row {'justify-center gap-5' if medicine else 'justify-center'}"):
         ui.button(text="SAVE",color="",on_click=lambda e:self.update_formulary(data=data,edit=True if medicine else False)).props(add="glossy").classes(add=" bg-harmony text-yellow-500 text-bold text-xl")
@@ -4975,7 +5086,6 @@ class ServicesManager():
     service["payment"] = self.pricings(service)
     
     self.ServiceDetailsForm(service)
-
 
   def save_service(self,service:dict,update:bool=False):
     """"""

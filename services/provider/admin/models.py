@@ -6,6 +6,63 @@ from typing import Any,Optional,Union
 
 
 #MODELS
+class Facility(SQLModel,table=True,extend_existing=True):
+  """A model class for facility"""
+
+  id:int|None = Field(default=None,primary_key=True)
+  facility_id:str|None = Field(default=None,unique=True)
+  
+  #General
+  name:str|None = None
+  postcode:int|None = None
+  registration_time:datetime = datetime.now()
+  category:str|None = None
+  level:str|None = None
+
+  #Users
+  certifications:str|None = None
+  designations:str|None = None
+  primary_roles:str|None = None
+  secondary_roles:str|None = None
+
+  #Services & Medicines
+  services:str|None = None
+  medicine_types:str|None = None
+  vendors:str|None = None
+  mos:str|None = None
+
+  #Clients
+  titles:str = '["mr","ms","mrs","dr"]'
+  marital_statuses:str = '["single","cohabiting","married","divorced"]'
+  occupations:str|None = None
+  relationships:str = '["mother","father","sister","brother","spouse","husband","wife","friend","colleague"]'
+  id_number_types:str = '["nin (nida)","card no"]'
+
+  #Payments
+  years_of_existence:str|None = None
+  active_payment_modes:str = '["cash","nhif"]'
+  payment_packages:str = '["standard","priority"]'
+
+  subscriptions:list["FacilitySubscription"] = Relationship(back_populates="facility",sa_relationship_kwargs={"cascade":"all,delete"})
+
+class FacilitySubscription(SQLModel,table=True,extend_existing=True):
+  """A model class for facility subscription details"""
+
+  id:int|None = Field(default=None,primary_key=True)
+  facility_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("facility.facility_id",ondelete="CASCADE")))
+  receipt:str|None = None
+
+  tier:str = "standard"
+  active:bool = True
+  cost:float = 0
+  paid_amount:float = 0
+  pending_amount:float = 0
+  start_time:datetime = datetime.now()
+  end_time:datetime|None = None
+
+  facility:Facility = Relationship(back_populates="subscriptions")
+
+
 class User(SQLModel,table=True,extend_existing=True):
   """A model class for user"""
 

@@ -61,7 +61,7 @@ class ManagementDisplay():
             
             #Formulary Management
             with ui.tab_panel(name="formulary").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-around gap-0.5"):
-              FacilityFormulary()
+              FacilityFormulary(user=self.user)
             
             #Inventory Management
             with ui.tab_panel(name="inventory").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-between gap-0.5"):
@@ -100,7 +100,7 @@ class ManagementDisplay():
             
             #Formulary Management
             with ui.tab_panel(name="formulary").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-around gap-0.5"):
-              FacilityFormulary()
+              FacilityFormulary(user=self.user)
             
             #Inventory
             with ui.tab_panel(name="inventory").classes(add="w-full h-full p-0.5 rounded-0 grid grid-cols-2 gap-0.5"):
@@ -322,7 +322,7 @@ class ManagementDisplay():
 
     #Controls
     with html.div().classes(add="w-full h-[13%] py-3 flex flex-row justify-center gap-5 lg:gap-7"):
-      ui.toggle(options=["dashboard","staffs & services","assets"]).props(add="glossy size='lg' toggle-color='bg-inerit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="bg-inherit rounded-full ring-1 ring-blue-400 shadow-md shadow-sky-500 text-bold").bind_value(carousel)
+      ui.toggle(options=["dashboard","staffs & services","assets"]).props(add="glossy size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="bg-inherit rounded-full ring-1 ring-blue-400 shadow-md shadow-sky-500 text-bold").bind_value(carousel)
   
   
   

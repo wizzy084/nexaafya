@@ -1,6 +1,7 @@
 """A module for creating and updating rows in the database tables """
 
 #GENERAL IMPORTS
+import json
 from collections import namedtuple
 from sqlmodel import SQLModel,Session
 from uuid import uuid4
@@ -17,6 +18,19 @@ from ._snippets import *
 def populate_db():
   #creating database tables
   SQLModel.metadata.create_all(database_engine)
+
+  #Facility
+  with Session(database_engine) as session:
+    if not session.exec(select(Facility)).first():
+      register_facility(template.facility)
+  
+  with Session(database_engine) as session:
+    register_facility_subscription(template.default_subscription)
+  
+  with Session(database_engine) as session:
+    a=template.default_subscription
+    a["receipt"] = '20ujdf'
+    update_facility_subscription(a)
 
   #Initial users
   with Session(database_engine) as session:
@@ -54,6 +68,52 @@ def populate_db():
         update_medicine(medicine=medicine,order=True,receive=True)
 
 #REGISTER FUNCTIONS
+def register_facility_subscription(subscription:dict):
+  db_facility_subscription = FacilitySubscription(
+    facility_id = subscription["facility_id"],
+    receipt = subscription["receipt"],
+    tier = subscription["tier"],
+    cost = subscription["cost"],
+    paid_amount = subscription["paid_amount"],
+    pending_amount = subscription["pending_amount"],
+    end_time = subscription["end_time"]
+  )
+
+  with Session(database_engine) as session:
+    if session.exec(select(FacilitySubscription).where(FacilitySubscription.receipt == db_facility_subscription.receipt)).first():
+      return
+    else:
+      session.add(db_facility_subscription)
+      session.commit()
+
+def register_facility(facility:dict):
+  """Model Facility and saves data into facility table in database"""
+
+  db_facility = Facility(
+    facility_id = facility["facility_id"],
+    name = facility["name"],
+    postcode = facility["postcode"],
+    category = facility["category"],
+    level = facility["level"],
+    certifications = json.dumps(facility["certifications"]),
+    designations = json.dumps(facility["designations"]),
+    primary_roles = json.dumps(facility["primary_roles"]),
+    secondary_roles = json.dumps(facility["secondary_roles"]),
+    services = json.dumps(facility["services"]),
+    medicine_types = json.dumps(facility["medicine_types"]),
+    vendors = json.dumps(facility["vendors"]),
+    mos = json.dumps(facility["mos"]),
+    occupations = json.dumps(facility["occupations"]),
+    years_of_existence = json.dumps(facility["years_of_existence"]),
+  )
+
+  with Session(database_engine) as session:
+    if session.exec(select(Facility).where(Facility.facility_id == db_facility.facility_id)).first():
+      return
+    else:
+      session.add(db_facility)
+      session.commit()
+
 def register_staff(staff:dict):
   """A function to add a new row in users table and populate it with data from 'staff' dictionary"""
 
@@ -378,6 +438,18 @@ def initiate_requisition(requisition:dict):
 
 
 #UPDATE FUNCTIONS
+def update_facility_subscription(subscription:dict):
+  """Changes value of active column to 'f' in a facilitysubscription table row with 't' as its value and then add new row"""
+
+  with Session(database_engine) as session:
+    last_active_subscription:FacilitySubscription = session.exec(select(FacilitySubscription).where(FacilitySubscription.active)).first()
+    
+    if last_active_subscription:
+      last_active_subscription.active = False
+      session.commit()
+
+      register_facility_subscription(subscription)
+
 def update_staff(staff,activate:bool=False,edit:bool=False,suspend:bool=False):
   """"""
   if activate:
@@ -750,7 +822,6 @@ def cancel_requisition(requisition:dict):
   except:
     return {"message":"Requisition couldn't be cancelled!","type":"negative","position":"top"}
   
-
 
 
 

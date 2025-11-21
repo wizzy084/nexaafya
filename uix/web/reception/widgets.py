@@ -611,7 +611,7 @@ class ClientsManagementDisplay():
     if client:
       details = {
         "name":f"{client['first_name']} {client['middle_name']} {client['last_name']}",
-        "short_name":f"{client['first_name'].capitalize()} {client['middle_name'][0].capitalize()}. {client['last_name'].capitalize()}",
+        "short_name":f"{client['first_name'].capitalize()} {client['middle_name'][0].capitalize() if client['middle_name'] else ''}. {client['last_name'].capitalize()}",
         "age":format_age(client["birthdate"]),
         "gender":client["gender"],
         "address":client["address"],

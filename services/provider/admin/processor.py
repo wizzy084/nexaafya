@@ -9,6 +9,25 @@ from ._snippets import *
 
 
 ##
+def get_facility_data():
+  with Session(database_engine) as session:
+    db_facility:Facility = session.exec(select(Facility)).first()
+
+    return unmodel_facility(db_facility)
+
+def subscription_countdown():
+  """Returns number of days remaining between current datetime and 'end_time' value in the facilitysubscription table with with active column set to 't'.If it's past 'now', the negative values will be returned."""
+  
+  now = datetime.now()
+
+  with Session(database_engine) as session:
+    subscription:FacilitySubscription = session.exec(select(FacilitySubscription).where(FacilitySubscription.active).order_by(FacilitySubscription.end_time).limit(1)).first()
+
+    if subscription.end_time >= now:
+      return (subscription.end_time - now).days
+    else:
+      return -(now - subscription.end_time).days
+
 def get_staffs(private:bool=False):
   """Retrieves rows data from 'users' table and format them into a list of dictionaries"""
 
@@ -130,12 +149,28 @@ def get_template_services(verbose:bool=False) -> list:
   else:
     return [service["name"].title() for service in services]
 
+def get_formulary_medicines(verbose:bool=False) -> list:
+  """Returns list of template medicines to be registered in the system"""
+  from .template import medicines
+  if verbose:
+    return []
+  else:
+    return [medicine["name"].title() for medicine in medicines]
+
 def get_template_service(service:str) -> dict:
   """Return a namedtuple with details of service"""
 
   with Session(database_engine) as session:
     db_service:Service = session.exec(select(Service).where(Service.name == service.lower())).first()
     return unmodel_service(db_service)
+
+def get_formulary_medicine(medicine:str) -> dict:
+  """Return a namedtuple with details of medicine"""
+
+  with Session(database_engine) as session:
+    db_medicine:Formulary = session.exec(select(Formulary).where(Formulary.name == medicine.lower())).first()
+    return unmodel_formulary(db_medicine)
+
 
 def retrieve_updated_prices(data:dict,nhif:bool=False):
   """Retrieves prices of a service from NHIF API"""
