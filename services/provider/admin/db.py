@@ -66,7 +66,7 @@ def populate_db():
         medicine["active"] = True
         medicine["invoice"],medicine["delivery_note"] = "inv001","dn001"
         register_medicine(medicine)
-        update_medicine(medicine=medicine,order=True,receive=True)
+        #update_medicine(medicine=medicine,order=True,receive=True)
 
 #REGISTER FUNCTIONS
 def register_facility_subscription(subscription:dict):
