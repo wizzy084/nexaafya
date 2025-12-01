@@ -21,7 +21,7 @@ from ..tools.widgets import *
 
 
 ###
-class ManagementDisplay():
+class AdministrationManagementDisplay():
   """A class for UI functionalities for facility manager"""
 
   def __init__(self,user):

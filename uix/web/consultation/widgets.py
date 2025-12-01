@@ -13,7 +13,6 @@ from services.provider.clients.processor import get_active_visits,get_clients
 #UIX IMPORTS
 from ..tools._snippets import format_age
 from ..tools.widgets import ConsultationsManager,AppointmentsManager,ProceduresManager
-from .miniwidgets import *
 
 
 

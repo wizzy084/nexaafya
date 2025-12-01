@@ -9,7 +9,7 @@ from nicegui import html,ui
 def CompanyName():
   """A company name"""
 
-  with html.strong().classes(add=f"text-xl"):
+  with html.strong().classes(add=f"text-xl select-none"):
     html.span("Nexa").classes(add="bg-inherit text-bold text-sky-400 m-0 p-0 text-base")
     html.span("Soft").classes(add="bg-inherit  text-bold text-green-400 m-0 p-0 text-base")
 

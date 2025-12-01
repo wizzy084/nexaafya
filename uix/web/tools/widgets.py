@@ -4,7 +4,7 @@ import asyncio,calendar,json,math,random,time as time_delay,uuid
 from collections import namedtuple
 from pathlib import Path
 from datetime import date,datetime,timedelta
-from nicegui import html,ui
+from nicegui import app,html,ui
 
 #SERVICES IMPORTS
 from services.provider.admin import constants
@@ -12,6 +12,7 @@ from services.provider.admin.db import *
 from services.provider.admin.constants import *
 from services.provider.admin.processor import *
 from services.provider.clients import db as clients_db
+from services.provider.clients import processor as clients_processor
 from services.provider.clients.processor import get_appointments,get_clients,get_active_procedures,get_active_visits,get_consultation_diagnoses
 
 #UIX IMPORTS
@@ -21,64 +22,2536 @@ from ._snippets import *
 
 
 #WIDGETS
-#Login
 class Login():
   """"""
 
-  def __init__(self):
+  def __init__(self,login_credentials:dict|None=None):
     #DATA
+    self.login_credentials = login_credentials
+    self.user = self.login_credentials["user"]
     self.data()
 
 
     #UI
-    with html.div().classes(add="login-blur w-[75%] lg:w-[60%] p-1 ring-1 ring-green-900 rounded shadow-md shadow-green-600 animate__animated animate__fadeIn animate__slow flex flex-col gap-0") as self.login_panel:
-      #Title
-      with html.section().classes(add="w-full flex flex-col gap-3"):
-        with html.div().classes(add="pt-3 text-center"):
-          BrandName(size="text-5xl")
-        with html.div().classes(add="w-full"):
-          ui.label("Hospital Information Management System").style(add="text-shadow:1px 1px #505050;").classes(add="select-none text-xl lg:text-3xl [1.35rem] text-italic text-center text-bold text-teal-400")
-        
-      #Info & Login form
-      with html.section().classes(add="grow pt-5 flex flex-col gap-3 lg:grid grid-cols-2"):
-        #Info Carousel
-        with ui.carousel(value=random.choice(self.login_posters).name).props(add="animated autoplay infinite swipeable transition-prev='jump-right' transition-next='jump-right' transition-duration='3000'").style(add="overflow:hidden;").classes(add="lg-show grow q-pa-none bg-inherit") as carousel:
-          for login_poster in self.login_posters:
-            with ui.carousel_slide(name=login_poster.name).classes(add="bg-inherit p-0"):
-              with html.picture().classes(add="w-full h-full"):
-                ui.image(source=login_poster).classes(add="w-full h-full")
-        
-        #Login
-        with html.div().classes(add="grow rounded-sm flex flex-col justify-center items-center content-center gap-1 py-5"):
-          #Header
-          ui.label("STAFF LOGIN").style(add="").classes(add="select-none text-3xl text-sky-200 font-bold lg:text-4xl")
+    if self.login_credentials:
+      with html.div().classes(add="login-blur w-[75%] lg:w-[60%] ring-1 ring-green-900 rounded shadow-md shadow-green-600 animate__animated animate__fadeIn animate__slow flex flex-col") as self.master_panel:
+        #Large Screen
+        with html.div().classes(add="rounded grow w-full lg-flex flex-col"):
+          with ui.splitter(value=50).props(add="before-class='rounded-l' after-class='rounded-r' separator-class='bg-gradient-to-b from-sky-600 to-green-600'").classes(add="grow w-full rounded") as splitter:
+            #Posters
+            with splitter.before:
+              with html.div().classes(add="w-full h-full rounded-l") as self.noticeboard:
+                self.LoginPosters()
+            
+            #Login
+            with splitter.after:
+              with html.div().classes(add="w-full h-full rounded-r flex flex-col justify-between items-center gap-1") as self.login_display:
+                self.LoginForm()
+          
+        #Small Screen
+        with html.div().classes(add="lg:hidden grow rounded w-full flex flex-col"):
+          with ui.splitter(value=1).props(add="after-class='rounded' separator-class='bg-inherit'").classes(add="grow w-full rounded") as splitter:
+            #Login
+            with splitter.after:
+              with html.div().classes(add="w-full h-full rounded flex flex-col justify-between items-center gap-1") as self.login_display:
+                self.LoginForm()
 
-          #Login Form
-          with html.form().props(add=f"action='/dashboard' target='_parent'").classes(add="w-full rounded-sm flex flex-col items-center content-center gap-5 py-5"):
-            #Username Input
-            with ui.input(label="USERNAME").props(add="autofocus hide-bottom-space required stack-label standout outlined label-color='blue-9' bg-color='light-blue-1' input-class='text-lg text-blue-10 font-medium italic' type='text' name='username' id='username'").classes(add="w-72") as username_input:
-              with username_input.add_slot("prepend"):
-                ui.icon(name="fa-solid fa-user").classes(add="mr-2 text-blue-9")
-                ui.separator().props(add="vertical")
 
-            #Password Input
-            with ui.input(label="PASSWORD",password_toggle_button=True).props(add="hide-bottom-space required stack-label standout outlined label-color='blue-9' color='light-blue-9' bg-color='light-blue-1' input-class='text-lg text-blue-10 font-medium italic' type='password' name='password' id='password'").classes(add="w-72") as password_input:
-              with password_input.add_slot("prepend"):
-                ui.icon(name="fa-solid fa-user-lock").classes(add="mr-2 text-blue-9")
-                ui.separator().props(add="vertical")
-
-            #Submit button
-            ui.button(text="log in",color="black").props(add="dense glossy type='submit'").classes(add="w-36 shadow-sm shadow-green-500 text-2xl text-sky-200")
-
-      #Company brand
-      with html.section().classes(add="w-full p-1 flex flex-row justify-end"):
-        CompanyName()
-    
   #FUNCTIONALITIES
   def data(self):
+    #POSTERS
     login_posters_path = Path("./uix/web/assets/images/login")
-
     self.login_posters = [poster for poster in login_posters_path.iterdir() if login_posters_path.exists() and login_posters_path.is_dir()]
+
+  def login(self,credentials:dict):
+    """"""
+    
+    if credentials["username"] and credentials["password"]:
+      #STORAGE
+      app.storage.user.update(credentials)
+
+      #NAVIGATE
+      ui.navigate.reload()
+
+  def LoginPosters(self):
+    """"""
+    #UI
+    self.noticeboard.clear()
+    with self.noticeboard:
+      with ui.carousel(value=random.choice(self.login_posters).name).props(add="animated autoplay infinite swipeable transition-prev='jump-right' transition-next='jump-right' transition-duration='3000'").style(add="overflow:hidden;").classes(add="w-full lg-show grow q-pa-none bg-inherit") as carousel:
+        for login_poster in self.login_posters:
+          with ui.carousel_slide(name=login_poster.name).classes(add="bg-inherit p-0"):
+            with html.picture().classes(add="w-full h-full"):
+              ui.image(source=login_poster).classes(add="w-full h-full")
+  
+  def LoginForm(self):
+    """"""
+    #DATA
+    credentials = {"username":self.login_credentials["username"],"password":""}
+
+    #FXS
+    def username_input_autofocus():
+      return "" if self.login_credentials["user_exists"] and self.login_credentials["active"] else "autofocus"
+    
+    def password_input_autofocus():
+      return "autofocus" if self.login_credentials["user_exists"] and not self.login_credentials["password_match"] else "" 
+
+    #UI
+    self.login_display.clear()
+    with self.login_display:
+      #Title
+      with html.section().classes(add="w-full pb-3 flex flex-col gap-3"):
+        with html.div().classes(add="py-3 text-center"):
+          BrandName(size="text-5xl")
+      
+      ui.space()
+
+      #Header
+      ui.label("STAFF LOGIN").style(add="").classes(add="select-none text-2xl text-sky-200 font-bold lg:text-3xl")
+
+      #Login Form
+      with html.form().props(add="onsubmit='event.preventDefault();'").classes(add="w-full rounded-sm flex flex-col items-center content-center gap-5 py-5"):
+        #Username Input
+        with ui.input(label="USERNAME").props(add=f"{username_input_autofocus()} hide-bottom-space required stack-label standout outlined label-color='#07004d' bg-color='light-blue-1' input-class='text-base text-blue-10 font-medium italic' type='text' id='username' name='username'").classes(add="w-52").bind_value(credentials,"username") as username_input:
+          with username_input.add_slot("prepend"):
+            ui.icon(name="fa-solid fa-user fa-sm").classes(add="m-0 mr-2 text-harmony")
+            ui.separator().props(add="vertical")
+
+        #Password Input
+        with ui.input(label="PASSWORD",password_toggle_button=True).props(add=f"{ password_input_autofocus()} hide-bottom-space required stack-label standout outlined label-color='#07004d' color='light-blue-9' bg-color='light-blue-1' input-class='text-base text-blue-10 font-medium italic' type='password' id='password' name='password'").classes(add="w-52").bind_value(credentials,"password") as password_input:
+          with password_input.add_slot("prepend"):
+            ui.icon(name="fa-solid fa-user-lock fa-sm").classes(add="m-0 mr-2 text-harmony")
+            ui.separator().props(add="vertical")
+
+        #Submit button
+        with html.span():
+          ui.button(text="log in",color="",on_click=lambda e:self.login(credentials)).props(add="dense glossy padding='sm' type='submit'").classes(add="w-32 bg-harmony shadow-sm shadow-green-500 text-2xl text-sky-200")
+        
+      #Company name
+      with html.section().classes(add="w-full px-1 flex flex-row justify-end"):
+        CompanyName()
+
+#RECEPTION
+class ClientsManager():
+  """A class for registratio of clients, new + revisits"""
+
+  def __init__(self,user=None):
+    #DATA
+    self.user = user
+    self.initial_data()
+
+    #UI
+    with html.div().classes(add="w-full h-full flex flex-col rounded"):
+      #Header
+      with html.header().classes(add="w-full pl-0 pr-2 flex flex-col lg:flex-row justify-between items-center rounded-t bg-[#07004d]"):
+        with html.section().classes(add="w-full lg:w-fit flex flex-row gap-1 items-center"):
+          #Registration button
+          #Small screen           
+          ui.button(text="",icon="fa-solid fa-circle-plus",color="",on_click=lambda e:self.ClientDialog()).classes(add="lg:hidden bg-inherit p-1 text-lg text-yellow-500")
+          #Large screen
+          ui.button(text="",icon="fa-solid fa-circle-plus fa-md",color="",on_click=lambda e:self.ClientDialog()).classes(add="lg-show bg-inherit p-1 text-lg text-yellow-500")
+
+          ui.label(text="CLIENTS DASHBOARD").style(add="text-shadow:2px 2px #505050;").classes(add="grow bg-inherit text-yellow-500 text-xl lg:text-2xl text-bold")
+          
+        #Stats
+        with html.section().classes(add="w-full lg:w-fit bg-inherit"):
+          with html.div().classes(add="px-3") as self.stats_panel:
+            self.ClientsStats()
+          
+      #Body
+      with html.div().classes(add="grow w-full bg-sky-50 rounded-b flex flex-col") as self.clients_listing_panel:
+        self.ClientsListing()
+
+  def initial_data(self):
+    self.basics = get_facility_data()
+    self.consultants = [staff for staff in get_staffs(short=True) if "doctor" in staff.roles]
+    self.services = {
+      "Consultation":["consultant",[service.name.split(" ")[0] for service in get_services() if service.type == "consultation"]],
+      "Imaging":["imaging study",[service.name for service in get_services() if service.type == "imaging"]],
+      "Procedure":["procedure",[service.name for service in get_services() if service.type == "procedure"]]
+    }
+    self.raw_clients = get_clients()
+    self.visited_clients = sorted([client for client in self.raw_clients if client.visits],key=lambda client:self.last_visit(client).start_time,reverse=True)
+    self.new_clients = sorted([client for client in self.raw_clients if not client.visits],key=lambda client:client.created_on,reverse=True)
+    self.clients = self.new_clients + self.visited_clients
+
+  def last_visit(self,client):
+    """Returns the last visit of client as a namedtuple object"""
+
+    return sorted(client.visits,key=lambda visit:visit.start_time,reverse=True)[0]
+
+  def payment_status(self,visit:dict):
+    """Returns a string representing payment status of services"""
+
+    statuses = set()
+
+    consultations = visit["consultations"]
+    anthropometrics = visit["anthropometrics"]
+    vitals =  visit["vital_signs"]
+    labs = visit["labs"]
+    imagings = visit["imagings"]
+    procedures = visit["procedures"]
+    surgeries = visit["surgeries"]
+    medications = visit["medications"] + visit["medical_items"]
+    nonpharmacologicals = visit["nonpharmacologicals"]
+
+    all_services = consultations + imagings + procedures + medications
+    
+    for service in all_services:
+      if service["payment"]["paid"] and not service["payment"]["billed"]:
+        statuses.add("paid")
+      if service["payment"]["billed"] and not service["payment"]["paid"]:
+        statuses.add("billed")
+      if not service["payment"]["billed"] and not service["payment"]["paid"] and not service["payment"]["cancelled"]:
+        statuses.add("not paid")
+      if service["payment"]["cancelled"]:
+        statuses.add("cancelled")
+    
+    if len(statuses) == 1:
+      for status in statuses:
+        return status.title()
+    else:
+      return "Partial"
+    
+  def _services(self,visit):
+    consultations = visit.consultations
+    anthropometrics = visit.anthropometrics
+    vitals =  visit.vital_signs
+    labs = visit.labs
+
+
+    imagings = visit.imagings
+    done_imagings = [imaging for imaging in imagings if imaging.processed]
+    not_done_imagings = [imaging for imaging in imagings if not (imaging.cancelled or imaging.processed)]
+    cancelled_imagings = [imaging for imaging in imagings if imaging.cancelled]
+
+    procedures = visit.procedures
+    done_procedures = [procedure for procedure in procedures if procedure.done]
+    not_done_procedures = [procedure for procedure in procedures if not (procedure.done or procedure.cancelled)]
+    cancelled_procedures = [procedure for procedure in procedures if procedure.cancelled]
+
+    medicines = visit.medications
+    dispensed_medicines = [medicine for medicine in medicines if medicine.dispensed]
+    not_dispensed_medicines = [medicine for medicine in medicines if not (medicine.dispensed or medicine.cancelled)]
+    cancelled_medicines = [medicine for medicine in medicines if medicine.cancelled]
+
+    all_services = consultations + imagings + procedures + medicines
+    paid_services = [service for service in all_services if service.payment.paid]
+    billed_services = [service for service in all_services if service.payment.billed and not service.payment.cancelled]
+    unpaid_services = [service for service in all_services if not (service.payment.paid or service.payment.billed)]
+    cancelled_services = [service for service in all_services if service.payment.cancelled]
+    services = unpaid_services + billed_services + paid_services + cancelled_services
+
+    return {
+      "services":{"all":services,"paid":paid_services,"billed":billed_services,"unpaid":unpaid_services,"cancelled":cancelled_services},
+      "consultation":consultations[0] if consultations else None,
+      "imagings":{"all":imagings,"done":done_imagings,"not_done":not_done_imagings,"cancelled":cancelled_imagings},
+      "procedures":{"all":procedures,"done":done_procedures,"not_done":not_done_procedures,"cancelled":cancelled_procedures},
+      "medicines":{"all":medicines,"done":dispensed_medicines,"not_done":not_dispensed_medicines,"cancelled":cancelled_medicines}
+    }
+
+  def formatted_services(self,services):
+    """A method to format services in a form presentable in payments dialog"""
+    formatted_services = []
+
+    for service in services:
+      service = service._asdict()
+
+      #Consultation
+      if "consultant_id" in service:
+        service["service_id"] = service["consultation_id"]
+        service["attendee_id"] = self.user.username
+        service["done"] = service["initiated"]
+        service["done_on"] = service["clinical_history"]["history_time"]
+        service["done_by"] = service["consultant_id"]
+        service["cancelled"] = False
+        service["service_time"] = service["start_time"]
+
+      #Imaging
+      if "study" in service:
+        service["service_id"] = service["imaging_id"]
+        service["name"] = service["study"]
+        service["done"] = service["processed"]
+        service["done_by"] = service["radiographer"]
+      if "request_time" in service:
+        service["service_time"] = service["request_time"]
+        service["done_on"] = service["results_time"]
+
+      #Procedure
+      if "ordered_on" in service:
+        service["service_id"] = service["procedure_id"]
+        service["service_time"] = service["ordered_on"]
+        service["done_by"] = service["performer"]
+
+      #Medication
+      if "prescribed_on" in service:
+        service["service_id"] = service["medication_id"]
+        service["service_time"] = service["prescribed_on"]
+        service["attendee_id"] = service["prescriber_id"]
+        service["done"] = service["dispensed"]
+        service["dont_time"] = service["dispensing_time"]
+        service["done_by"] = service["dispenser_id"]
+      
+      formatted_services.append(service)
+
+    return formatted_services
+
+  def fetch_insured_client(self,data):
+    #Fetching data from API
+    client_data = clients_processor.fetch_insured_client(data)
+  
+    #Notification & Intergration
+    with self.id_number_input.add_slot("append"):
+      if client_data:
+        ui.icon(name="fas fa-user-check",color="green-600").classes(add="mx-3")
+        #Feeding data to registration form
+        for var,value in client_data.items():
+          self.client_data[var] = value.capitalize()
+      else:
+        #Indication of failure to fetch user from insurance database/API
+        ui.icon(name="fas fa-user-xmark",color="red-600").classes(add="mx-3")
+        ui.notify(f"User not found in {data['scheme'].upper()} database! \n"
+        "Try the following: \n"
+        "1. Recheck ID Type or ID Number and try again. \n" 
+        f"2. If you are sure the user is insured, advise the client to contact {data['scheme'].upper()} offices for clarification.",
+        position="top",type="negative",multi_line=True,classes="multi-line")
+  
+  def initiate_visit(self,visit_data:dict):
+    """A method called from the dialog and create a row in 'visit' table"""
+    
+    #Visit
+    visit = {
+      "client_id":visit_data["client_id"],
+      "visit_id":visit_data["visit_id"].lower(),
+      "payment_mode":visit_data["payment_mode"].lower(),
+      "appointment_id":visit_data["appointment_id"].lower() if visit_data["appointment_id"] else None,
+      "package":visit_data["package"],
+      "attendee_id":self.user.username,
+    }
+    
+    #Service & Payment
+    selected_service = [service for service in get_services() if service.name.startswith(visit_data["service_option"].lower())][0]
+    selected_service_scheme = [scheme for scheme in selected_service.schemes if scheme.scheme_name == visit_data["payment_mode"].lower()][0]
+    if selected_service_scheme.active:
+      service_prices = [price for price in selected_service_scheme.prices if price.active][0]
+    else:
+      ui.notify(message=f"Visit cannot be started via {visit_data['payment_mode'].upper()}",caption=f"Try another payment mode!",type="warning",position="top")
+
+    #CONSULTATION
+    if selected_service.type == "consultation":
+      
+      #Consultation
+      consultation = {
+        "visit_id":visit_data["visit_id"].lower(),
+        "name":selected_service.name,
+        "payment":{
+          "payment_mode":visit_data["payment_mode"].lower(),
+          "cost":service_prices._asdict()[visit_data['package'].lower()],
+          "billed":True,
+          "billed_amount":service_prices._asdict()[visit_data['package'].lower()],
+          "authorization_no":visit_data["authorization_no"]
+        },
+        "hx":{},"ge":{},"orodental":{},"cns":{},"cvs":{},"rs":{},"abd":{},"gus":{},"mss":{},"derma":{},"dx":{}
+      }
+      #Triage
+      vitals = {
+        "visit_id":visit_data["visit_id"].lower(),
+        "vitals_id":f"{visit_data['visit_id'].lower()}vs1",
+        "payment":{
+          "visit_id":visit_data["visit_id"].lower(),
+          "payment_id":f"{visit_data['visit_id'].lower()}pay{str(uuid.uuid4()).split('-')[1]}",
+          "payment_mode":visit_data["payment_mode"].lower(),
+          "cost":0,
+          "authorization_no":visit_data["authorization_no"],
+          "billed":True
+        }
+      }
+      anthrops = {
+        "visit_id":visit_data["visit_id"].lower(),
+        "anthropometrics_id":f"{visit_data['visit_id'].lower()}anp1",
+        "payment":{
+          "visit_id":visit_data["visit_id"].lower(),
+          "payment_id":f"{visit_data['visit_id'].lower()}pay{str(uuid.uuid4()).split('-')[1]}",
+          "payment_mode":visit_data["payment_mode"].lower(),
+          "cost":0,
+          "authorization_no":visit_data["authorization_no"],
+          "billed":True
+        }
+      }
+      status = clients_db.register_visit(visit)
+      clients_db.register_consultation(consultation)
+      clients_db.register_triage(triage={"vitals":vitals,"anthropometrics":anthrops},initial=True)
+        
+    #TRIAGE
+    if selected_service.type == "triage":
+      vitals = {
+        "visit_id":visit_data["visit_id"].lower(),
+        "vitals_id":f"{visit_data['visit_id'].lower()}vs1",
+        "payment":{
+          "visit_id":visit_data["visit_id"].lower(),
+          "payment_id":f"{visit_data['visit_id'].lower()}pay{str(uuid.uuid4()).split('-')[1]}",
+          "payment_mode":visit_data["payment_mode"].lower(),
+          "cost":service_prices._asdict()[f"{visit_data['payment_mode']}_{visit_data['package']}".lower()]/2,
+          "authorization_no":None,
+          "billed":True
+        }
+      }
+      anthrops = {
+        "visit_id":self.visit_data["visit_id"].lower(),
+        "anthropometrics_id":f"{self.visit_data['visit_id'].lower()}anp1",
+        "payment":{
+          "visit_id":self.visit_data["visit_id"].lower(),
+          "payment_id":f"{self.visit_data['visit_id'].lower()}pay{str(uuid.uuid4()).split('-')[1]}",
+          "payment_mode":self.visit_data["payment_mode"].lower(),
+          "cost":service_prices._asdict()[f"{visit_data['payment_mode']}_{visit_data['package']}".lower()]/2,
+          "authorization_no":None,
+          "billed":True
+        }
+      }
+      status = clients_db.register_visit(visit)
+      clients_db.register_triage({"vitals":vitals,"anthropometrics":anthrops})
+      
+    #LABWORK
+    elif selected_service.type == "laboratory":
+      pass
+
+    #Notification
+    ui.notify(message=status["message"],position=status["position"],type=status["type"])
+    
+    #UI UPDATE
+    self.initial_data()
+    _client = [client for client in self.clients if client.client_id == visit_data["client_id"]][0]
+    self.VisitsPanel(client=_client)
+
+  def register_appointment(self,appointment:dict):
+    """Register a new appointment and store data to database"""
+
+    if appointment["date"].date() == datetime.now().date():
+      ui.notify(message="Appointment date is the same as today!",position="top",type="info")
+      return
+
+    status = clients_db.register_appointment(appointment)
+
+    #Notification
+    ui.notify(message=status["message"],type=status["type"],position="center")
+    
+    #UI Update
+    self.initial_data()
+    self.ClientsStats()
+    self.ClientsListing()
+      
+  def register_client(self,edit:bool=False):
+    """A method takes 'client_data' and executes a function from clients.processor module to store client's details in the database."""
+    client = self.client_data
+
+    #Personal details
+    for key,value in client.items():
+      if type(value) == str:
+        client[key] = value.lower()
+
+    b_day,b_month,b_year = client["birthdate"].split("-")[0],client["birthdate"].split("-")[1],client["birthdate"].split("-")[2]
+    client["birthdate"] = datetime.fromisoformat(f"{b_year}-{b_month}-{b_day}")
+    
+    if edit:
+      status = clients_db.update_client(client=client)
+    else:
+      status = clients_db.register_client(client=client)
+
+    ui.notify(message=status["message"],type=status["type"],position=status["position"])
+
+    #Displays
+    updated_client = clients_processor.get_client(client_id=client["client_id"])
+    self.ClientPanel(client=updated_client)
+    
+  def process_payment(self,service,complete:bool=False):
+    pay_data = {
+      "payment_id":service["payment"].payment_id,
+      "visit_id":service["visit_id"],
+      "consultation":True if "triages" in service else False,
+      "triages":service["triages"] if "triages" in service else None,
+      "paid_amount":service["payment"].cost,
+      "billed_amount":0,
+      "refunded_amount":0,
+      "cancelled":False
+    }
+    status = clients_db.update_payment(pay_data)
+
+    ui.notify(message=status["message"],type=status["type"],position=status["position"])
+    
+    #UI Update
+    self.initial_data()
+
+    visit =[visit for visit in [client for client in self.clients if client.client_id == int(pay_data["visit_id"].split("v")[0])][0]["visits"] if visit.visit_id == pay_data["visit_id"]][0]
+    services = self.formatted_services(self._services(visit)["services"]["all"])
+    self.PaymentsPanel(services=services)
+
+  #GENERAL DISPLAYS  
+  def ClientsStats(self):
+    """Displays stats for clients"""
+    #DATA
+    stats = clients_processor.count_today_visits_and_appointments()
+
+    #UI
+    self.stats_panel.clear()
+    with self.stats_panel:
+      with html.span().classes(add="flex flex-row gap-3 animate__animated animate__zoomIn"):
+        #Visits
+        with ui.label("VISITS").classes(add="text-sm lg:text-base text-yellow-500 text-bold"):
+          ui.label(str(stats.visits)).classes(add="ml-1 inline text-sky-300")
+        #Consultations
+        with ui.label("APPOINTMENTS").classes(add="text-sm lg:text-base text-yellow-500 text-bold"):
+          ui.label(str(stats.appointments)).classes(add="ml-1 inline text-sky-300")
+
+  def ClientsListing(self):
+    """Displays aggrid with clients details"""
+    #MODS
+    def StatusDot(client):
+      """A function to return a styled icon based on status of client's last visit"""
+      if client.visits:
+        cancelled = self.last_visit(client).cancelled
+      else:
+        cancelled = True
+
+      return f"<span class='fa-solid fa-circle { 'text-red-600' if cancelled else 'text-green-600'}'></span>"
+    
+    def GenderIcon(client):
+      """Returns a styled gender icon based on client's gender"""
+
+      genders = {"male":"mars","female":"venus"}
+      colors = {"male":"sky-600","female":"pink-600"}
+      return f"<span class='fa-solid fa-{genders[client.gender.lower()]} text-{colors[client.gender.lower()]}'></span>"
+
+    #UI
+    self.clients_listing_panel.clear()
+    with self.clients_listing_panel:
+      if self.clients:
+        #Large Screen
+        ui.aggrid(
+          {
+            "columnDefs":[
+              {"headerName":"","field":"sno","width":75},
+              {"headerName":"CLIENT ID","field":"client_id","filter":"agTextColumnFilter","floatingFilter":True,"width":200},
+              {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","floatingFilter":True,"width":350},
+              {"headerName":"AGE","field":"age"},
+              {"headerName":"GENDER","field":"gender","width":150},
+              {"headerName":"ADDRESS","field":"address"},
+              {"headerName":"PAYMENT","field":"payment_mode","filter":"agTextColumnFilter"},
+              {"headerName":"CARD NO.","field":"card_no","filter":"agTextColumnFilter"},
+              {"headerName":"LAST VISIT","field":"last_visit"},
+              {"headerName":"STATUS","field":"status","width":150,"cellClassRules":{
+                "text-green-600 text-bold":"x == 'Active'",
+                "text-red-600 text-bold":"x == 'Inactive'"
+              }}
+            ],
+            "rowData":[
+              {
+                "sno":self.clients.index(client) + 1,
+                "client_id":client.client_id,
+                "name":f"{client.first_name.capitalize()} {client.middle_name.capitalize() if client.middle_name else ''} {client.last_name.capitalize()}",
+                "age":f"{format_age(client.birthdate).split(' ')[0]} {format_age(client.birthdate).split(' ')[1]}",
+                "gender":client.gender.capitalize(),
+                "address":client.address.title(),
+                "payment_mode":client.payment_mode.upper(),
+                "card_no":client.card_no if client.card_no else "---",
+                "last_visit":format_age(self.last_visit(client).start_time) if client.visits else "---",
+                "status":"---" if not client.visits else "Inactive" if self.last_visit(client).cancelled else "Active"
+              } for client in self.clients
+            ],
+          },theme="quartz"
+        ).classes(add="lg-show grow w-full animate__animated animate__fadeIn animate__slow").on("cellClicked",lambda e:self.ClientDialog(client=[client for client in self.clients if client.client_id == e.args["data"]["client_id"]][0]))
+        
+        #Small Screen
+        ui.aggrid(
+          {
+            "columnDefs":[
+              {"headerName":"","field":"status","width":75},
+              {"headerName":"CLIENT ID","field":"client_id","filter":"agTextColumnFilter","floatingFilter":True,"width":160},
+              {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","floatingFilter":True,"width":300},
+              {"headerName":"","field":"gender","align":"left","width":75},
+              {"headerName":"AGE","field":"age","width":150}
+            ],
+            "rowData":[
+              {
+                "status":StatusDot(client),
+                "client_id":client.client_id,
+                "name":f"{client.first_name} {client.middle_name[0] if client.middle_name else ''} {client.last_name.capitalize()}".title(),
+                "age":f"{format_age(client.birthdate).split(' ')[0]} {format_age(client.birthdate).split(' ')[1]}",
+                "gender":GenderIcon(client)
+              } for client in self.clients
+            ],
+          },
+          html_columns=[0,3],
+          theme="quartz"
+        ).classes(add="lg:hidden grow w-full animate__animated animate__fadeIn animate__slow").on("cellClicked",lambda e:self.ClientDialog(client=[client for client in self.clients if client.client_id == e.args["data"]["client_id"]][0]))
+  
+      
+      else:
+        with html.div().classes(add="grow w-full flex flex-row justify-center items-center text-bold"):
+          with html.div().classes(add="flex flex-col items-center"):
+            ui.label("No Clients registered!").classes(add="text-2xl text-gray-500 text-bold")
+            ui.html(content="<em >Start registering by clicking <strong class='fa-solid fa-circle-plus fa-lg mx-1 text-yellow-600' ></strong> on CLIENTS DASHBOARD</em>",sanitize=False).classes(add="text-base text-gray-400 italic")
+  
+  def ClientDialog(self,client:dict|None=None):
+    """"""
+    #UI
+    with ui.dialog().props(add=f"transition-show='jump-up' transition-hide='jump-down' transition-duration='100'") as self.client_dialog,html.div().style(add="min-width:55%;min-height:50%;").classes(add="bg-sky-50 flex flex-col"):
+      with html.div().classes(add="grow w-full flex flex-col") as self.client_panel:
+        self.ClientPanel(client=client)
+      
+    
+    self.client_dialog.open()
+  
+  def ClientPanel(self,client:dict|None=None):
+    """"""
+    #DATA
+    if client:
+      details = {
+        "name":f"{client.first_name} {client.middle_name if client.middle_name else ''} {client.last_name}",
+        "short_name":f"{client.first_name} {client.middle_name[0] if client.middle_name else ''} {client.last_name}".title(),
+        "age":format_age(client.birthdate),
+        "gender":client.gender,
+        "address":client.address,
+        "last_visit":"---" if not client.visits else f"{format_age(self.last_visit(client).start_time)} ago"
+      }
+    
+    def close_dialog():
+      self.ClientsStats()
+      self.ClientsListing()
+      self.client_dialog.close()
+
+
+    #UI
+    self.client_panel.clear()
+    with self.client_panel:
+      #Header
+      with html.div().classes(add="bg-harmony p-1 flex flex-row justify-between"):
+        #Client Edit & details
+        if client:
+          with html.span().classes(add="bg-inherit flex items-center") as self.edit_view_button_panel:
+            ui.button(color="",icon="fas fa-user-pen fa-xl",on_click=lambda e:self.ClientDetailsForm(client=client)).props(add="compact").classes(add="bg-inherit text-yellow-500 hover:scale-[1.1]")
+          with html.div().classes(add="grow"):
+            ClientCard(details=details)
+        #New details
+        else:
+          ui.label(f"CLIENT{ '' if client else ' REGISTRATION'} PANEL").classes(add="p-2 grow text-yellow-500 text-xl lg:text-3xl text-bold text-center")
+        ui.button(icon="fa-regular fa-circle-xmark fa-xl",color="",on_click=close_dialog).classes(add="bg-inherit text-red-500 text-bold text-base")
+      #Details
+      with html.div().classes(add="grow w-full h-full flex flex-col gap-0") as self.client_details_panel:
+        #Client
+        if client:
+          self.VisitsPanel(client=client)
+        #New client
+        else:
+          self.ClientDetailsForm(client=client)
+  
+  def ClientDetailsForm(self,client:dict|None=None):
+    """A method to display dialog with registration form"""
+    #DATA
+    id_number_types = json.loads(self.basics.id_number_types)
+    payment_modes = json.loads(self.basics.active_payment_modes)
+    marital_statuses = json.loads(self.basics.marital_statuses)
+    occupations = json.loads(self.basics.occupations)
+
+    self.client_data = {
+      "client_id":client.client_id if client else clients_processor.format_client_id(),
+      "payment_mode":client.payment_mode if client else payment_modes[0],
+      "card_no":client.card_no if client else "",
+      "first_name":client.first_name.capitalize() if client else "",
+      "middle_name":client.middle_name.capitalize() if (client and client.middle_name) else "",
+      "last_name":client.last_name.capitalize() if client else "",
+      "birthdate":client.birthdate.strftime("%d-%m-%Y") if client else "",
+      "gender":client.gender.capitalize() if client else "",
+      "marital_status":client.marital_status.capitalize() if client else "",
+      "occupation":client.occupation.capitalize() if client else "",
+      "address":client.address.capitalize() if client else "",
+      "mobile":client.mobile if client else None
+    }
+    insurance_data = {
+      "scheme":self.client.payment_mode if client else payment_modes[0],
+      "id_type":"",
+      "id_number":self.client_data.card_no if client else ""
+      }
+    
+    #UI
+    #Buttons
+    if client:
+      self.edit_view_button_panel.clear()
+      with self.edit_view_button_panel:
+        ui.button(color="",icon="fas fa-eye fa-xl",on_click=lambda e:self.VisitsPanel(client=client)).props(add="compact").classes(add="bg-inherit text-yellow-500 hover:scale-[0.9] animate__animated animate__zoomIn")
+    #Display
+    self.client_details_panel.clear()
+    with self.client_details_panel.classes(add=""):
+      with html.div().classes(add="w-full h-full flex flex-col lg:grid grid-cols-3 gap-3 bg-sky-100"):
+        #Payment
+        with html.form().classes(add="lg:col-span-3 w-full grid grid-cols-6 gap-3 p-2 animate__animated animate__fadeIn"):
+          #Scheme
+          self.scheme_selectable = ui.select(options=json.loads(self.basics.active_payment_modes),label="SCHEME",value=insurance_data["scheme"]).props(add="bordered popup-content-class='uppercase'").classes(add="col-span-3 md:col-span-1 shadow-md shadow-[#07004d] px-2 bg-white rounded-sm text-lg uppercase").bind_value_to(insurance_data,"scheme").bind_value_to(self.client_data,"payment_mode")
+          #ID Type
+          ui.select(options=id_number_types,label="ID TYPE",value=id_number_types[0]).props(add="bordered popup-content-class='uppercase'").classes(add="col-span-3 md:col-span-1 shadow-md shadow-[#07004d] px-3 bg-white rounded-sm text-lg uppercase").bind_value_to(insurance_data,"id_type").bind_visibility_from(self.scheme_selectable,"value",lambda v: v.lower() != "cash")
+          #ID No input
+          self.id_number_input = ui.input(label="ID NUMBER").props(add="bordered").classes(add="col-span-4 md:col-span-3  shadow-md shadow-[#07004d] bg-white rounded-sm px-3 text-lg").bind_value(self.client_data,"card_no").bind_visibility_from(self.scheme_selectable,"value",lambda v: v.lower() != "cash")
+          #Data Button
+          ui.button(text="FETCH CLIENT",color="",on_click=lambda e:self.fetch_insured_client(insurance_data)).props(add="bordered glossy type='button'").classes(add="col-span-2 md:col-span-1 bg-harmony text-yellow-8 text-base text-bold").bind_visibility_from(self.scheme_selectable,"value",lambda v: v.lower() != "cash")
+
+        #Personal details
+        with html.form().props(add="").classes(add="lg:col-start-1 lg:col-span-3 grow flex flex-col gap-3 w-full p-2 animate__animated animate__fadeIn"):
+          #Client ID
+          with ui.label("Client ID").props(add="glossy").classes(add="w-full rounded-sm shadow-md shadow-[#07004d] p-2 small-caps text-2xl text-bold text-gray-500"):
+            ui.label().style(add="text-shadow:1px 1px #505050;").classes(add="inline ml-2").bind_text(self.client_data,"client_id")
+          #Details
+          with html.div().classes(add="w-full grid grid-cols-2 lg:grid-cols-3 gap-3"):
+            #First Name
+            ui.input(label="FIRST NAME").props(add="bordered stack-label").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"first_name")
+            #Middle Name
+            ui.input(label="MIDDLE NAME").props(add="bordered stack-label").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"middle_name")
+            #Last Name
+            ui.input(label="LAST NAME").props(add="bordered stack-label").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"last_name")
+            #Birthdate
+            with ui.input(label="BIRTHDATE").props(add="bordered readonly stack-label").classes(add="shadow-md shadow-[#07004d] bg-white rounded px-2 text-lg") as bdate_display:
+              with ui.dialog() as calendar:
+                ui.date(mask="DD-MM-YYYY",on_change=lambda e:calendar.close()).props(add=f"bordered square today-btn color='harmony' event-color='orange' first-day-of-week='1' navigation-max-year-month='{datetime.now().strftime("%Y/%m")}'").bind_value(bdate_display).bind_value(self.client_data,"birthdate")
+                with bdate_display.add_slot("append"):
+                  ui.icon("fas fa-cake-candles",color="pink-500").on("click",calendar.open)
+            #Gender
+            ui.select(options=["Male","Female"],value="Female",label="GENDER").props(add="bordered stack-label popup-content-class='uppercase'").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"gender")
+            #Marital status
+            ui.select(options=marital_statuses,label="MARITAL STATUS",value=marital_statuses[0]).props(add=" bordered stack-label popup-content-class='uppercase'").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg uppercase").bind_value(self.client_data,"marital_status")
+            #Occupation
+            ui.select(options=occupations,label="OCCUPATION",with_input=True).props(add="bordered stack-label popup-content-class='uppercase'").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg uppercase").bind_value(self.client_data,"occupation")
+            #Address
+            ui.input(label="ADDRESS").props(add="bordered stack-label type='text'").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"address")
+            #Mobile No
+            ui.input(label="MOBILE NO",placeholder="eg.0787000111").props(add="bordered stack-label type='tel' minlength=10 maxlength=10").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"mobile")
+
+        #Buttons
+        with html.div().classes(add="lg:col-span-3 w-full flex flex-row justify-center p-2 rounded-sm shadow-sm shadow-[#07004d]"):
+          ui.button(text="SAVE EDITING" if client else "REGISTER CLIENT",on_click=lambda e:self.register_client(edit=True if client else False),color="#07004d").props(add="glossy type='button'").classes(add="text-yellow-500 text-bold text-lg rounded-md ring-1 ring-blue-400 shadow-md shadow-blue-400")
+    
+  def ClientMiniDisplay(self,client:dict|None=None,clients:bool=False,visits:bool=False):
+    """Displays client details for registered client and registration form for new client"""
+    #DATA
+    if client:
+      details = {
+        "name":f"{client['first_name'].capitalize()} {client['middle_name'].capitalize() if client['middle_name'] else ''} {client['last_name'].capitalize()}",
+        "short_name":f"{client['first_name'].capitalize()} {client['middle_name'][0].capitalize() if client['middle_name'] else ''} {client['last_name'].capitalize()}",
+        "age":format_age(client["birthdate"],short=True),
+        "gender":client["gender"].capitalize(),
+        "address":client["address"].capitalize(),
+        "last_visit":self.last_visit(client)["duration"] if client["visits"] else self.last_visit(client)["time"]
+      }
+
+    #UI
+    self.master_container.clear()
+    with self.master_container.classes(add="bg-sky-100 flex flex-col"):
+      #Header
+      with html.div().classes(add="bg-[#07004d] flex flex-row justify-between"):
+        #Client Edit & details
+        if client:
+          with html.span().classes(add="bg-inherit flex items-center") as self.edit_view_button_panel:
+            ui.button(color="",icon="fas fa-user-pen fa-xl",on_click=lambda e:self.ClientDetailsForm(client=client)).props(add="compact").classes(add="bg-inherit text-yellow-500 hover:scale-[0.9]")
+          with html.div().classes(add="grow"):
+            ClientCard(details=details)
+        #New details
+        else:
+          ui.label(f"REGISTRATION PANEL").style(add="text-shadow:2px 2px #505050;").classes(add="p-2 grow text-yellow-500 text-3xl text-bold text-center")
+        with html.span().classes(add="bg-inherit flex items-center"):
+          ui.button(icon="fa-regular fa-circle-xmark fa-xl",color="",on_click=lambda e:self.Carousel(clients=clients,visits=visits)).classes(add="bg-inherit text-red-500 text-bold text-base hover:scale-[0.9]")
+      #Body
+      with html.div().classes(add="grow w-full flex flex-col gap-0.5") as self.client_details_panel:
+        #Client
+        if client:
+          self.VisitsPanel(client=client,from_clients=clients,from_visits=visits) 
+        #New client
+        else:
+          self.ClientDetailsForm(client=client) 
+
+  def VisitsPanel(self,client:dict,from_clients:bool=True,from_visits:bool=False):
+    #DATA
+    if client.visits:
+      visits = sorted(client.visits,key=lambda visit:visit.start_time,reverse=True)
+
+    #UI
+    #Button
+    self.edit_view_button_panel.clear()
+    with self.edit_view_button_panel:
+      ui.button(color="",icon="fas fa-user-pen fa-xl",on_click=lambda e:self.ClientDetailsForm(client=client)).props(add="compact").classes(add="bg-inherit text-yellow-500 hover:scale-[1.1] animate__animated animate__zoomIn")
+    
+    #Preview visits
+    self.client_details_panel.clear()
+    with self.client_details_panel.classes(add="flex flex-col gap-0"):
+      if client.visits:
+        #Visits
+        with html.fieldset().classes(add="grow w-full flex flex-col rounded-none bg-inherit p-0.5 shadow-sm shadow-[#07004d] animate__animated animate__fadeIn"):
+          html.legend(f"{len(client.visits)} VISIT{'' if len(client.visits) == 1 else 'S'}").classes(add="rounded bg-sky-100 px-3 text-[#07004d] text-xl text-bold")
+          with ui.scroll_area().classes(add="grow w-full bg-sky-50 rounded-b") as self.visits_exapansions_panel:
+            #Visits
+            for visit in visits:
+              with html.div().classes(add="w-full") as self.visit_expansion_panel:
+                self.VisitExpansion(visit)
+                
+      else:
+        with html.div().classes(add="grow w-full flex flex-row justify-center items-center shadowsm shadow-[#07004d]"):
+          ui.label("This client has no recorded visits here!").classes(add="bg-inherit text-gray-400 text-bold text-xl")
+      
+      #Buttons
+      with html.div().classes(add="rounded-b w-full p-2 flex flex-row justify-center gap-5 animate__animated animate__fadeIn"):
+        if not client.visits or self.last_visit(client).cancelled:
+          ui.button(text="new visit",icon="fas fa-circle-plus fa-xl",color="#07004d",on_click=lambda e:self.NewVisitPanel(client=client)).props(add="bordered dense glossy").classes(add="rounded shadow-md shadow-[#07004d] text-sky-300 text-xl text-bold")    #New Visit
+        ui.button(text="appointment",icon="fas fa-circle-plus fa-lg",color="#07004d",on_click=lambda e:self.NewAppointmentPanel(client=client)).props(add="dense glossy").classes(add="rounded shadow-md shadow-[#07004d] text-sky-300 text-xl text-bold")      #Appointments
+
+  def VisitExpansion(self,visit:dict):
+    """Shows a dialog for initiating or ending visit"""
+    #DATA
+    all_services,cancelled_services = self._services(visit)["services"]["all"],self._services(visit)["services"]["cancelled"]
+    paid_services,billed_services = self._services(visit)["services"]["paid"],self._services(visit)["services"]["billed"]
+    unpaid_services = self._services(visit)["services"]["unpaid"]
+    consultation = self._services(visit)["consultation"]
+    imagings = self._services(visit)["imagings"]
+    procedures = self._services(visit)["procedures"]
+    medicines = self._services(visit)["medicines"]
+    
+
+    #UI
+    self.visit_expansion_panel.clear()
+    with self.visit_expansion_panel:
+      with ui.expansion(
+        text=f"{visit.start_time.strftime('%d %b %Y %H:%M')}".upper(),
+        caption=f"{len(all_services):,.0f} Service{'' if len(all_services) == 1 else 's'} {len(all_services) - len(cancelled_services) } Valid {len(cancelled_services):,.0f} Cancelled",
+        group="visits_group"
+      ).props(add=f"dense icon='fas fa-notes-medical' header-class='rounded p-1 bg-sky-100 {'bg-sky-100 text-sky-900' if visit.cancelled else 'text-green-600'}'").classes(add="w-full my-2 bg-sky-50 rounded shadow-md shadow-[#07004d] text-bold text-xl text-black"):
+        with html.div().classes(add="w-full grid gap-3 grid-cols-2 lg:grid-cols-4"):
+          #Payments
+          with ui.button(color="",on_click=lambda e:self.PaymentsDialog(services=all_services)).props(add="bordered glossy dense").classes(add="w-full p-1 rounded-md bg-harmony shadow-md shadow-[#07004d] flex flex-row gap-5") as payments_button:
+            with payments_button.add_slot("default"):
+              with html.div().classes(add="w-full grid grid-cols-5"):
+                with html.div().classes(add="col-span-4 w-full"):
+                  ui.label("PAYMENTS").classes(add="w-full text-start text-sky-500 text-xl text-bold")
+                  with html.div().classes(add="w-full flex flex-row"):
+                    #Paid
+                    ui.chip(text=str(len(paid_services)),icon="fas fa-check",text_color="green",color="").props(add="dense").classes(add=f"{'' if paid_services else 'hidden'} m-0 bg-inherit text-lg text-bold").tooltip("Paid")
+                    #Billed
+                    ui.chip(text=str(len(billed_services)),icon="fas fa-spinner",text_color="orange",color="").props(add="dense text-color='purple-12'").classes(add=f"{'' if billed_services else 'hidden'} m-0 bg-inherit text-lg text-bold").tooltip("Billed")
+                    #Not Paid
+                    ui.chip(text=str(len(unpaid_services)),icon="fas fa-xmark",text_color="red",color="").props(add="dense").classes(add=f"{'' if unpaid_services else 'hidden'} m-0 bg-inherit text-lg text-bold").tooltip("Unpaid")
+              
+                with html.div().classes(add="col-span-1 w-full grid grid-cols-1"):
+                  ui.label(len(all_services)).classes(add="rounded-full py-0.5 ring-1 ring-sky-500 shadow-md shadow-sky-500 size-8 self-center text-sky-500 text-bold text-xl")
+          #Consultations
+          if consultation:
+            ui.button(text="CONSULTATION",color="").props(add=f"bordered glossy dense unelevated padding='0px 0px' icon-right='fa-regular {'fa-circle-check' if consultation.initiated else 'fa-circle-xmark'} fa-xs' padding='5px 5px'").classes(add=f"w-full bg-harmony p-0 rounded-md text-{'green-500' if consultation.initiated else 'red-500'} font-semibold text-xl")
+          #Imagings
+          if imagings["all"]:
+            with ui.button(color="").props(add="bordered glossy").classes(add="w-full p-1 rounded-md bg-harmony flex flex-row gap-5") as imagings_button:
+              with imagings_button.add_slot("default"):
+                with html.div().classes(add="w-full grid grid-cols-5"):
+                  with html.div().classes(add="col-span-4 w-full"):
+                    ui.label("IMAGINGS").classes(add="w-full text-start text-sky-500 text-xl text-bold")
+                    with html.div().classes(add="w-full flex flex-row"):
+                      #Processed
+                      ui.chip(text=str(len(imagings["done"])),icon="fas fa-check",text_color="green",color="").props(add="dense").classes(add=f"{'' if imagings['done'] else 'hidden'} m-0 bg-inherit text-lg text-bold").tooltip("Processed")
+                      #Not Done
+                      ui.chip(text=str(len(imagings["not_done"])),icon="fas fa-xmark",text_color="red",color="").props(add="dense").classes(add=f"{'' if imagings['not_done'] else 'hidden'} m-0 bg-inherit text-lg text-bold").tooltip("Not Processed")
+                      #Cancelled
+                      ui.chip(text=str(len(imagings["cancelled"])),icon="fas fa-ban",text_color="grey",color="").props(add="dense").classes(add=f"{'' if imagings['cancelled'] else 'hidden'} m-0 bg-inherit text-lg text-bold").tooltip("Cancelled")
+                
+                  with html.div().classes(add="col-span-1 w-full grid grid-cols-1"):
+                    ui.label(len(imagings["all"])).classes(add="rounded-full py-0.5 ring-1 ring-sky-500 shadow-md shadow-sky-500 size-8 self-center text-sky-500 text-bold text-xl")
+          #Procedures
+          if procedures["all"]:
+            with ui.button(color="").props(add="bordered glossy").classes(add="w-full p-1 rounded-md bg-harmony flex flex-row gap-5") as procedures_button:
+              with procedures_button.add_slot("default"):
+                with html.div().classes(add="w-full grid grid-cols-5"):
+                  with html.div().classes(add="col-span-4 w-full"):
+                    ui.label("PROCEDURES").classes(add="w-full text-start text-sky-500 text-xl text-bold")
+                    with html.div().classes(add="w-full flex flex-row"):
+                      #Processed
+                      ui.chip(text=str(len(procedures["done"])),icon="fas fa-check",text_color="green",color="").props(add="dense").classes(add=f"{'' if procedures['done'] else 'hidden'} m-0 bg-inherit text-lg text-bold").tooltip("Done")
+                      #Not Done
+                      ui.chip(text=str(len(procedures["not_done"])),icon="fas fa-xmark",text_color="red",color="").props(add="dense").classes(add=f"{'' if procedures['not_done'] else 'hidden'} m-0 bg-inherit text-lg text-bold").tooltip("Not Done")
+                      #Cancelled
+                      ui.chip(text=str(len(procedures["cancelled"])),icon="fas fa-ban",text_color="grey",color="").props(add="dense").classes(add=f"{'' if procedures['cancelled'] else 'hidden'} m-0 bg-inherit text-lg text-bold").tooltip("Cancelled")
+                
+                  with html.div().classes(add="col-span-1 w-full grid grid-cols-1"):
+                    ui.label(len(procedures["all"])).classes(add="rounded-full py-0.5 ring-1 ring-sky-500 shadow-md shadow-sky-500 size-8 self-center text-sky-500 text-bold text-xl")
+          #Pharmacy
+          if medicines["all"]:
+            with ui.button(color="").props(add="glossy").classes(add="w-full p-1 rounded-md bg-harmony flex flex-row gap-5") as medicines_button:
+              with medicines_button.add_slot("default"):
+                with html.div().classes(add="w-full grid grid-cols-5"):
+                  with html.div().classes(add="col-span-4 w-full"):
+                    ui.label("MEDICINES").classes(add="w-full text-start text-sky-500 text-xl text-bold")
+                    with html.div().classes(add="w-full flex flex-row"):
+                      #Dispensed
+                      ui.chip(text=str(len(medicines["done"])),icon="fas fa-check",text_color="green",color="").props(add="dense").classes(add=f"{'' if medicines['done'] else 'hidden'} m-0 bg-inherit text-lg text-bold").tooltip("Dispensed")
+                      #Not Dispensed
+                      ui.chip(text=str(len(medicines["not_done"])),icon="fas fa-xmark",text_color="red",color="").props(add="dense").classes(add=f"{'' if medicines['not_done'] else 'hidden'} m-0 bg-inherit text-lg text-bold").tooltip("Not Dispensed")
+                      #Cancelled
+                      ui.chip(text=str(len(medicines["cancelled"])),icon="fas fa-ban",text_color="grey",color="").props(add="dense").classes(add=f"{'' if medicines['cancelled'] else 'hidden'} m-0 bg-inherit text-lg text-bold").tooltip("Cancelled")
+                
+                  with html.div().classes(add="col-span-1 w-full grid grid-cols-1"):
+                    ui.label(len(medicines["all"])).classes(add="rounded-full py-0.5 ring-1 ring-sky-500 shadow-md shadow-sky-500 size-8 self-center text-sky-500 text-bold text-xl")
+  
+  def NewVisitPanel(self,client:dict,appointment_id:str|None=None):
+    """Shows a dialog for initiating or ending visit"""
+    #DATA
+    def format_visit_id():
+      if client.visits:
+        return f"{client.client_id}v{int(self.last_visit(client).visit_id.split('v')[1]) + 1}"
+      else:
+        return f"{client.client_id}v1"
+
+    details = {
+      "name":f"{client.first_name} {client.middle_name if client.middle_name else ''} {client.last_name}",
+      "short_name":f"{client.first_name} {client.middle_name[0] if client.middle_name else ''} {client.last_name}",
+      "age":format_age(client.birthdate,short=True),
+      "gender":client.gender,
+      "address":client.address,
+      "last_visit":format_age(self.last_visit(client).start_time) if client.visits else "---"
+    }
+
+    visit_data = {
+      "client_id":client.client_id,
+      "visit_id":format_visit_id(),
+      "appointment_id":appointment_id,
+      "payment_mode":"",
+      "package":"",
+      "service":"",
+      "service_option":"",
+      "attending_clinician":"",
+      "card_no":"",
+      "authorization_no":"",
+      "auth_button_clicked":False
+      }
+
+    payment_options = ["cash"] if client.payment_mode.lower() == "cash" else [client.payment_mode.upper(),"cash"]
+    payment_packages = json.loads(self.basics.payment_packages)
+    
+    #MODS
+    def get_authorization_number():
+      """Retrives authorization number for insured clients and inserts it into visit_data"""
+
+      auth = clients_processor.authorize_visit({"scheme":visit_data["payment_mode"],"card_no":visit_data["card_no"]})
+
+      ui.notify(message=auth["message"],position="center" if auth["type"] == "negative" else "top",type=auth["type"])
+      with self.auth_number.add_slot("append"):
+        if auth["type"] == "positive":
+          ui.icon(name="fas fa-user-check",color="green-600").classes(add="mx-3")
+        else:
+          ui.icon(name="fas fa-user-xmark",color="red-600").classes(add="mx-3")
+    
+      #Binding data
+      visit_data["authorization_no"] = auth["auth_no"]
+    
+    def ServiceOptions(service_category:str):
+      """Dynamically loads a selection element for service options based on the service_categgory value"""
+      service = service_category
+      options = [_service.title() for _service in self.services[service][1]]
+      value = self.services[service][1][0].title()
+      label = self.services[service][0].upper()
+
+      self.service_options_pad.clear()
+      with self.service_options_pad:
+        ui.select(options=options,value=value,label=label).classes(add="w-full shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value_to(visit_data,"service_option")
+
+    #UI
+    self.client_details_panel.clear()
+    with self.client_details_panel:
+      #Visit details
+      with html.div().classes(add="grow w-full flex flex-col justify-between gap-3 p-1 bg-sky-100"):
+        #Services
+        with html.div().classes(add="w-full p-1 grid grid-cols-2 gap-3 animate__animated animate__fadeIn"):
+          #Service
+          with html.div().classes(add="col-span-2 w-full grid grid-cols-2 gap-3"):
+            #Service type
+            self.service_category = ui.select(options=list(self.services),label="SERVICE",value="Consultation",on_change=lambda e:ServiceOptions(e.value)).classes(add="shadow-md shadow-[#07004d] bg-sky-50 rounded-sm px-2 text-lg").bind_value_to(visit_data,"service")
+            #Service Options
+            with html.div().classes(add="") as self.service_options_pad:
+              ui.select(options=[_service.title() for _service in self.services["Consultation"][1]],value=self.services["Consultation"][1][0].title(),label="CONSULTANT").classes(add="shadow-md shadow-[#07004d] bg-sky-50 rounded-sm px-2 text-lg").bind_value_to(visit_data,"service_option")
+            
+          #Payment
+          with html.div().classes(add="col-span-2 w-full grid grid-cols-2 gap-3"):
+            ui.select(options=payment_options,value=payment_options[0],label="PAYMENT MODE").props(add="bordered popup-content-class='uppercase'").classes(add="shadow-md shadow-[#07004d] bg-sky-50 rounded px-2 text-lg uppercase").bind_value_to(visit_data,"payment_mode")   #payment mode
+            ui.select(options=payment_packages,value=payment_packages[0],label="PACKAGE").props(add="bordered popup-content-class='uppercase'").classes(add="shadow-md shadow-[#07004d] bg-sky-50 rounded px-2 text-lg uppercase").bind_value_to(visit_data,"package")
+            ui.input(label="CARD/NIDA NO",value=client.card_no).props(add="type='text' bordered readonly").bind_visibility_from(visit_data,"payment_mode",lambda v:v != "cash").classes(add="bg-white shadow-md shadow-[#07004d] rounded-sm px-2 text-lg").bind_value_to(visit_data,"card_no")     #Card No
+            ui.button(text="authorize",color="#07004d",on_click=get_authorization_number).props(add="bordered glossy").bind_visibility_from(visit_data,"payment_mode",lambda v:v != "cash").classes(add="rounded shadow-md shadow-[#07004d] text-sky-300 text-lg lg:text-xl text-bold")   #Authorize button
+            self.auth_number = ui.input(label="AUTHORIZATION NO").props(add="bordered glossy readonly").bind_visibility_from(visit_data,"payment_mode",lambda v:v != "cash").classes(add="col-span-2 w-3/4 justify-self-center bg-white shadow-md shadow-[#07004d] rounded-sm px-2 text-xl text-green-700").bind_value(visit_data,"authorization_no")          #Authorization Number
+          
+        #Action buttons
+        with html.div().classes(add="w-full p-1 flex flex-row justify-center"):
+          #Initiate visit
+          ui.button(text="start visit",color="#07004d",on_click=lambda e:self.initiate_visit(visit_data=visit_data)).props(add="bordered dense glossy").classes(add="w-auto shadow-md shadow-[#07004d] text-sky-300 text-xl lg:text-2xl text-bold")
+
+  def PaymentsDialog(self,services:dict|None=None):
+    #DATA
+    if not services:
+      ui.notify(message="No payments requested!",type="warning",position="top")
+      return
+  
+    #FXS
+    def close_dialog():
+      client =  [client for client in self.clients if client.client_id == int(services[0].visit_id.split("v")[0])][0]
+      self.VisitsPanel(client=client)
+      self.payments_dialog.close()
+      
+    #UI
+    with ui.dialog().props(add=f"transition-show='jump-up' transition-hide='jump-down' transition-duration='500'") as self.payments_dialog,html.div().style(add="min-width:100%;").classes(add="bg-sky-50"):
+      #Header
+      with html.div().classes(add="bg-[#07004d] p-1 flex flex-row justify-between"):
+        #Client Edit & details
+        with html.div().classes(add="grow"):
+          ui.label("PAYMENTS DASHBOARD").style(add="text-shadow:2px 2px #505050").classes(add="grow text-yellow-500 text-3xl text-bold text-center")
+        #Buttons
+        with html.div().classes(add="flex flex-col justify-center"):
+          ui.button(icon="fa-regular fa-circle-xmark fa-xl",color="",on_click=close_dialog).classes(add="bg-inherit text-red-500 text-bold text-base hover:scale-[0.9]")
+      #Details
+      with html.div().classes(add="w-full h-full bg-sky-50 rounded-b") as self.payments_panel:
+        self.PaymentsPanel(services=self.formatted_services(services))
+    
+    self.payments_dialog.open()
+  
+  def PaymentsPanel(self,services):
+    """"""
+    #DATA
+    #Formatting imagings
+    payable_services = [service for service in services if service["payment"].payment_mode.lower() == "cash" and not (service["payment"].paid or service["cancelled"])]
+    paid_services = [service for service in services if service["payment"].paid]
+    total_bill = sum([service["payment"].cost for service in services if not service["payment"].cancelled])
+    paid_bill = sum([service["payment"].paid_amount for service in paid_services])
+    pending_bill = total_bill - paid_bill
+    ticked_services = []
+    
+    #FXS
+    def update_cost(payment_id,cost):
+      b4,aft = 'a','b'
+      for service in payable_services:
+        if service.payment.payment_id == payment_id:
+          service.payment._replace(cost = cost)
+
+    def display_bills():
+      #Total Bill
+      with ui.label("TOTAL").classes(add="text-gray-900"):
+        ui.label(f"{total_bill:,.2f} TZS" if total_bill else "-----").classes(add="ml-2 inline text-sky-700")
+      #Paid Bill
+      with ui.label("PAID").classes(add="col-span-1 col-start-1 row-span-1 row-start-2 text-gray-900"):
+        ui.label(f"{paid_bill:,.2f} TZS" if paid_bill else "-----").classes(add="col-span-1 col-start-2 row-span-1 row-start-2 ml-2 inline text-green-700")
+      #Pending Bill
+      if pending_bill:
+        with ui.label("PENDING").classes(add="col-span-1 col-start-1 row-span-1 row-start-3 text-gray-900"):
+          ui.label(f"{pending_bill:,.2f} TZS" if pending_bill else "-----").classes(add="col-span-1 col-start-2 row-span-1 row-start-3 ml-2 inline text-red-600")
+
+    def pick_ticked_service(ticked_service:str,ticked:bool):
+      """Returns a list of ticked medicines"""
+      if ticked:
+        for service in payable_services:
+          if service["payment"].payment_id == ticked_service:
+            ticked_services.append(service)
+      else:
+        for service in ticked_services:
+          if service["payment"].payment_id == ticked_service:
+            ticked_services.remove(service)
+      #UI
+      selected_pays.clear()
+      with selected_pays:
+        if ticked_services:
+          ui.label(f"{sum([service['payment'].cost for service in ticked_services]):,.2f} TZS").classes(add="inline ml-2 text-purple-600 animate__animated animate__fadeIn")
+        else:
+          ui.label("-----").classes(add="inline ml-2 text-gray-600")
+
+    def pay_all(services:list):
+      """Dispenses all medicines in the ticked_medicines list"""
+      if services:
+        for service in services:
+          self.process_payment(service=service)
+      else:
+        ui.notify(message="No medicine selected",type="warning",position="center")
+    
+    #UI
+    self.payments_panel.clear()
+    with self.payments_panel.classes(add="p-1 flex flex-col"):
+      with ui.scroll_area().classes(add="grow w-full h-[400px] pb-2 bg-white rounded-none shadow-sm shadow-[#07004d] animate__animated animate__fadeIn animate__slow"):
+        for service in services:
+          with html.div().classes(add=f"w-full p-0.5 rounded grid grid-cols-7 gap-0.5 content-center {'bg-gray-200 shadow-md shadow-gray-500 text-red-600' if service['payment'].cancelled else 'bg-sky-100 shadow-md shadow-[#07004d]'}"):
+            #Service
+            with html.div().classes(add="col-span-7 lg:col-span-3 flex flex-row gap-1"):
+              if service["cancelled"]:
+                ui.chip(icon="fas fa-ban",color="").classes(add="bg-inherit mx-0 ml-1 px-0")
+              #Checkbox
+              ui.checkbox(text=f"{services.index(service) + 1}.",on_change=lambda e:pick_ticked_service(
+                ticked_service=e.sender.parent_slot.parent.slots["default"].children[1].slots["default"].children[0].props["id"],
+                ticked=e.value
+              )).props(add="dense").classes(add=f"{'hidden' if service['payment'].payment_mode != 'cash' or service['payment'].paid or service['cancelled'] else ''} text-sky-700 text-bold text-md lg:text-lg")
+              #Name
+              with html.div().props(add=f"").classes(add="grow bg-inherit flex flex-row items-center"):
+                html.em(f"{service['name']}".upper()).props(add=f"id={service['payment'].payment_id} name={'consult' if 'consultant_id' in service else ''}").classes(add=f"bg-inherit {'text-gray-600' if service['cancelled'] else 'text-sky-700'} text-bold text-md lg:text-lg")
+              
+            #Details
+            with html.div().classes(add=f"col-span-7 lg:col-span-4 grid grid-cols-7 gap-1"):
+              #Timeframe
+              ui.chip(text=f"{format_age((service['service_time']),short=True) } ago" if service['service_time'] else "---",icon="fa-regular fa-clock fa-lg",text_color=f"{'gray-600' if service['cancelled'] else 'sky-900'}",color="").props(add="dense").classes(add="mx-0 col-span-2 lg:col-span-1 bg-inherit text-md lg:text-base font-semibold")
+              #Amount
+              if service["payment"].cost:
+                ui.chip(text=f"{service['payment'].cost:,.2f} TZS",icon="fas fa-coins",color="",text_color=f"{'gray-600' if service['cancelled'] else 'amber-10'}").props(add="dense").classes(add=f"mx-0 col-span-2 lg:col-span-2 lg:justify-self-end bg-inherit text-md lg:text-base text-bold text-wrap")
+              else:
+                with html.span().classes(add="col-span-2 w-full justify-self-end text-end"):
+                  serv = [s for s in get_services() if s["name"] == service["name"]][0]
+                  min_cost,max_cost = int(serv["payment"].min_cash),int(serv["payment"].max_cash)+1
+                  html.i().props(add=f"id={service['payment'].payment_id}").classes(add="hidden")
+                  ui.select(options=[i for i in range(min_cost,max_cost,10000)],with_input=True,on_change=lambda e:update_cost(
+                    payment_id=e.sender.parent_slot.parent.slots["default"].children[0].props["id"],
+                    cost=e.value
+                  )).props(add=f"dense hide-dropdown-icon").classes(add=f"justify-self-end w-[60%] bg-white ring-2 ring-blue-300 rounded pl-2 text-md lg:text-xl")
+              #Payment Status
+              if not service["cancelled"]:
+                ui.chip(text="Paid" if service["payment"].paid else "Billed" if service["payment"].billed else "Not Paid",icon=f"{'fa-regular fa-circle-check' if service['payment'].paid else 'fa-solid fa-file-invoice' if service['payment'].billed else 'fa-regular fa-circle-xmark'} fa-lg",text_color="green" if service["payment"].paid else "purple" if service["payment"].billed else "red",color="").props(add="dense").classes(add=f"mx-0 col-span-2 lg:col-span-1 justify-self-center lg:justify-self-end bg-inherit text-md lg:text-base text-bold")
+
+              #Pay button
+              ui.button(text="pay",color="#07004d",on_click=lambda e:self.process_payment(
+                service=[service for service in services if service["payment"].payment_id == e.sender.parent_slot.parent.parent_slot.parent.slots["default"].children[0].slots["default"].children[1].slots["default"].children[0].props["id"]][0]
+              )).props(add="dense glossy").classes(add=f"{'hidden' if service['payment'].payment_mode.lower() != 'cash' or service['payment'].paid or service['cancelled'] else ''} col-span-1 lg:col-span-3 justify-self-end w-12 lg:w-20 ring-1 ring-blue-200 text-sky-300 text-md text-bold")
+              #Payment information
+              if service["payment"].paid:
+                #Payment Processor
+                ui.chip(text=f"{get_staff(self.user.username).last_name}".title(),icon="fa-solid fa-hospital-user fa-lg",text_color="green-600",color="").props(add="dense").classes(add="mx-0 col-span-1 justify-self-center lg:justify-self-end bg-inherit text-md lg:text-base text-bold")
+                #Timeframe
+                ui.chip(text=f"{format_age(service['payment'].payment_time)} ago",icon="fa-regular fa-clock",text_color="green-600",color="").props(add="dense").classes(add="col-span-3 lg:col-span-2 lg:justify-self-end rounded-sm mx-0  bg-inherit text-md lg:text-base text-bold")
+                
+      #Bills & Buttons
+      with html.div().classes(add="w-full pt-2 flex flex-row animate__animated animate__zoomIn"):
+        #Bills
+        with html.div().classes(add="lg:px-1 flex flex-col justify-center"):
+          if payable_services:
+            with ui.label("SELECTED COST").classes(add="block  text-md lg:text-lg text-gray-900 text-bold") as selected_pays:
+              ui.label("-----").classes(add="inline ml-2 text-gray-600")
+          with html.div().classes(add="flex flex-col lg:flex-row gap-0.5 lg:gap-10 lg:items-center text-md lg:text-lg text-bold") as bills_panel:
+            display_bills()
+        #Buttons
+        with html.div().classes(add="grow flex flex-col lg:flex-row justify-around items-end"):
+          #Pay all button
+          if payable_services:
+            ui.button(text="COLLECT",color="#07004d",on_click=lambda e:pay_all(services=ticked_services)).props(add="dense glossy").classes(add="w-32 rounded ring-1 ring-sky-600 ring-offset-1 shadow-md shadow-sky-600 text-sky-300 text-md lg:text-lg text-bold animate__animated animate__zoomIn")
+          #Prin Button
+          if paid_services:
+            ui.button(text="RECEIPT",icon="fas fa-receipt",color="#07004d",on_click=lambda e:self.print_receipt(medicines=services)).props(add="dense glossy").classes(add="w-32 rounded ring-1 ring-sky-600 ring-offset-1 shadow-md shadow-sky-600 text-sky-300 text-md lg:text-lg text-bold animate__animated animate__zoomIn")
+  
+  def NewAppointmentPanel(self,client):
+    """Shows a dialog for initiating or ending visit"""
+    #DATA
+    consultants = {staff.name:staff.username for staff in self.consultants}
+    details = {
+      "name":f"{client.first_name} {client.middle_name if client.middle_name else ''} {client.last_name}",
+      "short_name":f"{client.first_name} {client.middle_name[0] if client.middle_name else ''} {client.last_name}".title(),
+      "age":format_age(client.birthdate,short=True),
+      "gender":client.gender,
+      "address":client.address,
+      "last_visit":"---" if not client.visits else f"{format_age(self.last_visit(client).start_time)} ago"
+    }
+    
+    appointment_data = {
+      "consultant":"",
+      "date":"",
+      "client_id":client.client_id,
+      "appointment_id":f"{client.client_id}apt{str(uuid.uuid4()).split('-')[1]}",
+      "attendee_id":self.user.username
+    }
+    
+    _tomorrow = datetime.now() + timedelta(days=1)
+    if _tomorrow.month >9:
+      tomorrow = f"{_tomorrow.year}/{_tomorrow.month}/{_tomorrow.day}"
+    else:
+      tomorrow = f"{_tomorrow.year}/0{_tomorrow.month}/{_tomorrow.day}"
+    
+    def close_dialog():
+      self.ClientsStats()
+      self.ClientsListing()
+      self.client_dialog.close()
+    
+    def consultant_username(name:str|None):
+      if not name:
+        return
+      else:
+        return consultants[name.lower()]
+
+    def returned_date(val):
+      if not val:
+        return
+      
+      if type(val) == str:
+        return datetime.fromisoformat(val)
+      else:
+        return val
+
+    #UI
+    self.client_panel.clear()
+    with self.client_panel:
+      pass
+      #Header
+      with html.div().classes(add="w-full bg-harmony p-1 flex flex-row justify-between"):
+        #Client Details
+        with html.div().classes(add="grow flex flex-col"):
+          with html.span().classes(add="w-full bg-inherit flex flex-row justify-center items-center"):
+            ClientCard(details=details)
+          ui.label("APPOINTMENT PANEL").classes(add="w-full text-center text-2xl text-yellow-500 font-bold")
+        #Close button
+        ui.button(icon="fa-regular fa-circle-xmark fa-xl",color="",on_click=close_dialog).classes(add="bg-inherit text-red-500 text-bold text-base")
+      
+      #Details
+      with html.div().classes(add="grow w-full flex flex-col gap-1"):
+        ui.date(value=datetime.now()).props(add=f"bordered square today-btn color='harmony' event-color='orange' first-day-of-week='1' navigation-min-year-month='{_tomorrow.strftime("%Y/%m")}'").classes(add="w-full").bind_value_to(appointment_data,"date",forward=lambda e:returned_date(e))
+        #Buttons
+        with html.div().classes(add="w-full p-1 grid grid-cols-3 gap-1"):
+          ui.select(label="CONSULTANT",options=list(consultants.keys()),value=list(consultants.keys())[0]).props(add="popup-content-class='uppercase'").bind_value_to(appointment_data,"consultant",forward=lambda e:consultant_username(e)).classes(add="col-span-2 shadow-md shadow-[#07004d] bg-white rounded px-2 text-lg uppercase")
+          ui.button(text="plan",color="#07004d",on_click=lambda e:self.register_appointment(appointment=appointment_data)).props(add="dense glossy").classes(add="ring-1 ring-blue-400 shadow-sm shadow-blue-400 text-sky-300 text-bold text-lg")
+
+
+class AppointmentsManager():
+  """A class for display and amangemet of appoitments"""
+  
+  def __init__(self,user,parent=None):
+    #DATA
+    self.user = user
+    if parent:
+      self.parent = parent
+
+    self.initial_data()
+
+    self.visit_data = {"client_id":"","visit_id":"","appointment_id":None,"payment_mode":"","service":"","service_option":"","attending_clinician":"","card_no":"","authorization_no":""}
+
+    #UI
+    with html.div().style(add="overflow-y:hidden;").classes(add="w-full h-full flex flex-col"):
+      self.MainPanel()
+    
+  #FUNCTIONALITIES
+  def initial_data(self):
+    self._appointments = get_appointments()
+    self.appointments = [appointment._asdict() for appointment in self._appointments] if self._appointments else []
+    self.clients = get_clients()
+    self.services = {
+      "Consultation":["consultant",[service.name.split(" ")[0] for service in get_services() if service.type == "consultation"]],
+      "Imaging":["imaging stugy",[service.name for service in get_services() if service.type == "imaging"]],
+      "Procedure":["procedure",[service.name for service in get_services() if service.type == "procedure"]]
+    }
+    self.min_period = [staff for staff in get_staffs() if staff.title == "master"][0].registered_on.strftime("%Y/%m")
+    #Weekly view data
+    self.target_year = datetime.now().year
+    self.today = datetime.now().date()
+    self.last_week = self.today + timedelta(days=-7)
+
+    #Monthly view data
+    self.picked_year,self.picked_month = datetime.now().year,list(calendar.month_name[1:])[int(datetime.now().month)-1]
+    
+    self.today_appointments = [appointment for appointment in self.appointments if self.is_in_range(start_date=self.today.strftime("%Y-%m-%d"),end_date=self.today.strftime("%Y-%m-%d"),target_date=appointment["appointment_time"].date())]
+
+  def is_in_range(self,start_date:str,end_date:str,target_date:date):
+    """Returns True if 'target_date' is between 'start_date' and 'end_date'"""
+    
+    start_date,end_date,target_date = datetime.fromisoformat(start_date).date(),datetime.fromisoformat(end_date).date(),target_date
+
+    if target_date >= start_date and target_date <= end_date:
+      return True
+    else:
+      return False
+  
+  def last_visit(self,client):
+    """Returns the last visit of client as a namedtuple object"""
+
+    return sorted(client.visits,key=lambda visit:visit.start_time,reverse=True)[0]
+
+
+  def cancel_appointment(self,appointment:dict):
+    """"""
+    appointment["cancelled"] = True
+    
+    status = clients_db.update_appointment_status(appointment)
+    
+    ui.notify(message=status["message"],type=status["type"],position=status["position"])
+    
+    self.initial_data()
+    self.AppointmentsCarousel()
+
+  def reschedule_appointment(self,appointment:dict):
+    """A method to reschedule an appointment"""
+    
+    status = clients_db.reschedule_appointment(appointment)
+
+    ui.notify(message=status["message"],position=status["position"],type=status["type"])
+    self.initial_data()
+    self.AppointmentsCarousel()
+  
+  def initiate_visit(self,visit_data:dict):
+    """A method called from the dialog and create a row in 'visit' table"""
+    
+    #Visit
+    visit = {
+      "client_id":visit_data["client_id"],
+      "visit_id":visit_data["visit_id"].lower(),
+      "payment_mode":visit_data["payment_mode"].lower(),
+      "appointment_id":visit_data["appointment_id"].lower() if visit_data["appointment_id"] else None,
+      "package":visit_data["package"],
+      "attendee_id":self.user.username,
+    }
+    
+    #Service & Payment
+    selected_service = [service for service in get_services() if service.name.startswith(visit_data["service_option"].lower())][0]
+    selected_service_scheme = [scheme for scheme in selected_service.schemes if scheme.scheme_name == visit_data["payment_mode"].lower()][0]
+    if selected_service_scheme.active:
+      service_prices = [price for price in selected_service_scheme.prices if price.active][0]
+    else:
+      ui.notify(message=f"Visit cannot be started via {visit_data['payment_mode'].upper()}",caption=f"Try another payment mode!",type="warning",position="top")
+
+    #CONSULTATION
+    if selected_service.type == "consultation":
+      
+      #Consultation
+      consultation = {
+        "visit_id":visit_data["visit_id"].lower(),
+        "name":selected_service.name,
+        "payment":{
+          "payment_mode":visit_data["payment_mode"].lower(),
+          "cost":service_prices._asdict()[visit_data['package'].lower()],
+          "billed":True,
+          "billed_amount":service_prices._asdict()[visit_data['package'].lower()],
+          "authorization_no":visit_data["authorization_no"]
+        },
+        "hx":{},"ge":{},"orodental":{},"cns":{},"cvs":{},"rs":{},"abd":{},"gus":{},"mss":{},"derma":{},"dx":{}
+      }
+      #Triage
+      vitals = {
+        "visit_id":visit_data["visit_id"].lower(),
+        "vitals_id":f"{visit_data['visit_id'].lower()}vs1",
+        "payment":{
+          "visit_id":visit_data["visit_id"].lower(),
+          "payment_id":f"{visit_data['visit_id'].lower()}pay{str(uuid.uuid4()).split('-')[1]}",
+          "payment_mode":visit_data["payment_mode"].lower(),
+          "cost":0,
+          "authorization_no":visit_data["authorization_no"],
+          "billed":True
+        }
+      }
+      anthrops = {
+        "visit_id":visit_data["visit_id"].lower(),
+        "anthropometrics_id":f"{visit_data['visit_id'].lower()}anp1",
+        "payment":{
+          "visit_id":visit_data["visit_id"].lower(),
+          "payment_id":f"{visit_data['visit_id'].lower()}pay{str(uuid.uuid4()).split('-')[1]}",
+          "payment_mode":visit_data["payment_mode"].lower(),
+          "cost":0,
+          "authorization_no":visit_data["authorization_no"],
+          "billed":True
+        }
+      }
+      status = clients_db.register_visit(visit)
+      clients_db.register_consultation(consultation)
+      clients_db.register_triage(triage={"vitals":vitals,"anthropometrics":anthrops},initial=True)
+        
+    #TRIAGE
+    if selected_service.type == "triage":
+      vitals = {
+        "visit_id":visit_data["visit_id"].lower(),
+        "vitals_id":f"{visit_data['visit_id'].lower()}vs1",
+        "payment":{
+          "visit_id":visit_data["visit_id"].lower(),
+          "payment_id":f"{visit_data['visit_id'].lower()}pay{str(uuid.uuid4()).split('-')[1]}",
+          "payment_mode":visit_data["payment_mode"].lower(),
+          "cost":service_prices._asdict()[f"{visit_data['payment_mode']}_{visit_data['package']}".lower()]/2,
+          "authorization_no":None,
+          "billed":True
+        }
+      }
+      anthrops = {
+        "visit_id":self.visit_data["visit_id"].lower(),
+        "anthropometrics_id":f"{self.visit_data['visit_id'].lower()}anp1",
+        "payment":{
+          "visit_id":self.visit_data["visit_id"].lower(),
+          "payment_id":f"{self.visit_data['visit_id'].lower()}pay{str(uuid.uuid4()).split('-')[1]}",
+          "payment_mode":self.visit_data["payment_mode"].lower(),
+          "cost":service_prices._asdict()[f"{visit_data['payment_mode']}_{visit_data['package']}".lower()]/2,
+          "authorization_no":None,
+          "billed":True
+        }
+      }
+      status = clients_db.register_visit(visit)
+      clients_db.register_triage({"vitals":vitals,"anthropometrics":anthrops})
+      
+    #LABWORK
+    elif selected_service.type == "laboratory":
+      pass
+
+    #Notification
+    ui.notify(message=status["message"],position=status["position"],type=status["type"])
+    
+    #UI UPDATE
+    self.initial_data()
+    _client = [client for client in self.clients if client.client_id == visit_data["client_id"]][0]
+    self.VisitsPanel(client=_client)
+
+
+  #UI
+  def MainPanel(self):
+    #Header
+    with html.div().classes(add="w-full bg-[#07004d] p-1 rounded-t flex grid lg:grid-cols-4 gap-0.5"):
+      #Title
+      with html.div().classes(add="lg:col-span-2 w-full rounded-t px-1 py-0.5 bg-inherit"):
+        ui.label("APPOINTMENTS").style(add="text-shadow:2px 2px #505050").classes(add="bg-inherit text-yellow-500 text-bold text-2xl")
+    
+      #Toggle buttons
+      with html.div().classes(add="lg:col-span-2 w-full bg-inherit lg:grid grid-cols-2 gap-1"):
+        self.duration_toggle = ui.toggle(options=["daily","weekly","monthly","annual"],value="daily",on_change=lambda e:self.SelectionPanel(duration=e.value)).props(add="glossy spread color='bg-inherit' size='md' toggle-color='bg-inherit' text-color='yellow-400' toggle-text-color='sky-400'").classes(add="lg:justify-self-end align-self-center w-full lg:w-fit lg:rounded-full lg:ring-1 ring-blue-500 text-bold")
+      
+        #Default selection panel
+        with html.div().classes(add="w-full flex flex-row justify-center") as self.selection_panel:
+          self.SelectionPanel(duration=self.duration_toggle.value)
+
+    #Appointments panel
+    with html.div().classes(add="grow w-full rounded-b") as self.appointments_carousel_pad:
+      self.AppointmentsCarousel()
+  
+  def AppointmentsCarousel(self):
+    #DATA
+    default_month_start_date = f"{datetime.now().strftime('%Y-%m')}-01"
+    default_month_end_date = f"{datetime.now().strftime('%Y-%m')}-{calendar.monthrange(datetime.now().year,datetime.now().month)[1]}"
+    default_year_start_date = f"{self.picked_year}-01-01"
+    default_year_end_date = f"{self.picked_year}-12-31"
+    #UI
+    self.appointments_carousel_pad.clear()
+    with self.appointments_carousel_pad:
+      with ui.carousel().props(add="animated transition-prev='jump-right' transition-next='jump-left' transition-duration='500'").classes(add="w-full h-full rounded-b").bind_value(self.duration_toggle) as self.appointments_carousel:
+        
+        with ui.carousel_slide(name="daily").classes(add="q-pa-none"):
+          with html.div().classes(add="w-full h-full rounded-b") as self.daily_appointments_panel:
+            self.AppointmentsDisplay(start_date=self.default_picked_date.value,end_date=self.default_picked_date.value)
+            
+        with ui.carousel_slide(name="weekly").classes(add="q-pa-none"):
+          with html.div().classes(add="w-full h-full") as self.weekly_appointments_panel:
+            self.AppointmentsDisplay(start_date=self.last_week.strftime("%Y-%m-%d"),end_date=self.today.strftime("%Y-%m-%d"))
+        
+        with ui.carousel_slide(name="monthly").classes(add="q-pa-none"):
+          with html.div().classes(add="w-full h-full") as self.monthly_appointments_panel:
+            self.AppointmentsDisplay(start_date=default_month_start_date,end_date=default_month_end_date)
+        
+        with ui.carousel_slide(name="annual").classes(add="q-pa-none"):
+          with html.div().classes(add="w-full h-full") as self.annual_appointments_panel:
+            self.AppointmentsDisplay(start_date=default_year_start_date,end_date=default_year_end_date)
+
+  def SelectionPanel(self,duration:str):
+    """"""
+    #UI
+    self.selection_panel.clear()
+    with self.selection_panel:
+      if duration == "daily":
+        with ui.input(label="PICK DATE",value=datetime.now().strftime("%Y-%m-%d"),on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value,date=e.value)).props(add="autogrow dense filled hidden-bottom-space readonly standout input-class='text-white text-bold' label-color='sky-300'").classes(add="w-fit bg-inherit rounded-full lg:ring-1 ring-blue-400 text-sky-50 text-xl animate__animated animate__zoomIn") as self.default_picked_date:
+          with ui.dialog().props(add=" transition-show='jump-up' transition-hide='jump-down' transition-duration='300'").classes(add="ring-1 ring-blue-500") as daily_calendar:
+            ui.date(value=datetime.now(),on_change=daily_calendar.close).props(add=f"bordered square today-btn color='harmony' event-color='orange' no-unset today-btn first-day-of-week='1'").bind_value(self.default_picked_date)
+          with self.default_picked_date.add_slot("prepend"):
+            ui.icon("fas fa-calendar-check fa-xl",color="sky-500").on("click",daily_calendar.open).classes(add="hover:scale-[1.1]")
+
+      if duration == "weekly":
+        now = datetime.now()
+        today = now.date().strftime("%Y-%m-%d")
+        last_week = (now.date() + timedelta(days=-7)).strftime("%Y-%m-%d")
+        input_range:str = f"{last_week} | {today}"
+        
+        #Date range picker
+        with ui.input(label="DATE RANGE",value=input_range,on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value,date_range=e.value)).props(add="autogrow dense hidden-bottom-space readonly standout input-class='text-white text-bold' label-color='sky-300'").classes(add="w-3/4 lg:w-full bg-inherit rounded-full lg:ring-1 ring-blue-500 px-7 text-lg animate__animated animate__zoomIn") as date_range_input:
+          with ui.dialog() as weekly_calendar:
+            ui.date(value=datetime.now(),on_change=weekly_calendar.close).props(add=f"bordered square today-btn color='harmony' event-color='orange' range no-unset today-btn first-day-of-week='1'").bind_value(
+              date_range_input,
+              forward=lambda x:f'{x["from"]} | {x["to"]}' if x else None,
+              backward=lambda x:{'from':x.split(' | ')[0],'to':x.split(' | ')[1]} if ' | ' in (x or '') else None
+            )
+          with date_range_input.add_slot("prepend"):
+            ui.icon("fas fa-calendar-check",color="sky-400").on("click",weekly_calendar.open).classes(add="hover:scale-[1.1]")
+    
+      if duration == "monthly":
+        with ui.button_group().classes(add="bg-inherit w-3/5 lg:w-4/5 flex flex-row gap-3 rounded-full ring-1 ring-blue-400 shadow-md shadow-sky-500 px-3 animate__animated animate__zoomIn"):
+          year_label = ui.select(label="YEAR",options=constants.YEARS,on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value)).props(add="dark dense").classes(add="grow pl-2 rounded-l-full text-lg").bind_value(self,"picked_year")
+          with year_label.add_slot("prepend"):
+            ui.icon("fa-regular fa-calendar-check",color="sky-400")
+          month_label = ui.select(label="MONTH",options=list(calendar.month_name)[1:],on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value)).props(add="dark dense").classes(add="grow pl-2 rounded-r-full text-lg").bind_value(self,"picked_month")
+          with month_label.add_slot("prepend"):
+            ui.icon("fa-regular fa-calendar-check",color="sky-400")
+        
+      if duration == "annual":
+        ui.select(label="YEAR",options=constants.YEARS,on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value)).props(add="dark dense hide-bottom-space").classes(add="bg-inherit ring-1 ring-blue-400 shadow-md shadow-sky-500 w-fit rounded-full px-5 text-lg animate__animated animate__zoomIn").bind_value(self,"picked_year")        
+    
+  def load_appointments(self,duration:str,date=None,date_range=None):
+    #Daily
+    if duration == "daily":
+      self.daily_appointments_panel.clear()
+      with self.daily_appointments_panel:
+        self.AppointmentsDisplay(start_date=date,end_date=date)
+    
+    #Weekly
+    if duration == "weekly":
+      start_date,end_date = date_range.split(" | ")[0],date_range.split(" | ")[1]
+      self.weekly_appointments_panel.clear()
+      with self.weekly_appointments_panel:
+        self.AppointmentsDisplay(start_date=start_date,end_date=start_date)
+    
+    #Monthly
+    if duration == "monthly":
+      _month = list(calendar.month_name).index(self.picked_month)
+      if _month >=10:
+        start_date = f"{self.picked_year}-{_month}-01"
+        end_date = f"{self.picked_year}-{_month}-{calendar.monthrange(self.picked_year,_month)[1]}"
+      else:
+        start_date = f"{self.picked_year}-0{_month}-01"
+        end_date = f"{self.picked_year}-0{_month}-{calendar.monthrange(self.picked_year,_month)[1]}"
+      
+      self.monthly_appointments_panel.clear()
+      with self.monthly_appointments_panel:
+        self.AppointmentsDisplay(start_date=start_date,end_date=end_date)
+
+    #Annual
+    if duration == "annual":
+      start_date = f"{self.picked_year}-01-01"
+      end_date = f"{self.picked_year}-12-31"
+
+      self.annual_appointments_panel.clear()
+      with self.annual_appointments_panel:
+        self.AppointmentsDisplay(start_date=start_date,end_date=end_date)
+      
+  def AppointmentsDisplay(self,start_date:str,end_date:str):
+    """"""
+    #DATA
+    appointments = sorted([appointment for appointment in self.appointments if self.is_in_range(start_date=start_date,end_date=end_date,target_date=appointment["appointment_time"].date())],key=lambda e:e["appointment_time"].date(),reverse=True)
+    #MODS
+    def StatusDot(appointment):
+      """A function to return a styled icon based on status of client's last visit"""
+
+      status = "active" if appointment["made"] and not (appointment["done"] or appointment["cancelled"]) else "completed" if appointment["done"] else "cancelled" if appointment["cancelled"] else "---"
+      return f"<span class='text-bold fa-solid fa-circle { 'text-green-600' if status == 'active' else 'text-yellow-500' if status == 'completed' else 'text-gray-500' if status == 'cancelled' else 'text-red-600'}'></span>"
+    
+    def GenderIcon(appointment):
+      """Returns a styled gender icon based on client's gender"""
+
+      genders = {"male":"mars","female":"venus"}
+      colors = {"male":"sky-600","female":"pink-600"}
+      return f"<span class='fa-solid fa-{genders[appointment['client_gender'].lower()]} text-{colors[appointment['client_gender'].lower()]}'></span>"
+    
+    #UI
+    #Large screen
+    ui.aggrid(
+      {
+        "columnDefs":[
+          {"headerName":"S/N","field":"sno","width":100},
+          {"headerName":"CLIENT ID","field":"client_id","filter":"agTextColumnFilter"},
+          {"headerName":"NAME","field":"name","filter":"agTextColumnFilter"},
+          {"headerName":"AGE","field":"age"},
+          {"headerName":"GENDER","field":"gender"},
+          {"headerName":"ADDRESS","field":"address"},
+          {"headerName":"APPOINTMENT DATE","field":"appt_date"},
+          {"headerName":"STATUS","field":"status","cellClassRules":{
+            "text-green-600 text-bold":"x == 'Active'",
+            "text-yellow-600 text-bold":"x == 'Completed'",              "text-red-600 text-bold":"x == 'Cancelled'"
+          }}
+        ] ,
+        "rowData":[{
+          "sno":appointments.index(appointment) + 1,
+          "client_id":appointment["client_id"],
+          "name":appointment["client_name"].title(),
+          "age":format_age(appointment["client_birthdate"]),
+          "gender":appointment["client_gender"].capitalize(),
+          "address":appointment["client_address"].capitalize(),
+          "appt_date":appointment["appointment_time"].strftime("%d %b %Y"),
+          "status":"Active" if appointment["made"] and not (appointment["done"] or appointment["cancelled"]) else "Completed" if appointment["done"] else "Cancelled" if appointment["cancelled"] else "---",
+        } for appointment in appointments]
+      },theme="quartz").classes(add="lg-show w-full h-full animate__animated animate__fadeIn animate_delay-2s animate__slow").on("cellClicked",lambda e:self.AppointmentDialog(appointment=[appointment for appointment in appointments if appointment["client_id"] == e.args["data"]["client_id"]][0]))
+    
+    #Small Screens
+    ui.aggrid(
+          {
+            "columnDefs":[
+              {"headerName":"","field":"status","width":75},
+              {"headerName":"CLIENT ID","field":"client_id","filter":"agTextColumnFilter","floatingFilter":True,"width":160},
+              {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","floatingFilter":True,"width":300},
+              {"headerName":"","field":"gender","align":"left","width":75},
+              {"headerName":"AGE","field":"age","width":150}
+            ],
+            "rowData":[
+              {
+                "status":StatusDot(appointment),
+                "client_id":appointment["client_id"],
+                "name":appointment["client_name"].title(),
+                "age":f"{format_age(appointment['client_birthdate']).split(' ')[0]} {format_age(appointment['client_birthdate']).split(' ')[1]}",
+                "gender":GenderIcon(appointment)
+              } for appointment in appointments
+            ],
+          },
+          html_columns=[0,3],
+          theme="quartz"
+        ).classes(add="lg:hidden w-full h-full animate__animated animate__fadeIn animate__slow").on("cellClicked",lambda e:self.AppointmentDialog(appointment=[appointment for appointment in appointments if appointment["client_id"] == e.args["data"]["client_id"]][0]))
+    
+  def AppointmentDialog(self,appointment:dict):
+    """"""
+    #DATA
+    if "receptionist" not in self.user.roles:
+      return
+    
+    details = {
+      "name":appointment["client_name"],
+      "short_name":f"{appointment['client_name'].split(' ')[0]} {appointment['client_name'].split(' ')[1] if len(appointment['client_name'].split(' ')) > 2 else ''} {appointment['client_name'].split(' ')[2]}".title(),
+      "age":format_age(appointment["client_birthdate"]),
+      "gender":appointment["client_gender"],
+      "address":appointment["client_address"]
+    }
+    #FXS
+    def close_dialog():
+      self.AppointmentsCarousel()
+
+    #UI
+    with ui.dialog() as self.appointment_dialog,html.div().style(add="min-height:50%;").classes(add="w-fit p-0.5 bg-sky-50 flex flex-col"):
+      #Header
+      with html.div().classes(add="w-full grid grid-cols-11 bg-[#07004d]"):
+        with html.div().classes(add="col-span-10 bg-inherit"):
+          ClientCard(details=details)
+        ui.button(icon="fas fa-circle-xmark",color="",on_click=close_dialog).classes(add="col-span-1 bg-inherit text-red-600 text-bold text-base")
+      #Appointment
+      with html.div().classes(add="grow w-full"):
+        pass
+      
+      #Button
+      with html.div().classes(add="w-full p-2 flex flex-row justify-center gap-5") as self.reschedule_panel:
+        #Initiate visit button
+        #ui.button(text="initiate visit",color="gray-900",on_click=lambda e:self.NewVisitPanel(client=[client for client in get_clients() if client.client_id == appointment['client_id']][0],appointment_id=appointment["appointment_id"])).props(add="bordered dense glossy").classes(add="rounded shadow-md shadow-[#07004d] text-sky-300 text-xl text-bold")
+        #Reschedule button
+        ui.button(text="reschedule",color="",on_click=lambda e:self.ReschedulePanel(appointment["appointment_id"])).props(add="bordered dense glossy").classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-yellow-500 text-xl text-bold")
+        #Cancel button
+        ui.button(text="cancel",color="",on_click=lambda e:self.cancel_appointment(appointment)).props(add="bordered dense glossy").classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-red-600 text-xl text-bold")
+    
+    if appointment["cancelled"] or appointment["done"]:
+      return
+    else:
+      self.appointment_dialog.open()
+
+  def NewVisitPanel(self,client:dict,appointment_id:str|None=None):
+    """Shows a dialog for initiating or ending visit"""
+    #DATA
+    def format_visit_id():
+      if client.visits:
+        return f"{client.client_id}v{int(self.last_visit(client).visit_id.split('v')[1]) + 1}"
+      else:
+        return f"{client.client_id}v1"
+
+    details = {
+      "name":f"{client.first_name} {client.middle_name if client.middle_name else ''} {client.last_name}",
+      "short_name":f"{client.first_name} {client.middle_name[0] if client.middle_name else ''} {client.last_name}",
+      "age":format_age(client.birthdate,short=True),
+      "gender":client.gender,
+      "address":client.address,
+      "last_visit":format_age(self.last_visit(client).start_time) if client.visits else "---"
+    }
+
+    visit_data = {
+      "client_id":client.client_id,
+      "visit_id":format_visit_id(),
+      "appointment_id":appointment_id,
+      "payment_mode":"",
+      "package":"",
+      "service":"",
+      "service_option":"",
+      "attending_clinician":"",
+      "card_no":"",
+      "authorization_no":"",
+      "auth_button_clicked":False
+      }
+
+    payment_options = ["cash"] if client.payment_mode.lower() == "cash" else [client.payment_mode.upper(),"cash"]
+    payment_packages = json.loads(self.basics.payment_packages)
+    
+    #MODS
+    def get_authorization_number():
+      """Retrives authorization number for insured clients and inserts it into visit_data"""
+
+      auth = clients_processor.authorize_visit({"scheme":visit_data["payment_mode"],"card_no":visit_data["card_no"]})
+
+      ui.notify(message=auth["message"],position="center" if auth["type"] == "negative" else "top",type=auth["type"])
+      with self.auth_number.add_slot("append"):
+        if auth["type"] == "positive":
+          ui.icon(name="fas fa-user-check",color="green-600").classes(add="mx-3")
+        else:
+          ui.icon(name="fas fa-user-xmark",color="red-600").classes(add="mx-3")
+    
+      #Binding data
+      visit_data["authorization_no"] = auth["auth_no"]
+    
+    def ServiceOptions(service_category:str):
+      """Dynamically loads a selection element for service options based on the service_categgory value"""
+      service = service_category
+      options = [_service.title() for _service in self.services[service][1]]
+      value = self.services[service][1][0].title()
+      label = self.services[service][0].upper()
+
+      self.service_options_pad.clear()
+      with self.service_options_pad:
+        ui.select(options=options,value=value,label=label).classes(add="w-full shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value_to(visit_data,"service_option")
+
+    #UI
+    self.client_details_panel.clear()
+    with self.client_details_panel:
+      #Visit details
+      with html.div().classes(add="grow w-full flex flex-col justify-between gap-3 p-1 bg-sky-100"):
+        #Services
+        with html.div().classes(add="w-full p-1 grid grid-cols-2 gap-3 animate__animated animate__fadeIn"):
+          #Service
+          with html.div().classes(add="col-span-2 w-full grid grid-cols-2 gap-3"):
+            #Service type
+            self.service_category = ui.select(options=list(self.services),label="SERVICE",value="Consultation",on_change=lambda e:ServiceOptions(e.value)).classes(add="shadow-md shadow-[#07004d] bg-sky-50 rounded-sm px-2 text-lg").bind_value_to(visit_data,"service")
+            #Service Options
+            with html.div().classes(add="") as self.service_options_pad:
+              ui.select(options=[_service.title() for _service in self.services["Consultation"][1]],value=self.services["Consultation"][1][0].title(),label="CONSULTANT").classes(add="shadow-md shadow-[#07004d] bg-sky-50 rounded-sm px-2 text-lg").bind_value_to(visit_data,"service_option")
+            
+          #Payment
+          with html.div().classes(add="col-span-2 w-full grid grid-cols-2 gap-3"):
+            ui.select(options=payment_options,value=payment_options[0],label="PAYMENT MODE").props(add="bordered popup-content-class='uppercase'").classes(add="shadow-md shadow-[#07004d] bg-sky-50 rounded px-2 text-lg uppercase").bind_value_to(visit_data,"payment_mode")   #payment mode
+            ui.select(options=payment_packages,value=payment_packages[0],label="PACKAGE").props(add="bordered popup-content-class='uppercase'").classes(add="shadow-md shadow-[#07004d] bg-sky-50 rounded px-2 text-lg uppercase").bind_value_to(visit_data,"package")
+            ui.input(label="CARD/NIDA NO",value=client.card_no).props(add="type='text' bordered readonly").bind_visibility_from(visit_data,"payment_mode",lambda v:v != "cash").classes(add="bg-white shadow-md shadow-[#07004d] rounded-sm px-2 text-lg").bind_value_to(visit_data,"card_no")     #Card No
+            ui.button(text="authorize",color="#07004d",on_click=get_authorization_number).props(add="bordered glossy").bind_visibility_from(visit_data,"payment_mode",lambda v:v != "cash").classes(add="rounded shadow-md shadow-[#07004d] text-sky-300 text-lg lg:text-xl text-bold")   #Authorize button
+            self.auth_number = ui.input(label="AUTHORIZATION NO").props(add="bordered glossy readonly").bind_visibility_from(visit_data,"payment_mode",lambda v:v != "cash").classes(add="col-span-2 w-3/4 justify-self-center bg-white shadow-md shadow-[#07004d] rounded-sm px-2 text-xl text-green-700").bind_value(visit_data,"authorization_no")          #Authorization Number
+          
+        #Action buttons
+        with html.div().classes(add="w-full p-1 flex flex-row justify-center"):
+          #Initiate visit
+          ui.button(text="start visit",color="#07004d",on_click=lambda e:self.initiate_visit(visit_data=visit_data)).props(add="bordered dense glossy").classes(add="w-auto shadow-md shadow-[#07004d] text-sky-300 text-xl lg:text-2xl text-bold")
+
+
+
+#NURSING
+class TriageManager():
+  """A class to display UI for triage management"""
+
+  def __init__(self,user,mini:bool=False):
+    #DATA
+    self.user = user
+    self.initial_data()
+    
+    #UI
+    with html.div().classes(add=f"w-full h-full flex flex-col {'' if self.triage_visits else 'justify-center content-center bg-white rounded-b'}"):
+      if self.triage_visits:
+        ui.separator().classes(add="w-full bg-[#09026f]")
+        with html.div().classes(add="w-full p-2 bg-harmony flex flex-row"):
+          ui.label("TODAY VISITS").classes(add="").classes(add="bg-inherit grow text-3xl text-yellow-500 text-bold")
+          with html.div().classes(add="bg-inherit") as self.stats_panel:
+            self.TriageStats()
+        #Displays
+        with html.div().classes(add="w-full grow bg-white rounded-b") as self.display_panel:
+          if mini:
+            self.TriagesMiniDisplay()
+          else:
+            self.TriagesDisplay()
+      else:
+        with html.div().classes(add="bg-inherit flex flex-col gap-2 p-3 text-bold"):
+          ui.label("No clients for now").classes(add="text-3xl text-rose-500")
+          ui.label("Just relax and have fun!").classes(add="italic text-center text-2xl text-pink-300")
+
+  #FUNCTIONALITIES
+  def initial_data(self):
+    self._triage_visits = [visit for visit in get_active_visits() if visit.vital_signs or visit.anthropometrics]
+    self.triage_visits = [visit._asdict() for visit in self._triage_visits]
+    self.done_triages = [visit for visit in self.triage_visits if self.triage_status(visit) == "done"]
+    self.not_done_triages = [visit for visit in self.triage_visits if self.triage_status(visit) == "not done"]
+    self.incomplete_triages = [visit for visit in self.triage_visits if self.triage_status(visit) == "incomplete"]
+  
+  def payment_status(self,visit:dict):
+    """Returns a string representing payment status of imagings"""
+
+    statuses = set()
+
+    triages = visit["vital_signs"] + visit["anthropometrics"]
+    
+    for triage in triages:
+      if triage.payment.paid and not triage.payment.billed:
+        statuses.add("paid")
+      if triage.payment.billed and not triage.payment.paid:
+        statuses.add("billed")
+      if not triage.payment.billed and not triage.payment.paid:
+        statuses.add("not paid")
+    
+    if len(statuses) == 1:
+      for status in statuses:
+        return status
+    else:
+      return "partial"
+    
+  def triage_status(self,visit:dict):
+    """Returns a string representing payment status of triage services"""
+
+    statuses = set()
+
+    vital = visit["vital_signs"][-1] if visit["vital_signs"] else None
+    #Vitals
+    if vital:
+      if vital.done:
+        if (vital.temperature and vital.pulse_rate and vital.resp_rate and vital.o2sat) or (vital.sbp and vital.dbp):
+          statuses.add("done")
+        elif (vital.temperature or vital.sbp or vital.dbp or vital.pulse_rate or vital.resp_rate or vital.o2sat):
+          statuses.add("incomplete")
+      else:
+        statuses.add("not done")
+    else:
+      statuses.add("not done")
+    
+    #Anthropometrics
+    if visit["anthropometrics"]:
+      if get_duration(visit["client_birthdate"])["years"] > 2:
+        _anthrops_all = [_anthrop for _anthrop in visit["anthropometrics"] if _anthrop.weight and _anthrop.height]
+        _anthrops_some = [_anthrop for _anthrop in visit["anthropometrics"] if _anthrop.weight or _anthrop.height]
+      else:
+        _anthrops_all = [_anthrop for _anthrop in visit["anthropometrics"] if _anthrop.weight and _anthrop.height and _anthrop.muac and _anthrop.head_circum]
+        _anthrops_some = [_anthrop for _anthrop in visit["anthropometrics"] if _anthrop.weight or _anthrop.height or _anthrop.muac or _anthrop.head_circum]
+      
+      if _anthrops_all:
+        statuses.add("done")
+      elif _anthrops_some:
+        statuses.add("incomplete")
+      else:
+        statuses.add("not done")
+    else:
+      statuses.add("not done")
+    
+    if len(statuses) == 1:
+      return statuses.pop()
+    else:
+      return "incomplete"
+    
+  def relay_dialogs(self,visit:dict):
+    """Decides which dialog to display"""
+
+    status = self.triage_status(visit)
+
+    if status == "Done" or status == "Incomplete":
+      self.TriagesDialog(visit)
+    else:
+      self.NewTriageDialog(visit)
+
+  def save_triage(self,triage:dict,mini:bool=False):
+    """register data to database"""
+
+    status = clients_db.update_triage(triage)
+  
+    #Notify
+    ui.notify(message=status["message"],type=status["type"],position=status["position"])
+    
+    #Page refresh
+    self.initial_data()
+    self.TriageStats()
+    if mini:
+      self.TriagesMiniDisplay()
+    else:
+      self.TriagesDisplay()
+
+  def client_mini(self,visit):
+    """Returns a string of html elements for display in small screens"""
+
+    def GenderIcon(visit):
+      """Returns a styled gender icon based on client's gender"""
+
+      genders = {"male":"mars","female":"venus"}
+      colors = {"male":"sky-600","female":"pink-600"}
+
+      return f"<span class='fa-solid fa-{genders[visit['client_gender'].lower()]} text-{colors[visit['client_gender'].lower()]}'></span>"
+    
+    age = f"<span class='ml-1'>{format_age(visit['client_birthdate']).split(' ')[0]} {format_age(visit['client_birthdate']).split(' ')[1][0].upper()}</span>"
+    gender = GenderIcon(visit)
+    payment_mode = f"<span class=''>{visit['payment_mode'].upper()}</span>"
+
+    return f"<span class='h-full'>{gender}{age}</span>"
+
+
+  #UI
+  def TriageStats(self):
+    """"""
+    self.stats_panel.clear()
+    with self.stats_panel:
+      with html.span().classes(add="flex flex-row"):
+        #Visits
+        with ui.label("VISITS").classes(add="rounded-full p-2 text-sky-500"):
+          ui.label(str(len(self.triage_visits))).classes(add="ml-1 inline text-bold text-white")
+        #Done
+        with ui.chip(icon="fa-regular fa-circle-check",text_color="green",color="").classes(add=f"{'' if self.done_triages else 'hidden'} p-2 bg-inherit").tooltip("Completed Triages"):
+          ui.label(str(len(self.done_triages))).classes(add="inline text-bold text-white")
+        #Pending
+        with ui.chip(icon="fas fa-spinner",text_color="yellow",color="").classes(add=f"{'' if self.incomplete_triages else 'hidden'} p-2 bg-inherit").tooltip("Incomplete Triages"):
+          ui.label(str(len(self.incomplete_triages))).classes(add="inline text-bold text-white")
+        #Not Done
+        with ui.chip(icon="fa-regular fa-circle-xmark",text_color="red",color="").classes(add=f"{'' if self.not_done_triages else 'hidden'} p-2 bg-inherit"):
+          ui.label(str(len(self.not_done_triages))).classes(add="inline text-bold text-white")
+
+  def TriagesDisplay(self):
+    """"""
+    #UI
+    self.display_panel.clear()
+    with self.display_panel:
+      self.visit_aggrid = ui.aggrid(
+        {
+          "columnDefs":[
+            {"headerName":"S/N","field":"sno","width":50},
+            {"headerName":"CLIENT ID","field":"client_id","filter":"agTextColumnFilter","floatingFilter":True,"width":100},
+            {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","floatingFilter":True},
+            {"headerName":"AGE","field":"age","width":80},
+            {"headerName":"GENDER","field":"gender","width":80},
+            {"headerName":"VISIT TIME","field":"duration","width":120},
+            {"headerName":"STATUS","field":"status","width":100,"cellClassRules":{
+              "text-green-600 text-bold":"x == 'Done'",
+              "text-red-600 text-bold":"x == 'Not Done'",
+              "text-yellow-500 text-bold":"x == 'Incomplete'"
+              }
+            }
+          ] ,
+          "rowData":[
+            {
+              "sno":self.triage_visits.index(visit) + 1,
+              "client_id":visit["client_id"],
+              "visit_id":visit["visit_id"].upper(),
+              "name":visit["client_name"].title(),
+              "age":f"{format_age(visit['client_birthdate']).split(' ')[0]} {format_age(visit['client_birthdate']).split(' ')[1]}",
+              "gender":visit["client_gender"].capitalize(),
+              "duration":f"{format_age(visit['start_time'])}",
+              "payment":visit["payment_mode"].upper(),
+              "status":self.triage_status(visit).title()
+            } for visit in self.triage_visits
+          ]
+        },theme="quartz"
+        ).classes(add="w-full h-full animate__animated animate__fadeIn").on("cellClicked",lambda e:self.TriagesDialog(visit=[visit for visit in self.triage_visits if visit['visit_id'] == e.args["data"]["visit_id"].lower()][0]))
+  
+  def TriagesMiniDisplay(self):
+    """Displays the details of clients for small screens"""
+    #MODS
+    def StatusDot(visit):
+      """A function to return a styled icon based on status of client's last visit"""
+
+      status = self.triage_status(visit)
+      return f"<span class='fa-solid fa-circle { 'text-green-600' if status == 'done' else 'text-red-600' if status == 'not done' else 'text-yellow-500'}'></span>"
+    
+    def GenderIcon(visit):
+      """Returns a styled gender icon based on client's gender"""
+
+      genders = {"male":"mars","female":"venus"}
+      colors = {"male":"sky-600","female":"pink-600"}
+      return f"<span class='fa-solid fa-{genders[visit['client_gender'].lower()]} text-{colors[visit['client_gender'].lower()]}'></span>"
+
+    #UI
+    self.display_panel.clear()
+    with self.display_panel:
+      ui.aggrid(
+        {
+          "columnDefs":[
+            {"headerName":"","field":"status","width":75},
+            {"headerName":"CLIENT ID","field":"client_id","filter":"agTextColumnFilter","floatingFilter":True,"width":160},
+            {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","floatingFilter":True,"width":300},
+            {"headerName":"","field":"details","align":"left","width":150},
+          ],
+          "rowData":[
+            {
+              "status":StatusDot(visit),
+              "client_id":visit["client_id"],
+              "name":f"{visit['client_name'].split(' ')[0]} {visit['client_name'].split(' ')[1][0]}. {visit['client_name'].split(' ')[2]}".title(),
+              "details":self.client_mini(visit),
+            } for visit in self.triage_visits
+          ],
+        },
+        html_columns=[0,3],
+        theme="quartz"
+      ).classes(add="w-full h-full animate__animated animate__fadeIn animate__slow").on("cellClicked",lambda e:self.TriagesDialog(visit=[visit for visit in self.triage_visits if visit['client_id'] == e.args["data"]["client_id"]][0],mini=True))
+
+  def NewTriagePanel(self,visit:dict,repeat:bool=False,mini:bool=False):
+    """"""
+    #DATA
+    anthropometrics_1,vitals_1 = visit["anthropometrics"][0],visit["vital_signs"][0]
+    
+    if repeat:
+      vitals = {
+        "visit_id":visit["visit_id"],
+        "vitals_id":f"{visit['visit_id']}vs{len(visit['vital_signs']) + 1}",
+        "attendee_id":self.user.username,
+        "temp":None,"sbp":None,"dbp":None,"pr":None,"rr":None,"osat":None,
+        "payment":{
+          "visit_id":visit["visit_id"],
+          "vitals_id":f"{visit['visit_id']}vs{len(visit['vital_signs']) + 1}",
+          "payment_id":f"{visit['visit_id']}vs{len(visit['vital_signs']) + 1}pay{len(visit['payments']) + 1}",
+          "cost":0,
+          "payment_mode":visit["payment_mode"],
+          "authorization_no":visit["consultations"][0].payment.authorization_no if visit["consultations"] else None,
+          "billed":True,
+          "paid":True
+        }
+      }
+      anthrops = {
+        "visit_id":visit["visit_id"],
+        "anthropometrics_id":f"{visit['visit_id']}anp{len(visit['anthropometrics']) + 1}",
+        "attendee_id":self.user.username,
+        "weight":None,
+        "height":None,
+        "muac":None,
+        "hc":None,
+        "payment":{
+          "visit_id":visit["visit_id"],
+          "anthropometrics_id":f"{visit['visit_id']}anp{len(visit['anthropometrics']) + 1}",
+          "payment_id":f"{visit['visit_id']}anp{len(visit['anthropometrics']) + 1}pay{len(visit['payments']) + 1}",
+          "cost":0,
+          "payment_mode":visit["payment_mode"],
+          "authorization_no":visit["consultations"][0].payment.authorization_no if visit["consultations"] else None,
+          "billed":True,
+          "paid":True
+        }
+      }
+      
+      triage_data = {"vitals":vitals,"anthropometrics":anthrops}
+      clients_db.register_triage(triage_data)
+
+    else:
+      if self.payment_status(visit) == "paid" or self.payment_status(visit) == "billed":
+        vitals = {"attendee_id":self.user.username,"vitals_id":vitals_1.vitals_id,"temp":None,"sbp":None,"dbp":None,"pr":None,"rr":None,"osat":None}
+        anthrops = {"attendee_id":self.user.username,"anthropometrics_id":anthropometrics_1.anthropometrics_id,"weight":None,"height":None,"muac":None,"hc":None}
+        triage_data = {"vitals":vitals,"anthropometrics":anthrops}
+      elif self.payment_status(visit) == "partial":
+        triage_data = {}
+        if vitals_1.payment.paid or vitals_1.payment.billed:
+          vitals = {"attendee_id":self.user.username,"vitals_id":vitals_1.vitals_id,"temp":None,"sbp":None,"dbp":None,"pr":None,"rr":None,"osat":None}
+          triage_data["vitals"] = vitals
+        if anthropometrics_1["payment"]["paid"] or anthropometrics_1.payment.billed:
+          anthrops = {"attendee_id":self.user.username,"anthropometrics_id":anthropometrics_1.anthropometrics_id,"temp":None,"sbp":None,"dbp":None,"pr":None,"rr":None,"osat":None}
+          triage_data["anthropometrics"] = anthrops
+      else:
+        ui.notify(message="Unpaid Service!",type="warning",position="center")
+        return
+  
+    #UI
+    self.triages_dialog_panel.clear()
+    with self.triages_dialog_panel:
+      with html.div().classes(add="grow w-full p-0.5 rounded-b ring-1 ring-blue-400 shadow-md shadow-blue-400 flex flex-col animate__animated animate__fadeIn animate__slow"):
+        #TRIAGE
+        with html.form().classes(add="grow w-full flex flex-row"):
+          #Vital signs
+          if "vitals" in triage_data:
+            with html.div().classes(add="w-full"):
+              ui.label("VITAL SIGNS").classes(add="w-full bg-harmony text-sky-300 text-bold text-center text-3xl")
+              with html.div().classes(add="w-full p-3 flex flex-row justify-around gap-5"):
+                if get_duration(visit["client_birthdate"])["years"] >= 12:
+                  self.sbp_input = ui.number(label="SBP (mmHg)",min=0,max=370).bind_value(vitals,"sbp").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-lg")
+                  self.dbp_input = ui.number(label="DBP (mmHg)",min=0,max=360).bind_value(vitals,"dbp").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-lg")
+                self.pr_input = ui.number(label="PR (bpm)",min=0,max=500).bind_value(vitals,"pr").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-lg")
+                self.temp_input = ui.number(label="TEMP (℃)",min=11.8,max=46.3).props(add="required").bind_value(vitals,"temp").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-lg")
+                self.rr_input = ui.number(label="RR (cpm)",min=0,max=200).bind_value(vitals,"rr").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-base")
+                self.o2sat_input = ui.number(label="O₂ SAT (%)",min=0,max=100).bind_value(vitals,"osat").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-base")
+          
+          #Anthropometrics
+          if "anthropometrics" in triage_data:
+            with html.div().classes(add="w-full"):
+              ui.label("ANTHROPOMETRICS").classes(add="w-full bg-harmony text-sky-300 text-bold text-center text-3xl")
+              with html.div().classes(add="w-full p-2 flex flex-row justify-around lg:justify-center gap-5"):
+                self.weight_input = ui.number(label="WEIGHT (kg)",min=0,max=370).bind_value(anthrops,"weight").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-lg")
+                self.height_input = ui.number(label=f"{'LENGTH' if get_duration(visit['client_birthdate'])['years'] < 2 else 'HEIGHT'} (cm)",min=0,max=360).bind_value(anthrops,"height").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-lg")
+                if get_duration(visit["client_birthdate"])["years"] < 2:
+                  self.hc_input = ui.number(label="HC (cm)").bind_value(anthrops,"hc").classes(add="w-32 bg-white rounded shadow-md shadow-harmony px-5 text-lg")
+                  self.muac_input = ui.number(label="MUAC (cm))").bind_value(anthrops,"muac").classes(add="w-36 bg-white rounded shadow-md shadow-harmony px-5 text-lg")
+        
+        #BUTTONS
+        with html.div().classes(add="w-full p-1 flex flex-row justify-center"):
+          ui.button(text="SAVE",icon="fa-regular fa-floppy-disk fa-sm",color="",on_click=lambda e:self.save_triage(triage=triage_data,mini=mini)).props(add="").classes(add="ring-1 ring-sky-500 bg-harmony shadow-md shadow-harmony text-sky-300 text-xl text-bold")
+
+  def TriagesDialog(self,visit:dict,mini:bool=False):
+    """A method to display dialog for triage details pulled from database"""
+
+    #DATA
+    details = {
+      "name":visit["client_name"],
+      "short_name":f"{visit["client_name"].split(" ")[0]} {visit["client_name"].split(" ")[1][0]}. {visit["client_name"].split(" ")[2]}".title(),
+      "age":format_age(visit["client_birthdate"]),
+      "gender":visit["client_gender"],
+      "address":visit["client_address"],
+      "last_visit":format_age(visit["start_time"])
+    }
+    
+    vitals = [vital._asdict() for vital in visit["vital_signs"] if vital.done]
+    anthrop = visit["anthropometrics"][0]
+    #FXS
+    def close_dialog():
+      self.initial_data()
+      self.TriageStats()
+      self.TriagesDisplay()
+      self.triages_dialog.close()
+
+    #UI
+    with ui.dialog().props(add="transition-show='scale' transition-hide='scale' transition-duration='500'") as self.triages_dialog,html.div().style(add="min-width:90%;min-height:60%;").classes(add="bg-sky-100 flex flex-col"):
+      #HEADER
+      with html.div().classes(add="w-full rounded-t p-1 flex flex-row bg-harmony"):
+        with html.div().classes(add="grow"):
+          ClientCard(details=details)
+        ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=close_dialog).classes(add="bg-inherit text-red-600 text-bold text-base")
+      
+      #TRIAGES
+      with html.div().classes(add="grow w-full flex flex-col justify-between animate___animated animate__fadeIn animate__slow") as self.triages_dialog_panel:
+        if len(visit["vital_signs"]) > 1:
+          self.TriagesAggrid(visit=visit,mini=mini)
+        else:
+          if visit["vital_signs"][0].done:
+            self.TriagesAggrid(visit=visit,mini=mini)
+          else:
+            self.NewTriagePanel(visit=visit,mini=mini)
+
+    self.triages_dialog.open()
+
+  def TriagesAggrid(self,visit,mini:bool=False):
+    #DATA
+    vitals = sorted([vital._asdict() for vital in visit["vital_signs"] if vital.done],key=lambda e:e["vitals_time"],reverse=True)
+    if visit["anthropometrics"]:
+      _anthrops = [_anthrop._asdict() for _anthrop in visit["anthropometrics"] if _anthrop.weight]
+      if _anthrops:
+        anthrop = _anthrops[-1]
+      else:
+        anthrop = {"weight":None,"height":None,"muac":None,"head_circum":None}
+    else:
+      anthrop = {"weight":None,"height":None,"muac":None,"head_circum":None}
+
+    #UI
+    self.triages_dialog_panel.clear()
+    with self.triages_dialog_panel.classes(add=""):
+      #Separator
+      for i in range(2):
+        ui.separator().classes(add="w-full bg-[#09026f]")
+      #Anthropometrics
+      with html.section().classes(add="bg-harmony w-full p-2 flex flex-row gap-5 text-bold text-lg"):
+        #Weight
+        with ui.label(""):
+          ui.label("").classes(add="fa-solid fa-weight-scale text-yellow-500")
+          ui.label(f"{str(anthrop['weight'])+'kg' if anthrop['weight'] else '---'}").classes(add="inline ml-0.5 text-sky-300")
+        #Height/Length
+        with ui.label(""):
+          ui.label("").classes(add="fa-solid fa-ruler-vertical text-yellow-500").tooltip(f"")
+          ui.label(f"{str(anthrop['height'])+'cm' if anthrop['height'] else '---'}").classes(add="inline ml-0.5 text-sky-300")
+        #MUAC
+        with ui.label("").classes(add=f"{'' if anthrop['muac'] else 'hidden'}"):
+          ui.label("").classes(add="fa-solid fa-child text-yellow-500")
+          ui.label(f"{anthrop['muac']} cm").classes(add="inline ml-0.5 text-sky-300")
+        #Head Circumference
+        with ui.label("").classes(add=f"{'' if anthrop['head_circum'] else 'hidden'}"):
+          ui.label("").classes(add="fa-solid fa-child text-yellow-500")
+          ui.label(f"{anthrop['head_circum']} cm").classes(add="inline ml-0.5 text-sky-300")
+        
+      #Vitals
+      with html.section().classes(add="grow flex flex-col"):
+        #Large screen
+        ui.table(
+          columns=[
+            {"name":"date","label":"DATE","field":"date","align":"left"},
+            {"name":"time","label":"TIME","field":"time","align":"left"},
+            {"name":"temp","label":"TEMPERATURE (℃)","field":"temp","align":"left"},
+            {"name":"sbp","label":"SYSTOLIC BP (mmHg)","field":"sbp","align":"left"},
+            {"name":"dbp","label":"DIASTOLIC BP (mmHg)","field":"dbp","align":"left"},
+            {"name":"pr","label":"PULSE RATE (bpm)","field":"pr","align":"left"},
+            {"name":"rr","label":"RESPIRATORY RATE (cpm)","field":"rr","align":"left"},
+            {"name":"osat","label":"O₂ SATURATION (%)","field":"osat","align":"left"}
+          ],
+          rows=[
+            {
+              "date":str(int(vital["vitals_time"].strftime("%d")))+ vital["vitals_time"].strftime(" %b %Y"),
+              "time":vital["vitals_time"].strftime("%H:%M"),
+              "temp":vital["temperature"],
+              "sbp":vital["sbp"],
+              "dbp":vital["dbp"],
+              "pr":vital["pulse_rate"],
+              "rr":vital["resp_rate"],
+              "osat":vital["o2sat"]
+            } for vital in vitals
+          ],title="VITAL SIGNS CHART",pagination={"rowsPerPage":5}
+        ).classes(add="hidden w-full grow bg-sky-50")
+
+        #Small screen
+        with ui.scroll_area().classes(add="grow lghidden"):
+          for vital in vitals:
+            with html.div().classes(add="rounded shadow-sm shadow-sky-700"):
+              with html.div().classes(add="p-1 flex flex-row gap-5 bg-harmony rounded-t text-sky-200 font-semibold"):
+                ui.label(f"{vital["vitals_time"].strftime('%d %b %Y')}").classes(add="")
+                ui.label(vital["vitals_time"].strftime("%H:%M"))
+
+              with html.div().classes(add="flex flex-row gap-0"):
+                #Temp
+                ui.chip(text=f"{vital['temperature']}°C" if vital["temperature"] else "---",icon="fa-solid fa-temperature-quarter fa-sm",color="",text_color="sky-900").props(add="").classes(add="bg-inherit px-1 shadow-sm shadow-sky-700 rounded font-semibold")
+                #PR/HR
+                ui.chip(text=f"{vital['pulse_rate']} bpm" if vital["pulse_rate"] else "---",icon="fa-solid fa-heart-pulse fa-sm",color="",text_color="sky-900").props(add="").classes(add="bg-inherit px-2 shadow-sm shadow-sky-700 rounded font-semibold")
+                #RR
+                ui.chip(text=f"{vital['resp_rate']} cpm" if vital["resp_rate"] else "---",icon="fa-solid fa-lungs fa-sm",color="",text_color="sky-900").props(add="").classes(add="bg-inherit px-2 shadow-sm shadow-sky-700 rounded font-semibold")
+                #SPO2
+                with ui.chip(text="O₂ :",color="",text_color="sky-900").props(add="").classes(add="bg-inherit px-2 shadow-sm shadow-sky-700 rounded font-semibold text-md"):
+                  ui.label(f"{vital['o2sat']} %" if vital["o2sat"] else "---").classes(add="inline ml-0.5")
+                #BP
+                with ui.chip(icon="fa-solid fa-stethoscope fa-sm",color="",text_color="sky-900").classes(add="bg-inherit px-2 rounded shadow-sm shadow-sky-700 font-semibold"):
+                  ui.label(f"{vital['sbp']}" if vital["sbp"] else "---")
+                  ui.label("/").classes(add="inline m-0 p-0")
+                  ui.label(f"{vital['dbp']}" if vital["dbp"] else "---").classes(add="inline m-0 p-0")
+                  html.span("mmHg").classes(add="bg-inherit ml-0.5")
+
+      #Button
+      with html.section().classes(add="w-full p-1 flex flex-row justify-center"):
+        ui.button(text="TRIAGE",icon="fa-solid fa-circle-plus fa-sm",color="",on_click=lambda e:self.NewTriagePanel(visit=visit,repeat=True,mini=mini)).classes(add="rounded bg-harmony text-sky-300 text-xl text-bold")
+
+class DispensingManager():
+  """A class to display UI for managing studies"""
+
+  def __init__(self,user):
+    #DATA
+    self.user = user
+    self.initial_data()
+    
+    #UI
+    with html.div().classes(add=f"w-full h-full flex flex-col {'' if self.visits else 'justify-center content-center bg-white rounded-b'}"):
+      if self.visits:
+        #Header
+        ui.separator().classes(add="w-full bg-[#09026f]")
+        with html.div().classes(add="w-full rounded-t px-2 py-1 bg-harmony flex flex-row"):
+          ui.label("TODAY VISITS").classes(add="").classes(add="bg-inherit grow text-2xl lg:text-3xl text-yellow-500 text-bold")
+          with html.div().classes(add="bg-inherit") as self.stats_panel:
+            self.DispensingStats()
+        #Displays
+        with html.div().classes(add="w-full grow bg-white rounded-b flex flex-col") as self.display_panel:
+          self.PharmacyVisitsDisplay()
+      
+      else:
+        with html.div().classes(add="bg-inherit flex flex-col gap-2 p-3 rounded text-bold fa-fade"):
+          ui.label("No clients for now").classes(add="text-xl lg:text-3xl text-center text-rose-500")
+          ui.label("Just relax and have fun!").classes(add="italic text-center text-lg lg:text-2xl text-pink-400")
+
+  #FUNCTIONALITIES
+  def initial_data(self):
+    self._pharmacy_visits = [visit for visit in clients_processor.get_pharmacy_visits() if visit.is_active]
+    self.pharmacy_visits = [visit._asdict() for visit in self._pharmacy_visits]
+    self.dispensed_visits = [visit for visit in self.pharmacy_visits if self.dispense_status(visit) == "dispensed"]
+    self.not_dispensed_visits = [visit for visit in self.pharmacy_visits if self.dispense_status(visit) == "not dispensed"]
+    self.incomplete_visits = [visit for visit in self.pharmacy_visits if self.dispense_status(visit) == "incomplete"]
+    self.visits = self.not_dispensed_visits + self.incomplete_visits + self.dispensed_visits
+  
+  def dispense_status(self,visit:dict):
+    """Returns a string representing payment status of imagings"""
+
+    statuses = set()
+
+    medicines = visit["medications"] + visit["medical_items"]
+    
+    for medicine in medicines:
+      if medicine["dispensed"]:
+        statuses.add("dispensed")
+      else:
+        statuses.add("not dispensed")
+    
+    if len(statuses) == 1:
+      return statuses.pop()
+    else:
+      return "incomplete"
+  
+  def formatted_medicines(self,visit:dict=None):
+    #Integrate with requisition database
+    requisition_medicines = get_requisitions()[0]["medicines"]
+    visit_medicines = visit["medications"] + visit["medical_items"]
+    for requisition_medicine in requisition_medicines:
+      for medicine in visit_medicines:
+        if medicine["name"] == requisition_medicine["name"]:
+          medicine["medicine_id"] = requisition_medicine["medicine_id"]
+          medicine["dispensing_balance"] = requisition_medicine["dispensing_balance"]
+          medicine["requisition_medicine_id"] = requisition_medicine["requisition_medicine_id"]
+    #Format for UI view
+    dispensed_medicines = sorted([medicine for medicine in visit_medicines if medicine["dispensed"]],key=lambda e:e["dispensing_time"],reverse=True)
+    pending_medicines = sorted([medicine for medicine in visit_medicines if not (medicine["dispensed"] or medicine["cancelled"])],key=lambda e:e["prescribed_on"],reverse=True)
+    cancelled_medicines = sorted([medicine for medicine in visit_medicines if medicine["cancelled"]],key=lambda e:e["prescribed_on"],reverse=True)
+    medicines = pending_medicines + dispensed_medicines + cancelled_medicines
+    
+    return medicines
+
+  def _medicines(self,visit):
+    """Returns a string representing payment status of imagings"""
+
+    medicines = visit["medications"] + visit["medical_items"]
+    _dispensed = [medicine for medicine in medicines if medicine["dispensed"]]
+    _pending = [medicine for medicine in medicines if (medicine["payment"]["paid"] or medicine["payment"]["billed"]) and not (medicine["dispensed"] or medicine["cancelled"])]
+    _not_dispensed = [medicine for medicine in medicines if not (medicine["payment"]["paid"] or medicine["payment"]["billed"]) and not (medicine["dispensed"] or medicine["cancelled"])]
+    _cancelled = [medicine for medicine in medicines if medicine["cancelled"]]
+
+    return f"<span><span class='{'' if _dispensed else 'hidden'} mr-2'><i class='fas fa-check text-green-500'></i><i class='ml-0.5 '>{len(_dispensed)}</i></span><span class='{'' if _pending else 'hidden'} mr-2'><i class='fas fa-spinner text-yellow-500 fa-spin'></i><i class='ml-0.5 '>{len(_pending)}</i></span><span class='{'' if _not_dispensed else 'hidden'} mr-2'><i class='fas fa-xmark text-red-500'></i><i class='ml-0.5'>{len(_not_dispensed)}</i></span><span class='{'' if _cancelled else 'hidden'} mr-2'><i class='fas fa-ban text-gray-500'></i><i class='ml-0.5 '>{len(_cancelled)}</i></span></span>"
+    
+  def dispense_medicine(self,medicine:dict,count:int):
+    """Saves the findings in the database"""
+    
+    medicine = {
+      "visit_id":medicine["visit_id"],
+      "medicine_id":medicine["medicine_id"],
+      "requisition_medicine_id":medicine["requisition_medicine_id"],
+      "medication_id":medicine["medication_id"] if "medication_id" in medicine else None,
+      "medical_item_id":medicine["medical_item_id"] if "medical_item_id" in medicine else None,
+      "dispensed_items_no":count,
+      "dispenser_id":self.user.username
+    }
+    
+    #Update database
+    status = update_client_medicine(medicine)
+    register_inventory(
+      inventory={
+        "medicine_id":medicine["medicine_id"],
+        "invoice":None,
+        "logger":self.user.username,
+        "issuer":"dispensing store",
+        "receiver":medicine["visit_id"].split("v")[0],
+        "amount":count
+      },dispensed=True
+    )
+    
+    #Failure notification
+    ui.notify(message=status["message"],type=status["type"],position=status["position"])
+
+    #UI Update
+    self.initial_data()
+    self.DispensingStats()
+    self.MedicinesPanel(visit=[visit for visit in self.visits if visit["visit_id"] == medicine["visit_id"]][0])
+  
+  def client_mini(self,visit):
+    """Returns a string of html elements for display in small screens"""
+
+    def GenderIcon(visit):
+      """Returns a styled gender icon based on client's gender"""
+
+      genders = {"male":"mars","female":"venus"}
+      colors = {"male":"sky-600","female":"pink-600"}
+
+      return f"<span class='fa-solid fa-{genders[visit['client_gender'].lower()]} text-{colors[visit['client_gender'].lower()]}'></span>"
+    
+    age = f"<span class='ml-1'>{format_age(visit['client_birthdate']).split(' ')[0]} {format_age(visit['client_birthdate']).split(' ')[1][0].upper()}</span>"
+    gender = GenderIcon(visit)
+    payment_mode = f"<span class=''>{visit['payment_mode'].upper()}</span>"
+
+    return f"<span class='h-full'>{gender}{age}</span>"
+
+  def medicines_mini(self,visit):
+    """Returns a string of html elements for display of services in small screens"""
+    medicines = visit["medications"] + visit["medical_items"]
+    _dispensed = len([medicine for medicine in medicines if medicine["dispensed"]])
+    _cancelled = len([medicine for medicine in medicines if medicine["cancelled"]])
+    _pending = len([medicine for medicine in medicines if not (medicine["cancelled"] or medicine["dispensed"])])
+
+    dispensed = pending = cancelled = ""
+
+    if _dispensed:
+      dispensed = f"<span class='text-green-600'><span class='fas fa-check-double'></span><sup class='ml-0.5 text-bold'>{_dispensed}</sup></span>"
+
+    if _pending:
+      pending = f"<span class='text-yellow-600'><span class='fa-solid fa-spinner fa-spin'></span><sup class='ml-0.5 text-bold'>{_pending}</sup></span>"
+
+    if _cancelled:
+      cancelled = f"<span class='text-gray-600'><span class='fa-solid fa-ban'></span><sup class='ml-0.5 text-bold'>{_cancelled}</sup></span>"
+    
+    #Returns
+    if _dispensed + _pending + _cancelled:
+      return f"<span class='flex flex-row justify-between items-center'>{dispensed}{pending}{cancelled}</span>"
+    else:
+      return "---"
+
+  
+  #DISPLAYS
+  def DispensingStats(self):
+    """"""
+    self.stats_panel.clear()
+    with self.stats_panel:
+      with html.span().classes(add="flex flex-row"):
+        #Visits
+        with ui.label("VISITS").classes(add="rounded-full p-2 text-sky-500"):
+          ui.label(str(len(self.visits))).classes(add="ml-1 inline text-bold text-white")
+        #Done
+        with ui.chip(icon="fa-regular fa-circle-check",text_color="green",color="").classes(add=f"{'' if self.dispensed_visits else 'hidden'} p-2 bg-inherit").tooltip("Completed Triages"):
+          ui.label(str(len(self.dispensed_visits))).classes(add="inline text-bold text-white")
+        #Pending
+        with ui.chip(icon="fas fa-spinner",text_color="yellow",color="").classes(add=f"{'' if self.incomplete_visits+self.not_dispensed_visits else 'hidden'} p-2 bg-inherit").tooltip("Incomplete Triages"):
+          ui.label(str(len(self.incomplete_visits + self.not_dispensed_visits))).classes(add="inline text-bold text-white")
+
+  def PharmacyVisitsDisplay(self):
+    """"""
+    #UI
+    self.display_panel.clear()
+    with self.display_panel:
+      #Large Screen
+      ui.aggrid(
+        {
+          "columnDefs":[
+            {"headerName":"S/N","field":"sno","width":80},
+            {"headerName":"CLIENT ID","field":"client_id","filter":"agTextColumnFilter","width":150},
+            {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","width":350},
+            {"headerName":"AGE","field":"age"},
+            {"headerName":"GENDER","field":"gender","width":100},
+            {"headerName":"PRESCRIPTION MODE","field":"prescription_mode"},
+            {"headerName":"PAYMENT","field":"payment_mode","width":100},
+            {"headerName":"MEDICINES","field":"medicines"}
+          ],
+          "rowData":[
+            {
+              "sno":self.visits.index(visit) + 1,
+              "client_id":visit["client_id"],
+              "name":visit["client_name"].title(),
+              "age":format_age(birthdate=visit["client_birthdate"]),
+              "gender":visit["client_gender"].capitalize(),
+              "prescription_mode":visit["prescription_mode"].capitalize(),
+              "payment_mode":" ".join({mode.upper() for mode in [medicine["payment"]["payment_mode"] for medicine in visit["medications"] + visit["medical_items"]]}),
+              "medicines":self._medicines(visit)
+            }
+          for visit in self.visits
+          ]
+        },
+        theme="quartz",
+        html_columns = [7]
+      ).classes(add="lg-show grow w-full animate__animated animate__fadeIn animate__slow").on("cellClicked",lambda e:self.DispensingDialog(visit=[visit for visit in self.visits if visit["client_id"] == e.args["data"]["client_id"]][0]))
+
+      #Small Screen
+      #Small Screen
+      ui.aggrid(
+        {
+          "columnDefs":[
+            {"headerName":"","field":"client_id","filter":"agTextColumnFilter","width":200},
+            {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","floatingFilter":True,"width":300},
+            {"headerName":"","field":"specs"},
+            {"headerName":"","field":"services"}
+          ],
+          "rowData":[
+            {
+              "client_id":visit["client_id"],
+              "name":f"{visit['client_name'].split(' ')[0]} {visit['client_name'].split(' ')[1][0]}. {visit['client_name'].split(' ')[2]}".title(),
+              "specs":self.client_mini(visit),
+              "services":self.medicines_mini(visit)
+            } for visit in self.visits
+          ]
+        },
+        theme="quartz",
+        html_columns=[2,3]
+      ).props(add="").classes(add="lg:hidden grow w-full animate__animated animate__fadeIn").on("cellClicked",lambda e:self.DispensingDialog(visit=[visit for visit in self.visits if visit["client_id"] == e.args["data"]["client_id"]][0]))
+
+  def DispensingDialog(self,visit:dict):
+
+    #DATA
+    details = {
+      "name":visit["client_name"],
+      "short_name":f"{visit['client_name'].split()[0]} {visit['client_name'].split()[1][0]} {visit['client_name'].split()[2]}".title(),
+      "age":format_age(visit["client_birthdate"]),
+      "gender":visit["client_gender"],
+      "address":visit["client_address"]}
+    
+    #FXS
+    def close_dialog():
+      self.PharmacyVisitsDisplay()
+      self.dispensing_dialog.close()
+
+    #UI
+    with ui.dialog().props(add="transition-show='scale' transition-hide='scale' transition-duration='500'") as self.dispensing_dialog,html.div().style(add="min-width:100%;min-height:50%;").classes(add="bg-sky-50 ring-1 ring-blue-400 shadow-md shadow-blue-400 overflow-y-hidden"):
+      #Dialog Header
+      with html.div().classes(add="w-full pr-2 flex flex-row justify-between items-center bg-harmony"):
+        with html.div().classes(add="grow"):
+          ClientCard(details=details)
+        ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=close_dialog).classes(add="bg-inherit shadow-md text-red-500 text-bold")
+      
+      #Dialog Body
+      with html.div().classes(add="w-full") as self.medicines_dialog_panel:
+        self.MedicinesPanel(visit=visit)
+      
+    self.dispensing_dialog.open()
+
+  def MedicinesPanel(self,visit:dict):
+    """"""
+    #DATA
+    medicines = self.formatted_medicines(visit=visit)
+    for medicine in medicines:
+      medicine["type"] = 'tablet' if medicine['name'].lower().split()[-1].startswith("tab") else "capsule" if medicine['name'].lower().split()[-1].startswith('cap') else 'bottle' if (medicine['name'].lower().split()[-1].startswith('syrup') or medicine['name'].lower().split()[-1].startswith('susp')) else 'vial' if medicine['name'].lower().split()[-1].startswith('vial') else 'ampoule' if medicine['name'].lower().split()[-1].startswith('ampoule') else 'item'
+    dispensed_medicines = [medicine for medicine in medicines if medicine["dispensed"]]
+    dispensable_medicines = [medicine for medicine in medicines if not (medicine["dispensed"] or medicine["cancelled"])]
+    ticked_medicines = []
+
+    #FXS
+    def pick_ticked_medicine(ticked_medicine:str,ticked_medicine_count:int,ticked:bool):
+      """Returns a list of ticked medicines"""
+      if ticked:
+        for medicine in dispensable_medicines:
+          if medicine["id"] == ticked_medicine:
+            medicine["dispensed_items_no"] = ticked_medicine_count
+            ticked_medicines.append(medicine)
+      else:
+        for medicine in ticked_medicines:
+          if medicine["id"] == ticked_medicine:
+            ticked_medicines.remove(medicine)
+
+    def dispense_all(medicines:list):
+      """Dispenses all medicines in the ticked_medicines list"""
+      if medicines:
+        for medicine in medicines:
+          self.dispense_medicine(medicine=medicine,count=medicine["dispensed_items_no"])
+      else:
+        ui.notify(message="No medicine selected",type="warning",position="center")
+      
+    #UI
+    self.medicines_dialog_panel.clear()
+    with self.medicines_dialog_panel.classes(add="p-2"):
+      with ui.scroll_area().classes(add="w-full h-[400px] pb-2 bg-white rounded shadow-md shadow-[307004d] animate__animated animate__fadeIn animate__slow"):
+        for medicine in medicines:
+          attendee = f"{staff(medicine['prescriber_id'])['first_name']} {staff(medicine['prescriber_id'])['last_name']}".title()
+          dispenser = f"{self.user.last_name}"
+          medicine["id"] = medicine["medication_id"] if "medication_id" in medicine else medicine["medical_item_id"]
+
+          with html.div().classes(add="w-full p-1 rounded bg-sky-50 grid grid-cols-3 gap-1 content-center shadow-md shadow-[#07004d]"):
+            #Medicine name
+            with html.div().classes(add="col-span-3 lg:col-span-1 flex flex-row"):
+              #Checkbox
+              ui.checkbox(on_change=lambda e:pick_ticked_medicine(
+                ticked_medicine=e.sender.parent_slot.parent.slots["default"].children[1].slots["default"].children[0].props["id"],
+                ticked_medicine_count=e.sender.parent_slot.parent.parent_slot.parent.slots["default"].children[1].slots["default"].children[6].props["model-value"]["label"],
+                ticked=e.value
+              )).props(add=f"{'' if medicine['payment']['paid'] or medicine['payment']['billed'] else 'disable'}").classes(add=f"{'hidden' if medicine['dispensed'] or medicine['cancelled'] else ''} bg-white tiki")
+              #Name
+              with html.div().classes(add="grow flex flex-col justify-center"):
+                html.div(f"{medicines.index(medicine) + 1}. {medicine['name'].upper()}").props(add=f"id={medicine['medication_id'] if 'medication_id' in medicine else 'medical_item_id'}").classes(add="w-full rounded-sm m-0 p-0 bg-inherit text-sky-700 text-lg text-bold")
+                if "dosage" in medicine:
+                  html.div(medicine["dosage"] if medicine["dosage"] else "---").classes(add="w-full bg-inherit text-base font-medium italic")
+            
+            #Details
+            with html.div().classes(add=f"col-span-3 lg:col-span-2 grid {'grid-cols-12' if medicine['payment']['paid'] or medicine['payment']['billed'] else 'grid-cols-13'} gap-1 content-center"):
+              #Timeframe
+              ui.chip(text=f"{format_age(datetime.fromisoformat(medicine['prescribed_on'])) if isinstance(medicine['prescribed_on'],str) else format_age(medicine['prescribed_on']) } ago",icon="fa-regular fa-clock fa-lg",text_color="sky-900",color="").classes(add="col-span-4 lg:col-span-2 rounded-sm ml-5 px-0 bg-inherit text-base font-semibold")
+              #Odered by
+              ui.chip(text=attendee,icon="fa-solid fa-user-doctor fa-lg",text_color="sky-900",color="").classes(add="col-span-5 lg:col-span-2 rounded-sm mx-0 px-0 bg-inherit text-base text-bold")
+              #Payment status
+              ui.chip(text="Paid" if medicine["payment"]["paid"] else "Billed" if medicine["payment"]["billed"] else "Not Paid",icon=f"{'fa-regular fa-circle-check' if medicine['payment']['paid'] else 'fa-solid fa-file-invoice' if medicine['payment']['billed'] else 'fa-regular fa-circle-xmark'} fa-lg",text_color="green" if medicine["payment"]["paid"] else "purple" if medicine["payment"]["billed"] else "red",color="").classes(add=f"col-span-3 {'lg:col-span-1' if medicine['payment']['paid'] or medicine['payment']['billed'] else 'lg:col-span-2'} rounded-sm mx-0 px-0 bg-inherit text-base text-bold")
+              #Dispensing status
+              ui.chip(
+                text="Cancelled" if medicine["cancelled"] else "Dispensed" if ((medicine["payment"]["paid"] or medicine["payment"]["billed"]) and medicine["dispensed"]) else "Pending" if ((medicine["payment"]["billed"] or medicine["payment"]["paid"]) and not medicine["dispensed"]) else "Not dispensed",
+                icon=f"{'fas fa-ban' if medicine['cancelled'] else 'fa-regular fa-circle-check' if ((medicine['payment']['paid'] or medicine['payment']['billed']) and medicine['dispensed']) else 'fa-solid fa-spinner fa-spin' if ((medicine['payment']['billed'] or medicine['payment']['paid']) and not medicine['dispensed']) else 'fa-regular fa-circle-xmark fa-flip'} fa-lg",
+                text_color="gray" if medicine["cancelled"] else "green" if ((medicine["payment"]["paid"] or medicine["payment"]["billed"]) and medicine["dispensed"]) else "orange" if ((medicine["payment"]["billed"] or medicine["payment"]["paid"]) and not medicine["dispensed"]) else "red",
+                color=""
+              ).classes(add=f"col-span-4 justify-self-center lg:col-span-2 lg:justify-self-start rounded-sm mx-0 p-0 bg-inherit text-base text-bold text-wrap")
+              #Store status
+              ui.chip(text=f"{medicine['dispensing_balance']:,.0f}",icon="fas fa-house-medical fa-lg",text_color="sky-600",color="").classes(add=f"{'hidden' if medicine['dispensed'] or medicine['cancelled'] else ''} col-span-2 mx-1 px-0 bg-inherit text-lg text-bold")
+              #Prescribed no
+              ui.chip(text=f"{medicine['dispensed_items_no'] if medicine['dispensed_items_no'] else medicine['prescribed_items_no']}",icon=f"fas fa-{'tablets' if medicine['type'] == 'tablet' else 'capsules' if medicine['type'] == 'capsule' else 'prescription-bottle' if medicine['type'] == 'bottle' else 'vial' if medicine['type'] == 'vial' or medicine['type'] == 'ampoule' else 'thermometer'} fa-lg",color="",text_color=f"{'green-600' if medicine['dispensed'] else 'sky-600'}").classes(add=f"{'hidden' if medicine['cancelled'] or not medicine["dispensed"] else ''} col-span-2 lg:col-span-1 mx-0 px-0 bg-inherit text-lg text-bold")
+              #Dispensed no
+              ui.select(options=[i for i in range(1,medicine["prescribed_items_no"]+1)],value=medicine["prescribed_items_no"],with_input=True).props(add=f"type='number' dense min=1 max={medicine['prescribed_items_no']} {'' if medicine['payment']['paid'] or medicine['payment']['billed'] else 'readonly'}").classes(add=f"{'hidden' if medicine['dispensed'] or medicine['cancelled'] else ''} col-span-2 lg:col-span-1 w-[100%] my-2 px-2 bg-white shadow-md shadow-[#07004d] rounded text-lg")
+              #Medication_id holder
+              html.small(medicine["id"]).classes("hidden") #Medication_id not for purpose of display
+              #Dispense button
+              ui.button(text="Dispense",color="",on_click=lambda e:self.dispense_medicine(
+                medicine=[medicine for medicine in medicines if medicine["id"].lower() == e.sender.parent_slot.parent.slots["default"].children[7]._text.lower()][0],
+                count=int(e.sender.parent_slot.parent.slots["default"].children[6].props["model-value"]["label"])
+              )).classes(add=f"{'hidden' if medicine['dispensed'] or medicine['cancelled'] else ''} col-span-4 lg:col-span-2 px-2 bg-harmony text-yellow-500 text-lg text-bold")
+              #Dispensing information
+              if medicine["dispensed"]:
+                #Dispenser
+                ui.chip(text=dispenser,icon="fa-solid fa-hospital-user fa-lg",text_color="green-600",color="").classes(add="col-span-2 justify-self-end rounded mx-0 px-2 bg-inherit capitalize text-base text-bold")
+                #Timeframe
+                ui.chip(text=f"{format_age(datetime.fromisoformat(medicine['dispensing_time'])) if isinstance(medicine['dispensing_time'],str) else format_age(medicine['dispensing_time'])} ago",icon="fa-regular fa-clock",text_color="green-600",color="").classes(add="col-span-2 justify-self-end rounded-sm mx-0  bg-inherit text-base text-bold")
+                
+      #Buttons
+      with html.div().classes(add="w-full p-3 flex flex-col lg:flex-row justify-center items-center gap-3"):
+        ui.label(f"{len(medicines)} MEDICINE{'S' if len(medicines)>1 else ''}").classes(add="w-full text-center lg:text-start lg:w-auto lg:grow px-3 font-semibold text-gray-500 text-base italic self-end")
+        with html.div().classes(add="grow flex flex-row justify-end gap-10"):
+          #Dispense all button
+          if dispensable_medicines:
+            ui.button(text="DISPENSED TICKED MEDICINES",color="",on_click=lambda e:dispense_all(medicines=ticked_medicines)).classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-yellow-500 text-lg text-bold")
+          #Prin Button
+          if dispensed_medicines:
+            ui.button(text="PRINT RECEIPT",icon="fas fa-receipt",color="",on_click=lambda e:self.print_receipt(medicines=medicines)).classes(add="hidden rounded bg-harmony shadow-md shadow-[#07004d] text-yellow-300 text-lg text-bold")
+
+  def print_receipt(self,medicines):
+    ui.notify(medicines)
+    ###Under maintanace
+
 
 #Store
 class Requisitions():
@@ -3891,502 +6364,6 @@ class ManagementPlanForm():
       ui.label(text="COUNSELLING").classes(add="w-full px-1 bg-gray-800 text-yellow-500 text-start text-xl text-bold")
       ui.markdown(content=self.counselling).classes(add="w-[95%] px-1 text-start")
   
-class AppointmentsManager():
-  """A class for display and amangemet of appoitments"""
-  
-  def __init__(self,user,parent=None):
-    #DATA
-    self.user = user
-    if parent:
-      self.parent = parent
-
-    self.initial_data()
-
-    self.visit_data = {"client_id":"","visit_id":"","appointment_id":None,"payment_mode":"","service":"","service_option":"","attending_clinician":"","card_no":"","authorization_no":""}
-
-    #UI
-    with html.div().style(add="overflow-y:hidden;").classes(add="w-full h-full flex flex-col"):
-      self.MainPanel()
-    
-  #FUNCTIONALITIES
-  def initial_data(self):
-    self.appointments = get_appointments()
-    self.clients = get_clients()
-    self.services = {
-      "Consultation":["consultant",[service["name"].split(" ")[0] for service in get_services() if service["type"] == "consultation"]],
-      "Imaging":["imaging stugy",[service["name"] for service in get_services() if service["type"] == "imaging"]],
-      "Procedure":["procedure",[service["name"] for service in get_services() if service["type"] == "procedure"]]
-    }
-    self.min_period = [staff for staff in get_staffs() if staff["title"] == "master"][0]["registered_on"].strftime("%Y/%m")
-    #Weekly view data
-    self.target_year = datetime.now().year
-    self.today = datetime.now().date()
-    self.last_week = self.today + timedelta(days=-7)
-
-    #Monthly view data
-    self.picked_year,self.picked_month = datetime.now().year,list(calendar.month_name[1:])[int(datetime.now().month)-1]
-    
-    self.today_appointments = [appointment for appointment in self.appointments if self.is_in_range(start_date=self.today.strftime("%Y-%m-%d"),end_date=self.today.strftime("%Y-%m-%d"),target_date=appointment["appointment_date"])]
-
-  def is_in_range(self,start_date:str,end_date:str,target_date:date):
-    """Returns True if 'target_date' is between 'start_date' and 'end_date'"""
-    
-    start_date,end_date,target_date = datetime.fromisoformat(start_date).date(),datetime.fromisoformat(end_date).date(),target_date
-
-    if target_date >= start_date and target_date <= end_date:
-      return True
-    else:
-      return False
-  
-  def last_visit(self,client):
-    """A method that takes in client and returns"""
-    
-    if len(client["visits"]) > 0:
-      last_visit = [visit for visit in client["visits"]][-1]
-      
-      #Active visit status
-      if last_visit["is_active"] == True:
-        last_visit["status"] = "active"
-      else:
-        last_visit["status"] = "inactive"
-    
-      return {"visit_id_index":int(last_visit["visit_id"].split("v")[1]),"time":last_visit["start_time"],"duration":f"{format_age(last_visit['start_time']).split(' ')[0]} {format_age(last_visit['start_time']).split(' ')[1]} ago","status":last_visit["status"]}
-    else:
-      return {"time":"No prior visit!","duration":"---","status":"---"}
-  
-  def cancel_appointment(self,appointment:dict):
-    """"""
-    appointment["cancelled"] = True
-    
-    status = update_appointment_status(appointment)
-    
-    ui.notify(message=status["message"],type=status["type"],position=status["position"])
-    
-    self.initial_data()
-    self.AppointmentsCarousel()
-
-  def reschedule_appointment(self,appointment:dict):
-    """A method to reschedule an appointment"""
-    
-    status = reschedule_appointment(appointment)
-
-    ui.notify(message=status["message"],position=status["position"],type=status["type"])
-    self.initial_data()
-    self.AppointmentsCarousel()
-
-  def initiate_visit(self):
-    """A method called from the dialog and create a row in 'visit' table"""
-    #Data
-    payment_option = self.visit_data["payment_mode"].lower()
-    service_option = self.visit_data["service_option"].lower()
-    
-    #Visit
-    visit = {
-      "client_id":self.visit_data["client_id"],
-      "visit_id":self.visit_data["visit_id"].lower(),
-      "payment_mode":self.visit_data["payment_mode"].lower(),"appointment_id":self.visit_data["appointment_id"].lower() if self.visit_data["appointment_id"] else None,
-      "attendee_id":self.user.username
-    }
-    
-    #Service & Payment
-    selected_service = [service for service in get_services() if service["name"].startswith(service_option)][0]
-
-    #CONSULTATION
-    if selected_service["type"] == "consultation":
-      #Consultation
-      consultation = {
-        "visit_id":self.visit_data["visit_id"].lower(),
-        "name":selected_service["name"],
-        "payment":{
-          "payment_mode":payment_option,"cost":selected_service["payment"][payment_option],
-          "billed":True,
-          "billed_amount":selected_service["payment"][payment_option],
-          "authorization_no":self.visit_data["authorization_no"] if payment_option != "cash" else None
-        },
-        "hx":{},"ge":{},"orodental":{},"cns":{},"cvs":{},"rs":{},"abd":{},"gus":{},"mss":{},"derma":{},"dx":{}
-      }
-      #Triage
-      vitals = {
-        "visit_id":self.visit_data["visit_id"].lower(),
-        "vitals_id":f"{self.visit_data['visit_id'].lower()}vs1",
-        "payment":{
-          "visit_id":self.visit_data["visit_id"].lower(),
-          "payment_id":f"{self.visit_data['visit_id'].lower()}vs1pay1",
-          "payment_mode":self.visit_data["payment_mode"].lower(),
-          "cost":0,
-          "authorization_no":self.visit_data["authorization_no"] if payment_option != "cash" else None,
-          "billed":True
-        }
-      }
-      anthrops = {
-        "visit_id":self.visit_data["visit_id"].lower(),
-        "anthropometrics_id":f"{self.visit_data['visit_id'].lower()}anp1",
-        "payment":{
-          "visit_id":self.visit_data["visit_id"].lower(),
-          "payment_id":f"{self.visit_data['visit_id'].lower()}anp1pay1",
-          "payment_mode":self.visit_data["payment_mode"].lower(),
-          "cost":0,
-          "authorization_no":self.visit_data["authorization_no"] if payment_option != "cash" else None,
-          "billed":True
-        }
-      }
-      status = clients_db.register_visit(visit)
-      clients_db.register_consultation(consultation)
-      clients_db.register_triage({"vitals":vitals,"anthropometrics":anthrops})
-        
-    #TRIAGE
-    if selected_service["type"] == "triage":
-      vitals = {
-        "visit_id":self.visit_data["visit_id"].lower(),
-        "vitals_id":f"{self.visit_data['visit_id'].lower()}vs1",
-        "payment":{
-          "visit_id":self.visit_data["visit_id"].lower(),
-          "payment_id":f"{self.visit_data['visit_id'].lower()}vs1pay1",
-          "payment_mode":self.visit_data["payment_mode"].lower(),"cost":selected_service["payment"][payment_option]/2,
-          "authorization_no":None,
-          "billed":True
-        }
-      }
-      anthrops = {
-        "visit_id":self.visit_data["visit_id"].lower(),
-        "anthropometrics_id":f"{self.visit_data['visit_id'].lower()}anp1",
-        "payment":{
-          "visit_id":self.visit_data["visit_id"].lower(),
-          "payment_id":f"{self.visit_data['visit_id'].lower()}anp1pay1",
-          "payment_mode":self.visit_data["payment_mode"].lower(),"cost":selected_service["payment"][payment_option]/2,
-          "authorization_no":None,
-          "billed":True
-        }
-      }
-      status = clients_db.register_visit(visit)
-      clients_db.register_triage({"vitals":vitals,"anthropometrics":anthrops})
-      
-    #LABWORK
-    elif selected_service["type"] == "laboratory":
-      pass
-
-    #Notification
-    ui.notify(message=status["message"],position=status["position"],type=status["type"])
-    
-    #UI UPDATE
-    self.initial_data()
-    self.AppointmentsCarousel()
-
-  #UI
-  def MainPanel(self):
-    #Header
-    with html.div().classes(add="w-full bg-[#07004d] p-1 rounded-t flex grid lg:grid-cols-4 gap-0.5"):
-      #Title
-      with html.div().classes(add="lg:col-span-2 w-full rounded-t px-1 py-0.5 bg-inherit"):
-        ui.label("APPOINTMENTS").style(add="text-shadow:2px 2px #505050").classes(add="bg-inherit text-yellow-500 text-bold text-2xl")
-    
-      #Toggle buttons
-      with html.div().classes(add="lg:col-span-2 w-full bg-inherit lg:grid grid-cols-2 gap-1"):
-        self.duration_toggle = ui.toggle(options=["daily","weekly","monthly","annual"],value="daily",on_change=lambda e:self.SelectionPanel(duration=e.value)).props(add="glossy spread color='bg-inherit' size='md' toggle-color='bg-inherit' text-color='yellow-400' toggle-text-color='sky-400'").classes(add="lg:justify-self-end align-self-center w-full lg:w-fit lg:rounded-full lg:ring-1 ring-blue-500 text-bold")
-      
-        #Default selection panel
-        with html.div().classes(add="w-full flex flex-row justify-center") as self.selection_panel:
-          self.SelectionPanel(duration=self.duration_toggle.value)
-
-    #Appointments panel
-    with html.div().classes(add="grow w-full rounded-b") as self.appointments_carousel_pad:
-      self.AppointmentsCarousel()
-  
-  def AppointmentsCarousel(self):
-    #DATA
-    default_month_start_date = f"{datetime.now().strftime('%Y-%m')}-01"
-    default_month_end_date = f"{datetime.now().strftime('%Y-%m')}-{calendar.monthrange(datetime.now().year,datetime.now().month)[1]}"
-    default_year_start_date = f"{self.picked_year}-01-01"
-    default_year_end_date = f"{self.picked_year}-12-31"
-    #UI
-    self.appointments_carousel_pad.clear()
-    with self.appointments_carousel_pad:
-      with ui.carousel().props(add="animated transition-prev='jump-right' transition-next='jump-left' transition-duration='500'").classes(add="w-full h-full rounded-b").bind_value(self.duration_toggle) as self.appointments_carousel:
-        
-        with ui.carousel_slide(name="daily").classes(add="q-pa-none"):
-          with html.div().classes(add="w-full h-full rounded-b") as self.daily_appointments_panel:
-            self.AppointmentsDisplay(start_date=self.default_picked_date.value,end_date=self.default_picked_date.value)
-            
-        with ui.carousel_slide(name="weekly").classes(add="q-pa-none"):
-          with html.div().classes(add="w-full h-full") as self.weekly_appointments_panel:
-            self.AppointmentsDisplay(start_date=self.last_week.strftime("%Y-%m-%d"),end_date=self.today.strftime("%Y-%m-%d"))
-        
-        with ui.carousel_slide(name="monthly").classes(add="q-pa-none"):
-          with html.div().classes(add="w-full h-full") as self.monthly_appointments_panel:
-            self.AppointmentsDisplay(start_date=default_month_start_date,end_date=default_month_end_date)
-        
-        with ui.carousel_slide(name="annual").classes(add="q-pa-none"):
-          with html.div().classes(add="w-full h-full") as self.annual_appointments_panel:
-            self.AppointmentsDisplay(start_date=default_year_start_date,end_date=default_year_end_date)
-
-  def SelectionPanel(self,duration:str):
-    """"""
-    #UI
-    self.selection_panel.clear()
-    with self.selection_panel:
-      if duration == "daily":
-        with ui.input(label="PICK DATE",value=datetime.now().strftime("%Y-%m-%d"),on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value,date=e.value)).props(add="autogrow dense filled hidden-bottom-space readonly standout input-class='text-white text-bold' label-color='sky-300'").classes(add="w-fit bg-inherit rounded-full lg:ring-1 ring-blue-400 text-sky-50 text-xl animate__animated animate__zoomIn") as self.default_picked_date:
-          with ui.dialog().props(add=" transition-show='jump-up' transition-hide='jump-down' transition-duration='300'").classes(add="ring-1 ring-blue-500") as daily_calendar:
-            ui.date(value=datetime.now(),on_change=daily_calendar.close).props(add=f"bordered square today-btn color='harmony' event-color='orange' no-unset today-btn first-day-of-week='1'").bind_value(self.default_picked_date)
-          with self.default_picked_date.add_slot("prepend"):
-            ui.icon("fas fa-calendar-check fa-xl",color="sky-500").on("click",daily_calendar.open).classes(add="hover:scale-[1.1]")
-
-      if duration == "weekly":
-        now = datetime.now()
-        today = now.date().strftime("%Y-%m-%d")
-        last_week = (now.date() + timedelta(days=-7)).strftime("%Y-%m-%d")
-        input_range:str = f"{last_week} | {today}"
-        
-        #Date range picker
-        with ui.input(label="DATE RANGE",value=input_range,on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value,date_range=e.value)).props(add="autogrow dense hidden-bottom-space readonly standout input-class='text-white text-bold' label-color='sky-300'").classes(add="w-3/4 lg:w-full bg-inherit rounded-full lg:ring-1 ring-blue-500 px-7 text-lg animate__animated animate__zoomIn") as date_range_input:
-          with ui.dialog() as weekly_calendar:
-            ui.date(value=datetime.now(),on_change=weekly_calendar.close).props(add=f"bordered square today-btn color='harmony' event-color='orange' range no-unset today-btn first-day-of-week='1'").bind_value(
-              date_range_input,
-              forward=lambda x:f'{x["from"]} | {x["to"]}' if x else None,
-              backward=lambda x:{'from':x.split(' | ')[0],'to':x.split(' | ')[1]} if ' | ' in (x or '') else None
-            )
-          with date_range_input.add_slot("prepend"):
-            ui.icon("fas fa-calendar-check",color="sky-400").on("click",weekly_calendar.open).classes(add="hover:scale-[1.1]")
-    
-      if duration == "monthly":
-        with ui.button_group().classes(add="bg-inherit w-3/5 lg:w-4/5 flex flex-row gap-3 rounded-full ring-1 ring-blue-400 shadow-md shadow-sky-500 px-3 animate__animated animate__zoomIn"):
-          year_label = ui.select(label="YEAR",options=constants.YEARS,on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value)).props(add="dark dense").classes(add="grow pl-2 rounded-l-full text-lg").bind_value(self,"picked_year")
-          with year_label.add_slot("prepend"):
-            ui.icon("fa-regular fa-calendar-check",color="sky-400")
-          month_label = ui.select(label="MONTH",options=list(calendar.month_name)[1:],on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value)).props(add="dark dense").classes(add="grow pl-2 rounded-r-full text-lg").bind_value(self,"picked_month")
-          with month_label.add_slot("prepend"):
-            ui.icon("fa-regular fa-calendar-check",color="sky-400")
-        
-      if duration == "annual":
-        ui.select(label="YEAR",options=constants.YEARS,on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value)).props(add="dark dense hide-bottom-space").classes(add="bg-inherit ring-1 ring-blue-400 shadow-md shadow-sky-500 w-fit rounded-full px-5 text-lg animate__animated animate__zoomIn").bind_value(self,"picked_year")        
-    
-  def load_appointments(self,duration:str,date=None,date_range=None):
-    #Daily
-    if duration == "daily":
-      self.daily_appointments_panel.clear()
-      with self.daily_appointments_panel:
-        self.AppointmentsDisplay(start_date=date,end_date=date)
-    
-    #Weekly
-    if duration == "weekly":
-      start_date,end_date = date_range.split(" | ")[0],date_range.split(" | ")[1]
-      self.weekly_appointments_panel.clear()
-      with self.weekly_appointments_panel:
-        self.AppointmentsDisplay(start_date=start_date,end_date=start_date)
-    
-    #Monthly
-    if duration == "monthly":
-      _month = list(calendar.month_name).index(self.picked_month)
-      if _month >=10:
-        start_date = f"{self.picked_year}-{_month}-01"
-        end_date = f"{self.picked_year}-{_month}-{calendar.monthrange(self.picked_year,_month)[1]}"
-      else:
-        start_date = f"{self.picked_year}-0{_month}-01"
-        end_date = f"{self.picked_year}-0{_month}-{calendar.monthrange(self.picked_year,_month)[1]}"
-      
-      self.monthly_appointments_panel.clear()
-      with self.monthly_appointments_panel:
-        self.AppointmentsDisplay(start_date=start_date,end_date=end_date)
-
-    #Annual
-    if duration == "annual":
-      start_date = f"{self.picked_year}-01-01"
-      end_date = f"{self.picked_year}-12-31"
-
-      self.annual_appointments_panel.clear()
-      with self.annual_appointments_panel:
-        self.AppointmentsDisplay(start_date=start_date,end_date=end_date)
-      
-  def AppointmentsDisplay(self,start_date:str,end_date:str):
-    """"""
-    #DATA
-    appointments = sorted([appointment for appointment in self.appointments if self.is_in_range(start_date=start_date,end_date=end_date,target_date=appointment["appointment_date"])],key=lambda e:e["appointment_date"],reverse=True)
-    #MODS
-    def StatusDot(appointment):
-      """A function to return a styled icon based on status of client's last visit"""
-
-      status = "active" if appointment["made"] and not (appointment["done"] or appointment["cancelled"]) else "completed" if appointment["done"] else "cancelled" if appointment["cancelled"] else "---"
-      return f"<span class='text-bold fa-solid fa-circle { 'text-green-600' if status == 'active' else 'text-yellow-500' if status == 'completed' else 'text-gray-500' if status == 'cancelled' else 'text-red-600'}'></span>"
-    
-    def GenderIcon(appointment):
-      """Returns a styled gender icon based on client's gender"""
-
-      genders = {"male":"mars","female":"venus"}
-      colors = {"male":"sky-600","female":"pink-600"}
-      return f"<span class='fa-solid fa-{genders[appointment['client_gender'].lower()]} text-{colors[appointment['client_gender'].lower()]}'></span>"
-    
-    #UI
-    #Large screen
-    ui.aggrid(
-      {
-        "columnDefs":[
-          {"headerName":"S/N","field":"sno","width":100},
-          {"headerName":"CLIENT ID","field":"client_id","filter":"agTextColumnFilter"},
-          {"headerName":"NAME","field":"name","filter":"agTextColumnFilter"},
-          {"headerName":"AGE","field":"age"},
-          {"headerName":"GENDER","field":"gender"},
-          {"headerName":"ADDRESS","field":"address"},
-          {"headerName":"APPOINTMENT DATE","field":"appt_date"},
-          {"headerName":"STATUS","field":"status","cellClassRules":{
-            "text-green-600 text-bold":"x == 'Active'",
-            "text-yellow-600 text-bold":"x == 'Completed'",              "text-red-600 text-bold":"x == 'Cancelled'"
-          }}
-        ] ,
-        "rowData":[{
-          "sno":appointments.index(appointment) + 1,
-          "client_id":appointment["client_id"],
-          "name":appointment["client_name"].title(),
-          "age":format_age(appointment["client_birthdate"]),
-          "gender":appointment["client_gender"].capitalize(),
-          "address":appointment["client_address"].capitalize(),
-          "appt_date":appointment["appointment_date"].strftime("%d %b %Y"),
-          "status":"Active" if appointment["made"] and not (appointment["done"] or appointment["cancelled"]) else "Completed" if appointment["done"] else "Cancelled" if appointment["cancelled"] else "---",
-        } for appointment in appointments]
-      },theme="quartz").classes(add="lg-show w-full h-full animate__animated animate__fadeIn animate_delay-2s animate__slow").on("cellClicked",lambda e:self.AppointmentDialog(appointment=[appointment for appointment in appointments if appointment["client_id"] == e.args["data"]["client_id"]][0]))
-    
-    #Small Screens
-    ui.aggrid(
-          {
-            "columnDefs":[
-              {"headerName":"","field":"status","width":75},
-              {"headerName":"CLIENT ID","field":"client_id","filter":"agTextColumnFilter","floatingFilter":True,"width":160},
-              {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","floatingFilter":True,"width":300},
-              {"headerName":"","field":"gender","align":"left","width":75},
-              {"headerName":"AGE","field":"age","width":150}
-            ],
-            "rowData":[
-              {
-                "status":StatusDot(appointment),
-                "client_id":appointment["client_id"],
-                "name":appointment["client_name"].title(),
-                "age":f"{format_age(appointment['client_birthdate']).split(' ')[0]} {format_age(appointment['client_birthdate']).split(' ')[1]}",
-                "gender":GenderIcon(appointment)
-              } for appointment in appointments
-            ],
-          },
-          html_columns=[0,3],
-          theme="quartz"
-        ).classes(add="lg:hidden w-full h-full animate__animated animate__fadeIn animate__slow").on("cellClicked",lambda e:self.AppointmentDialog(appointment=[appointment for appointment in appointments if appointment["client_id"] == e.args["data"]["client_id"]][0]))
-    
-  def AppointmentDialog(self,appointment:dict):
-    """"""
-    #DATA
-    if "receptionist" not in self.user.roles:
-      return
-    
-    details = {
-      "name":appointment["client_name"],
-      "short_name":f"{appointment['client_name'].split(' ')[0]} {appointment['client_name'].split(' ')[1] if len(appointment['client_name'].split(' ')) > 2 else ''} {appointment['client_name'].split(' ')[2]}".title(),
-      "age":format_age(appointment["client_birthdate"]),
-      "gender":appointment["client_gender"],
-      "address":appointment["client_address"]
-    }
-    #FXS
-    def close_dialog():
-      self.AppointmentsCarousel()
-
-    #UI
-    with ui.dialog() as self.appointment_dialog,html.div().classes(add="w-fit p-0.5 bg-sky-50"):
-      #Header
-      with html.div().classes(add="w-full grid grid-cols-11 bg-[#07004d]"):
-        with html.div().classes(add="col-span-10 bg-inherit"):
-          ClientCard(details=details)
-        ui.button(icon="fas fa-circle-xmark",color="",on_click=close_dialog).classes(add="col-span-1 bg-inherit text-red-600 text-bold text-base")
-      #Appointment
-      with html.div().classes(add="w-full p-2 flex flex-row justify-between") as self.reschedule_panel:
-        #Initiate visit button
-        ui.button(text="initiate visit",color="gray-900",on_click=lambda e:self.parent.NewVisitDialog(client=[client for client in self.clients if client['client_id'] == appointment['client_id']][0],appointment_id=appointment["appointment_id"],appointments=True)).props(add="bordered dense glossy").classes(add="rounded shadow-md shadow-[#07004d] text-sky-300 text-xl text-bold")
-        #Reschedule button
-        ui.button(text="reschedule",color="gray-900",on_click=lambda e:self.ReschedulePanel(appointment["appointment_id"])).props(add="bordered dense glossy").classes(add="rounded shadow-md shadow-[#07004d] text-sky-300 text-xl text-bold")
-        #Cancel button
-        ui.button(text="cancel",color="gray-900",icon="fas fa-calendar-xmark",on_click=lambda e:self.cancel_appointment(appointment)).props(add="bordered dense glossy").classes(add="rounded shadow-md shadow-[#07004d] text-sky-300 text-xl text-bold")
-    
-    if appointment["cancelled"] or appointment["done"]:
-      return
-    else:
-      self.appointment_dialog.open()
-  
-  def NewVisitPanel(self,client:dict,appointment_id:str|None=None):
-    #DATA
-    self.visit_data["client_id"] = client["client_id"]
-    self.visit_data["visit_id"] = f"{client['client_id']}v{self.last_visit(client)['visit_id_index'] + 1}"
-    self.visit_data["appointment_id"] = appointment_id
-
-    if client["payment_mode"].lower() == "cash":
-      payment_options = [client["payment_mode"].upper()]
-    else:
-      payment_options = [client["payment_mode"].upper(),"CASH"]
-    
-    #UI
-    self.reschedule_panel.clear()
-    with self.reschedule_panel:
-      with html.div().classes(add="w-full flex flex-col gap-3"):
-        #Service
-        with html.div().classes(add="w-full p-1 grid grid-cols-5 gap-3"):
-          #Service type
-          ui.select(options=list(self.services),label="SERVICE",value="Consultation",on_change=self.ServiceOptions).classes(add="col-span-2 ring-2 ring-sky-600 shadow-md shadow-blue-400 bg-sky-50 rounded-sm px-2 text-lg").bind_value_to(self.visit_data,"service")
-          #Service pad
-          with html.div().classes(add="col-span-2") as self.service_pad:
-            self.ServiceOptions()
-          #Payment mode
-          ui.select(options=payment_options,value=payment_options[0].upper(),label="PAYMENT",on_change=self.switch_payment_mode).props(add="disable").classes(add="ring-2 ring-sky-600 shadow-md shaodw-blue-400 bg-sky-50 rounded-sm px-2 text-lg").bind_value_to(self.visit_data,"payment_mode")
-        
-        #Payment details
-        if client["payment_mode"] != "cash":
-          ui.separator()
-          with html.div().classes(add="w-full p-1 grid grid-cols-3 gap-3"):
-            #Card No
-            with html.div().classes(add="col-span-2 flex flex-row gap-5") as self.insurance_pad:
-              self.CardNumberDisplay(client=client)
-            #Authorization details
-            with html.div().classes(add="col-span-1") as self.authorization_pad:
-              self.AuthorizationPad()
-          ui.separator()
-
-        #Action buttons
-        with html.span().classes(add="w-full my-2 flex flex-row justify-center gap-3"):
-          ui.button(text="initiate visit",color="gray-900",on_click=self.initiate_visit).classes(add="ring-1 ring-blue-500 shadow-md shadow-blue-500  text-sky-300 text-xl text-bold")
-  
-  def ServiceOptions(self):
-    """A method to display service_options"""
-    #DATA
-    service:str = self.visit_data["service"].capitalize()
-    
-    #UI
-    self.service_pad.clear()
-    with self.service_pad:
-      ui.select(options=[_service.title() for _service in self.services[service][1]],value=self.services[service][1][0].title(),label=self.services[service][0].upper()).props(add="name='visit-consult' id='visit-consult'").classes(add="w-full ring-2 ring-sky-600 shadow-md shadow-blue-400 bg-white rounded px-2 text-xl").bind_value_to(self.visit_data,"service_option")
-
-  def switch_payment_mode(self):
-    """A method to change display based on payment mode selected in visit initiation"""
-    
-    #DATA
-    scheme = self.visit_data["payment_mode"]
-    
-    if scheme == "CASH":
-      self.insurance_pad.clear()
-      self.authorization_pad.clear()
-    else:
-      self.CardNumberDisplay()
-      self.AuthorizationPad()
-
-  def ReschedulePanel(self,appointment_id:str):
-    """A method to display dialog for rescheduling an appointment"""
-    #DATA
-    _tomorrow = datetime.now() + timedelta(days=1)
-    if _tomorrow.month >=10:
-      tomorrow = f"{_tomorrow.year}/{_tomorrow.month}/{_tomorrow.day}"
-    else:
-      tomorrow = f"{_tomorrow.year}/0{_tomorrow.month}/{_tomorrow.day}"
-    
-    appointment = {"new_date":"","appointment_id":appointment_id}
-
-    #UI
-    self.reschedule_panel.clear()
-    with self.reschedule_panel.classes(add="p-0.5 flex-col gap-2",remove="p-2 flex-row"):
-      ui.date(value=datetime.now()+timedelta(days=1)).props(add="bordered dense glossy square today-btn color='harmony' event-color='orange'").classes(add="w-full shadow-md shadow-[#07004d] text-[#07004d] text-xl text-bold").bind_value_to(appointment,"new_date")
-      ui.button(text="reschedule",color="",on_click=lambda e:self.reschedule_appointment(appointment)).classes(add="w-full bg-[#07004d] text-lg text-sky-300 text-bold")
-
 class ProceduresManager():
   """A class of UI for managing consultations"""
   

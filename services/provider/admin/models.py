@@ -62,7 +62,6 @@ class FacilitySubscription(SQLModel,table=True,extend_existing=True):
 
   facility:Facility = Relationship(back_populates="subscriptions")
 
-
 class User(SQLModel,table=True,extend_existing=True):
   """A model class for user"""
 
@@ -135,6 +134,7 @@ class Formulary(SQLModel,table=True,extend_exisiting=True):
   active:bool = True
 
   schemes:list["Scheme"] = Relationship(back_populates="medicine",sa_relationship_kwargs={"cascade":"all,delete"})
+  requisitions:list["Requisition"] = Relationship(back_populates="medicine",sa_relationship_kwargs={"cascade":"all,delete"})
   inventory:list["Inventory"] = Relationship(back_populates="medicine",sa_relationship_kwargs={"cascade":"all,delete"})
 
 class Inventory(SQLModel,table=True,extend_existing=True):
@@ -167,121 +167,49 @@ class Requisition(SQLModel,table=True,extend_existing=True):
   """A model for storing procurement details"""
 
   id:int|None = Field(default=None,primary_key=True)
-  requisition_id:str|None = Field(default=None,unique=True)
-  delivery_note_id:str|None = None
-  invoice_id:str|None = None
+  requisition_id:str|None = Field(default=None)
+  medicine_requisition_id:str|None = Field(default=None,unique=True)
+  medicine_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("formulary.medicine_id",ondelete="CASCADE")))
+
+  delivery_note:str|None = None
+  invoice:str|None = None
   vendor:str|None = None
 
+  brand_name:str|None = None
+  mfg_date:datetime|None = None
+  manufacturer:str|None = None
+  batch_no:str|None = None
+  expire_date:datetime|None = None
+
+  balance:int = 0
+  active:bool = True
+
   paid:bool = False
-  billed:bool = False
+  billed:bool = True
   paid_amount:float = 0
   billed_amount:float = 0
-  
-  initiated:bool = False
-  cancelled:bool = False
-  placed:bool = False
-  received:bool = False
-  initiation_date:datetime|None = None
-  cancel_date:datetime|None = None
-  placement_date:datetime|None = None
-  receive_date:datetime|None = None
-  initiated_by:str|None = None
-  cancelled_by:str|None = None
-  placed_by:str|None = None
-  received_by:str|None = None
-  closed:bool = False  #True if store_balance + dispensing_balance = 0 for all medicines in a given requisition
 
-  medicines:list["Medicine"] = Relationship(back_populates="requisition",sa_relationship_kwargs={"cascade":"all,delete"})
-  stationeries:list["Stationery"] = Relationship(back_populates="requisition",sa_relationship_kwargs={"cascade":"all,delete"})
-
-class Medicine(SQLModel,table=True,extend_existing=True):
-  """A model for storing medicine studies"""
-
-  id:int|None = Field(default=None,primary_key=True)
-  medicine_id:str|None = Field(default=None)
-  requisition_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("requisition.requisition_id",ondelete="CASCADE")))
-  requisition_medicine_id:str|None = Field(default=None,unique=True)
-
-  name:str|None = None
-  type:str|None = None
-  category:str|None = None
-  drug_class:str|None = None
-  fda_pregnancy_category_1:str|None = None
-  fda_pregnancy_category_2:str|None = None
-  fda_pregnancy_category_3:str|None = None
-  prescription_level:str|None = None
-  
-  cancelled:bool = False
-  cancelled_by:str|None = None
-  cancelled_on:str|None = None
-  ordered:bool = False
-  ordered_on:datetime|None = None
+  ordered:bool = True
+  ordered_on:datetime = datetime.now()
   ordered_by:str|None = None
   order_unit:str|None = None
   order_unit_size:float = 0
   ordered_amount:float = 0
   unit_price:float = 0
   ordered_price:float = 0
+
   received:bool = False
   received_amount:float = 0
   received_price:float = 0
   received_by:str|None = None
   received_on:datetime|None = None
+
   rejected:bool = False
-  rejected_amount:float = 0   #Change to rejection_reasons
-  rejected_price:float = 0
-  brand_name:str|None = None
-  mfg_date:date|None = None
-  manufacturer:str|None = None
-  batch_no:str|None = None
-  expire_date:date|None = None
-  active:bool = False
-  
-  initial_store_balance:float = 0
-  store_balance:float = 0
-  average_monthly_consumption:float = 0
-  average_daily_consumption:float = 0
-  dispensing_balance:float = 0
-  physical_count:float = 0
-  count_unit:str|None = None
-  counted_by:str = "nexasoft"
-  physical_count_date:datetime|None = None
-
-  requisition:Requisition|None = Relationship(back_populates="medicines")
-
-class Stationery(SQLModel,table=True,extend_existing=True):
-  """A model for storing stationeries"""
-
-  id:int|None = Field(default=None,primary_key=True)
-  stationery_id:str|None = Field(default=None,unique=True)
-  requisition_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("requisition.requisition_id",ondelete="CASCADE")))
-  
-  cancelled:bool = False
-  cancelled_by:str|None = None
-  cancelled_on:datetime|None = None
-  ordered:bool = False
-  ordered_by:str|None = None
-  ordered_on:datetime|None = None
-  ordered_amount:float = 0
-  ordered_price:float = 0
-  received:bool = False
-  received_by:str|None = None
-  received_on:datetime|None = None
-  received_amount:float = 0
-  received_price:float = 0
-  rejected:bool = False,
   rejected_amount:float = 0
+  rejection_reasons:str|None = None
   rejected_price:float = 0
-  brand_name:str|None = None
 
-  store_balance:float = 0
-  average_monthly_consumption:float = 0
-  average_daily_consumption:float = 0
-  dispensing_balance:float = 0
-  physical_count:float = 0
-  buying_price:float|None = None
-
-  requisition:Requisition|None = Relationship(back_populates="stationeries")
+  medicine:Formulary = Relationship(back_populates="requisitions")
 
 class Scheme(SQLModel,table=True,extend_exisiting=True):
   """A model to store and retrieve data from paymentscheme table in database"""

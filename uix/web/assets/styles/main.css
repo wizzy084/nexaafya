@@ -6,9 +6,9 @@
 /*STYLES */
 /* DISPLAYS */
 .multi-line {white-space: pre-line;}
-.show-hide {display: none;}
 
 .lg-flex {display:none;}
+.reverse-lg-flex {display:flex;}
 .lg-grid {display:none;}
 .lg-show {display:none;}
 .btn-reload {background-color: inherit;}
@@ -22,15 +22,13 @@
   .lg-show {display: block;}
 }
 @media (min-width: 992px) {
-  .show-hide {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-  }
   .lg-flex {display: flex;}
 }
+@media (min-width:992px){
+  .reverse-lg-flex {display:none;}
+}
 
-#media (min-width:992px){
+@media (min-width:992px){
   .lg-grid {display:grid;}
 }
 

@@ -51,7 +51,7 @@ class Appointment(SQLModel,table=True,extend_existing=True):
 
     created_on:datetime|None = None
     created_by:str|None = None
-    appointment_date:date|None
+    appointment_time:datetime|None
     attendee_id:str|None = None
     prepaid:bool = False
     made:bool = True
@@ -69,10 +69,11 @@ class Visit(SQLModel,table=True,extend_existing=True):
     id:int|None = Field(default=None,primary_key=True)
     client_id:int|None = Field(default=None,sa_column=Column(Integer,ForeignKey("client.client_id",ondelete="CASCADE")))
     visit_id:str|None = Field(default=None,unique=True)
-
+    
+    attendee_id:str|None = None
     start_time:datetime|None = None
     end_time:datetime|None = None
-    is_active:bool = True
+    cancelled:bool = False
     payment_mode:str|None = None
     package:str = "standard"
 
@@ -126,7 +127,7 @@ class Payment(SQLModel,table=True,extend_existing=True):
     refunding_time:datetime|None = None
 
     visit:Visit|None = Relationship(back_populates="payments")
-    consultation:Optional["Consultation"] = Relationship(back_populates="payments")
+    consultation:Optional["Consultation"] = Relationship(back_populates="payment")
     anthropometrics:Optional["Anthropometrics"] = Relationship(back_populates="payment")
     vitalsigns:Optional["VitalSigns"] = Relationship(back_populates="payment")
     laboratory:Optional["Laboratory"] = Relationship(back_populates="payment")
@@ -396,10 +397,12 @@ class Consultation(SQLModel,table=True,extend_existing=True):
     cadre:str|None = None
     level:str|None = None
     initiated:bool = False
+    start_time:datetime|None = None
+    cancelled:bool = False
 
     visit:Visit|None = Relationship(back_populates="consultations")
     
-    payments:list[Payment] = Relationship(back_populates="consultation",sa_relationship_kwargs={"cascade":"all,delete"})
+    payment:Payment|None = Relationship(back_populates="consultation",sa_relationship_kwargs={"cascade":"all,delete"})
     clinical_histories:list["ClinicalHistory"] = Relationship(back_populates="consultation",sa_relationship_kwargs={"cascade":"all,delete"})
     derma_exams:list["DermatologicalExamination"] = Relationship(back_populates="consultation",sa_relationship_kwargs={"cascade":"all,delete"})
     mss_exams:list["MusculoskeletalExamination"] = Relationship(back_populates="consultation",sa_relationship_kwargs={"cascade":"all,delete"})

@@ -951,9 +951,7 @@ users = [
 
 medicines = [
   {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
     "medicine_id":"ibf200tab",
-    "requisition_medicine_id":f"ibf200tabreq{datetime.now().strftime('%y%m')}r1",
     "name":"ibuprofen 200mg tab",
     "type":"analgesic",
     "category":"medicine",
@@ -963,32 +961,20 @@ medicines = [
     "fda_pregnancy_category_3":"d",
     "prescribable":True,
     "prescription_level":"a",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"tablet",
-    "order_unit_size":100,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"tablet",
-    "initial_store_balance":0,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"ibf200tab",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"100tb",
+      "order_unit_size":100,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
     "schemes":[
       {
         "medicine_id":"ibf200tab",
@@ -1002,7 +988,7 @@ medicines = [
           }
         ]
       },
-            {
+      {
         "medicine_id":"ibf200tab",
         "scheme_name":"nhif",
         "scheme_item_code":"11014",
@@ -1014,17 +1000,10 @@ medicines = [
           }
         ]
       }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
+    ]
   },
   {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
     "medicine_id":f"ampclx500cap",
-    "requisition_medicine_id":f"ampclx500capreq{datetime.now().strftime('%y%m')}r1",
     "name":"ampicillin + cloxacillin 500mg cap",
     "type":"antibiotic",
     "category":"medicine",
@@ -1034,32 +1013,20 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":True,
     "prescription_level":"b",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"capsule",
-    "order_unit_size":100,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"capsule",
-    "initial_store_balance":0,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"ampclx500cap",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"100cp",
+      "order_unit_size":100,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
     "schemes":[
       {
         "medicine_id":"ampclx500cap",
@@ -1085,17 +1052,10 @@ medicines = [
           }
         ]
       }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
+    ]
   },
   {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
     "medicine_id":f"mtz200tab",
-    "requisition_medicine_id":f"mtz200tabreq{datetime.now().strftime('%y%m')}r1",
     "name":"metronidazole 200mg tab",
     "type":"antibiotic",
     "category":"medicine",
@@ -1105,32 +1065,20 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":True,
     "prescription_level":"a",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"tablet",
-    "order_unit_size":100,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"tablet",
-    "initial_store_balance":0,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"mtz200tab",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"100tb",
+      "order_unit_size":100,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
     "schemes":[
       {
         "medicine_id":"mtz200tab",
@@ -1156,88 +1104,10 @@ medicines = [
           }
         ]
       }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
+    ]
   },
   {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
-    "medicine_id":f"hpx3sol",
-    "requisition_medicine_id":f"hpx3solreq{datetime.now().strftime('%y%m')}r1",
-    "name":"hydrogen peroxide 3% 100mls sol",
-    "type":"antiseptic",
-    "category":"medicine",
-    "drug_class":"inorganic",
-    "fda_pregnancy_category_1":None,
-    "fda_pregnancy_category_2":None,
-    "fda_pregnancy_category_3":None,
-    "prescribable":True,
-    "prescription_level":"a",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"bottle",
-    "order_unit_size":1,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"bottle",
-    "initial_store_balance":0,
-    "schemes":[
-      {
-        "medicine_id":"hpx3sol",
-        "scheme_name":"cash",
-        "scheme_item_code":"hpx3sol",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"cash",
-            "standard":2000
-          }
-        ]
-      },
-      {
-        "medicine_id":"hpx3sol",
-        "scheme_name":"nhif",
-        "scheme_item_code":"11512",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"nhif",
-            "standard":620
-          }
-        ]
-      }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
-  },
-  {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
     "medicine_id":f"amx250cap",
-    "requisition_medicine_id":f"amx250capreq{datetime.now().strftime('%y%m')}r1",
     "name":"amoxicillin 250mg cap",
     "type":"antibiotic",
     "category":"medicine",
@@ -1247,32 +1117,20 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":True,
     "prescription_level":"a",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"capsule",
-    "order_unit_size":100,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"capsule",
-    "initial_store_balance":0,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"amx250cap",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"100cp",
+      "order_unit_size":100,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
     "schemes":[
       {
         "medicine_id":"amx250cap",
@@ -1298,17 +1156,10 @@ medicines = [
           }
         ]
       }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
+    ]
   },
   {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
     "medicine_id":f"cipro500tab",
-    "requisition_medicine_id":f"cipro500tabreq{datetime.now().strftime('%y%m')}r1",
     "name":"ciprofloxacin 500mg tab",
     "type":"antibiotic",
     "category":"medicine",
@@ -1318,32 +1169,20 @@ medicines = [
     "fda_pregnancy_category_3":"c",
     "prescribable":True,
     "prescription_level":"a",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"tablet",
-    "order_unit_size":100,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"tablet",
-    "initial_store_balance":0,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"cipro500tab",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"100tb",
+      "order_unit_size":100,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
     "schemes":[
       {
         "medicine_id":"cipro500tab",
@@ -1369,17 +1208,10 @@ medicines = [
           }
         ]
       }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
+    ]
   },
   {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
     "medicine_id":f"pcm500tab",
-    "requisition_medicine_id":f"pcm500tabreq{datetime.now().strftime('%y%m')}r1",
     "name":"paracetamol 500mg tab",
     "type":"analgesic",
     "category":"medicine",
@@ -1389,32 +1221,20 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":True,
     "prescription_level":"a",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"tablet",
-    "order_unit_size":100,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"tablet",
-    "initial_store_balance":0,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"pcm500tab",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"100tb",
+      "order_unit_size":100,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
     "schemes":[
       {
         "medicine_id":"pcm500tab",
@@ -1440,88 +1260,10 @@ medicines = [
           }
         ]
       }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
+    ]
   },
   {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
-    "medicine_id":f"diclosod50tab",
-    "requisition_medicine_id":f"diclosod50tabreq{datetime.now().strftime('%y%m')}r1",
-    "name":"diclofenac 50mg tab",
-    "type":"analgesic",
-    "category":"medicine",
-    "drug_class":"nsaid",
-    "fda_pregnancy_category_1":"b",
-    "fda_pregnancy_category_2":"b",
-    "fda_pregnancy_category_3":"d",
-    "prescribable":True,
-    "prescription_level":"a",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"tablet",
-    "order_unit_size":100,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"tablet",
-    "initial_store_balance":0,
-    "schemes":[
-      {
-        "medicine_id":"diclosod50tab",
-        "scheme_name":"cash",
-        "scheme_item_code":"diclosod50tab",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"cash",
-            "standard":200
-          }
-        ]
-      },
-      {
-        "medicine_id":"diclosod50tab",
-        "scheme_name":"nhif",
-        "scheme_item_code":"11007",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"nhif",
-            "standard":20
-          }
-        ]
-      }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
-  },
-  {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
     "medicine_id":f"mlx10tab",
-    "requisition_medicine_id":f"mlx10tabreq{datetime.now().strftime('%y%m')}r1",
     "name":"meloxicam 10mg tab",
     "type":"analgesic",
     "category":"medicine",
@@ -1531,32 +1273,20 @@ medicines = [
     "fda_pregnancy_category_3":"d",
     "prescribable":True,
     "prescription_level":"a",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"tablet",
-    "order_unit_size":100,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"tablet",
-    "initial_store_balance":0,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"mlx10tab",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"100tb",
+      "order_unit_size":100,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
     "schemes":[
       {
         "medicine_id":"mlx10tab",
@@ -1570,17 +1300,10 @@ medicines = [
           }
         ]
       }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
+    ]
   },
   {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
     "medicine_id":"povi2sol",
-    "requisition_medicine_id":f"povi2solreq{datetime.now().strftime('%y%m')}r1",
     "name":"povidone-iodine 2% 100ml sol",
     "type":"antiseptic",
     "category":"medical supply",
@@ -1590,32 +1313,20 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":False,
     "prescription_level":"a",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"bottle",
-    "order_unit_size":1,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"bottle",
-    "initial_store_balance":0,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"povi2sol",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"1bt",
+      "order_unit_size":1,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
     "schemes":[
       {
         "medicine_id":"povi2sol",
@@ -1629,17 +1340,10 @@ medicines = [
           }
         ]
       }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
+    ]
   },
   {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
     "medicine_id":"chx2sol",
-    "requisition_medicine_id":f"chx2solreq{datetime.now().strftime('%y%m')}r1",
     "name":"chlorhexidine 2% 100ml sol",
     "type":"antiseptic",
     "category":"medicine",
@@ -1649,32 +1353,20 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":True,
     "prescription_level":"b",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"bottle",
-    "order_unit_size":1,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"bottle",
-    "initial_store_balance":0,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"chx2sol",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"1bt",
+      "order_unit_size":1,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
     "schemes":[
       {
         "medicine_id":"chx2sol",
@@ -1688,17 +1380,10 @@ medicines = [
           }
         ]
       }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
+    ]
   },
   {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
      "medicine_id":f"diclo25amp",
-     "requisition_medicine_id":f"diclo25ampreq{datetime.now().strftime('%y%m')}r1",
     "name":"diclofenac 25mg/ml 3ml ampoule",
     "type":"analgesic",
     "category":"medicine",
@@ -1708,32 +1393,20 @@ medicines = [
     "fda_pregnancy_category_3":"d",
     "prescribable":True,
     "prescription_level":"a",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"ampoule",
-    "order_unit_size":10,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"ampoule",
-    "initial_store_balance":0,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"diclo25amp",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"10vl",
+      "order_unit_size":10,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
     "schemes":[
       {
         "medicine_id":"diclo25amp",
@@ -1759,17 +1432,10 @@ medicines = [
           }
         ]
       }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
+    ]
   },
   {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
     "medicine_id":f"mtz500sol",
-    "requisition_medicine_id":f"mtz500solreq{datetime.now().strftime('%y%m')}r1",
     "name":"metronidazole 5mg/ml 100ml sol",
     "type":"antibiotic",
     "category":"medicine",
@@ -1779,32 +1445,20 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":False,
     "prescription_level":"a",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"bottle",
-    "order_unit_size":1,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"bottle",
-    "initial_store_balance":0,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"mtz500sol",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"10bt",
+      "order_unit_size":10,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
     "schemes":[
       {
         "medicine_id":"mtz500sol",
@@ -1830,253 +1484,10 @@ medicines = [
           }
         ]
       }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
+    ]
   },
   {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
-    "medicine_id":f"dental-floss",
-    "requisition_medicine_id":f"flossreq{datetime.now().strftime('%y%m')}r1",
-    "name":"dental floss pack",
-    "type":"accessory",
-    "category":"medical supply",
-    "drug_class":None,
-    "fda_pregnancy_category_1":None,
-    "fda_pregnancy_category_2":None,
-    "fda_pregnancy_category_3":None,
-    "prescribable":True,
-    "prescription_level":None,
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"pack",
-    "order_unit_size":1,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"pack",
-    "initial_store_balance":0,
-    "schemes":[
-      {
-        "medicine_id":"dental-floss",
-        "scheme_name":"cash",
-        "scheme_item_code":"dental-floss",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"cash",
-            "standard":5000
-          }
-        ]
-      }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
-  },
-  {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
-    "medicine_id":f"senso-tpaste",
-    "requisition_medicine_id":f"sensoreq{datetime.now().strftime('%y%m')}r1",
-    "name":"sensodyne toothpaste",
-    "type":"antiseptic",
-    "category":"medical supply",
-    "drug_class":"inorganic",
-    "fda_pregnancy_category_1":None,
-    "fda_pregnancy_category_2":None,
-    "fda_pregnancy_category_3":None,
-    "prescribable":True,
-    "prescription_level":None,
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"tube",
-    "order_unit_size":1,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"tube",
-    "initial_store_balance":0,
-    "schemes":[
-      {
-        "medicine_id":"senso-tpaste",
-        "scheme_name":"cash",
-        "scheme_item_code":"senso-tpaste",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"cash",
-            "standard":9000
-          }
-        ]
-      }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
-  },
-  {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
-    "medicine_id":f"tbrush-softs",
-    "requisition_medicine_id":f"tbrushreq{datetime.now().strftime('%y%m')}r1",
-    "name":"toothbrush softs",
-    "type":"accessory",
-    "category":"medical supply",
-    "drug_class":None,
-    "fda_pregnancy_category_1":None,
-    "fda_pregnancy_category_2":None,
-    "fda_pregnancy_category_3":None,
-    "prescribable":True,
-    "prescription_level":None,
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"tube",
-    "order_unit_size":1,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"tube",
-    "initial_store_balance":0,
-    "schemes":[
-      {
-        "medicine_id":"tbrush-softs",
-        "scheme_name":"cash",
-        "scheme_item_code":"tbrush-softs",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"cash",
-            "standard":2000
-          }
-        ]
-      }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
-  },
-  {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
-    "medicine_id":f"floride-tpaste",
-    "requisition_medicine_id":f"florireq{datetime.now().strftime('%y%m')}r1",
-    "name":"fluoridated toothpaste",
-    "type":"antiseptic",
-    "category":"medical supply",
-    "drug_class":"inorganic",
-    "fda_pregnancy_category_1":None,
-    "fda_pregnancy_category_2":None,
-    "fda_pregnancy_category_3":None,
-    "prescribable":True,
-    "prescription_level":None,
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"tube",
-    "order_unit_size":1,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"tube",
-    "initial_store_balance":0,
-    "schemes":[
-      {
-        "medicine_id":"floride-tpaste",
-        "scheme_name":"cash",
-        "scheme_item_code":"floride-tpaste",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"cash",
-            "standard":4500
-          }
-        ]
-      },
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
-  },
-  {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
     "medicine_id":f"nystsusp",
-    "requisition_medicine_id":f"nystsuspreq{datetime.now().strftime('%y%m')}r1",
     "name":"nystatin suspension",
     "type":"antifungal",
     "category":"medicine",
@@ -2086,32 +1497,20 @@ medicines = [
     "fda_pregnancy_category_3":"c",
     "prescribable":True,
     "prescription_level":"a",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"bottle",
-    "order_unit_size":1,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"bottle",
-    "initial_store_balance":0,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"nystsusp",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"1bt",
+      "order_unit_size":1,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
     "schemes":[
       {
         "medicine_id":"nystsusp",
@@ -2137,17 +1536,10 @@ medicines = [
           }
         ]
       }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
+    ]
   },
   {
-    "requisition_id":f"req{datetime.now().strftime('%y%m')}r1",
     "medicine_id":f"diclo20gel",
-    "requisition_medicine_id":f"diclo20gelreq{datetime.now().strftime('%y%m')}r1",
     "name":"diclofenac 20g gel",
     "type":"analgesic",
     "category":"medicine",
@@ -2157,32 +1549,20 @@ medicines = [
     "fda_pregnancy_category_3":"d",
     "prescribable":True,
     "prescription_level":"a",
-    "cancelled":False,
-    "cancelled_by":None,
-    "cancelled_on":None,
-    "ordered":False,
-    "ordered_on":None,
-    "ordered_by":None,
-    "order_unit":"tube",
-    "order_unit_size":1,
-    "ordered_amount":0,
-    "unit_price":0,
-    "ordered_price":0,
-    "brand_name":None,
-    "manufacturer":None,
-    "batch_no":None,
-    "mfg_date":None,
-    "expire_date":None,
-    "received":True,
-    "received_amount":0,
-    "received_price":0,
-    "received_by":None,
-    "received_on":None,
-    "rejected":False,
-    "rejected_amount":0,
-    "rejected_price":0,
-    "count_unit":"tube",
-    "initial_store_balance":0,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"diclo20gel",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"1tu",
+      "order_unit_size":1,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
     "schemes":[
       {
         "medicine_id":"diclo20gel",
@@ -2208,13 +1588,272 @@ medicines = [
           }
         ]
       }
-    ],
-    "store_balance":0,
-    "dispensing":True,
-    "dispensing_balance":0,
-    "physical_count":0,
-    "amc":0
-  }
+    ]
+  },
+  {
+    "medicine_id":f"diclosod50tab",
+    "name":"diclofenac 50mg tab",
+    "type":"analgesic",
+    "category":"medicine",
+    "drug_class":"nsaid",
+    "fda_pregnancy_category_1":"b",
+    "fda_pregnancy_category_2":"b",
+    "fda_pregnancy_category_3":"d",
+    "prescribable":True,
+    "prescription_level":"a",
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"diclosod500tab",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"100tb",
+      "order_unit_size":100,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
+    "schemes":[
+      {
+        "medicine_id":"diclosod50tab",
+        "scheme_name":"cash",
+        "scheme_item_code":"diclosod50tab",
+        "restricted":False,
+        "prices":[
+          {
+            "scheme_name":"cash",
+            "standard":200
+          }
+        ]
+      },
+      {
+        "medicine_id":"diclosod50tab",
+        "scheme_name":"nhif",
+        "scheme_item_code":"11007",
+        "restricted":False,
+        "prices":[
+          {
+            "scheme_name":"nhif",
+            "standard":20
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "medicine_id":"hpx3sol",
+    "name":"hydrogen peroxide 3% 100mls sol",
+    "type":"antiseptic",
+    "category":"medicine",
+    "drug_class":"inorganic",
+    "fda_pregnancy_category_1":None,
+    "fda_pregnancy_category_2":None,
+    "fda_pregnancy_category_3":None,
+    "prescribable":True,
+    "prescription_level":"a",
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"hpx3sol",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"1bt",
+      "order_unit_size":1,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
+    "schemes":[
+      {
+        "medicine_id":"hpx3sol",
+        "scheme_name":"cash",
+        "scheme_item_code":"hpx3sol",
+        "restricted":False,
+        "prices":[
+          {
+            "scheme_name":"cash",
+            "standard":2000
+          }
+        ]
+      },
+      {
+        "medicine_id":"hpx3sol",
+        "scheme_name":"nhif",
+        "scheme_item_code":"11512",
+        "restricted":False,
+        "prices":[
+          {
+            "scheme_name":"nhif",
+            "standard":620
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "medicine_id":f"dental-floss",
+    "name":"dental floss pack",
+    "type":"accessory",
+    "category":"medical supply",
+    "drug_class":None,
+    "fda_pregnancy_category_1":None,
+    "fda_pregnancy_category_2":None,
+    "fda_pregnancy_category_3":None,
+    "prescribable":True,
+    "prescription_level":None,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"dental-floss",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"1pk",
+      "order_unit_size":1,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
+    "schemes":[
+      {
+        "medicine_id":"dental-floss",
+        "scheme_name":"cash",
+        "scheme_item_code":"dental-floss",
+        "restricted":False,
+        "prices":[
+          {
+            "scheme_name":"cash",
+            "standard":5000
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "medicine_id":f"senso-tpaste",
+    "name":"sensodyne toothpaste",
+    "type":"antiseptic",
+    "category":"medical supply",
+    "drug_class":"inorganic",
+    "fda_pregnancy_category_1":None,
+    "fda_pregnancy_category_2":None,
+    "fda_pregnancy_category_3":None,
+    "prescribable":True,
+    "prescription_level":None,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"senso-tpaste",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"1tu",
+      "order_unit_size":1,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
+    "schemes":[
+      {
+        "medicine_id":"senso-tpaste",
+        "scheme_name":"cash",
+        "scheme_item_code":"senso-tpaste",
+        "restricted":False,
+        "prices":[
+          {
+            "scheme_name":"cash",
+            "standard":9000
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "medicine_id":f"tbrush-softs",
+    "name":"toothbrush softs",
+    "type":"accessory",
+    "category":"medical supply",
+    "drug_class":None,
+    "fda_pregnancy_category_1":None,
+    "fda_pregnancy_category_2":None,
+    "fda_pregnancy_category_3":None,
+    "prescribable":True,
+    "prescription_level":None,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"tbrush-softs",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"1tu",
+      "order_unit_size":1,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
+    "schemes":[
+      {
+        "medicine_id":"tbrush-softs",
+        "scheme_name":"cash",
+        "scheme_item_code":"tbrush-softs",
+        "restricted":False,
+        "prices":[
+          {
+            "scheme_name":"cash",
+            "standard":2000
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "medicine_id":f"floride-tpaste",
+    "name":"fluoridated toothpaste",
+    "type":"antiseptic",
+    "category":"medical supply",
+    "drug_class":"inorganic",
+    "fda_pregnancy_category_1":None,
+    "fda_pregnancy_category_2":None,
+    "fda_pregnancy_category_3":None,
+    "prescribable":True,
+    "prescription_level":None,
+    "requisition":{
+      "requisition_id":f"default",
+      "medicine_id":"floride-tpaste",
+      "vendor":"nexasoft",
+      "billed_amount":0,
+      "ordered_by":"admin",
+      "order_unit":"1tu",
+      "order_unit_size":1,
+      "ordered_amount":0,
+      "unit_price":0,
+      "received_amount":0,
+      "received_by":"admin",
+      "received_price":0
+    },
+    "schemes":[
+      {
+        "medicine_id":"floride-tpaste",
+        "scheme_name":"cash",
+        "scheme_item_code":"floride-tpaste",
+        "restricted":False,
+        "prices":[
+          {
+            "scheme_name":"cash",
+            "standard":4500
+          }
+        ]
+      },
+    ]
+  },
 ]
 
 requisition = {

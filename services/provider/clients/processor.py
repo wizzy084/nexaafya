@@ -2,12 +2,13 @@
 
 #GENERAL IMPORTS
 import json
+from collections import namedtuple
 from datetime import datetime,timedelta
 
 #SQLMODEL IMPORTS
 from sqlalchemy import Boolean,text
 from sqlalchemy.engine.base import Engine
-from sqlmodel import Session,SQLModel,select
+from sqlmodel import Session,SQLModel,func,select
 
 #DICONS IMPORTS
 from ._snippets import *
@@ -15,13 +16,41 @@ from services.provider.configs import database_engine
 
 
 
+#FORMATTING
+def format_client_id() -> int:
+  """Returns an interger representing new client id"""
+
+  id_primer = datetime.now().strftime("%y%m")
+
+  with Session(database_engine) as session:
+    latest_id = session.exec(select(Client.client_id).order_by(Client.created_on.desc()).limit(1)).first()
+    id_str = str(latest_id) if latest_id else None
+    
+    #Other Clients
+    if id_str:
+      id_end = int(id_str.split(id_primer)[-1]) + 1
+
+      if id_end < 10:
+        new_id_end = f"00{id_end}"
+      elif id_end < 100:
+        new_id_end = f"0{id_end}"
+      else:
+        new_id_end = str(id_end)
+
+      return int(f"{id_primer}{new_id_end}")
+      
+    #First client
+    else:
+      return int(f"{id_primer}001")
+
+    
 
 #FROM DATABASE
-def get_clients():
+def get_clients(short:bool=False):
   """A function retrieves rows in 'client' table and restructured into python dictionaries"""
 
   with Session(database_engine) as session:
-    db_clients = list(session.exec(select(Client)).all())
+    db_clients:list[Client] = list(session.exec(select(Client)).all())
     clients = [unmodel_client(db_client) for db_client in db_clients]
 
     return clients
@@ -54,7 +83,7 @@ def get_active_visits():
   """Returns a list of dictionaries containing details of active visits in the database"""
 
   with Session(database_engine) as session:
-    db_active_visits:list[Visit] = list(session.exec(select(Visit).where(Visit.is_active == True)))
+    db_active_visits:list[Visit] = list(session.exec(select(Visit).where(Visit.cancelled == False)))
 
     return [unmodel_visit(db_active_visit) for db_active_visit in db_active_visits]
 
@@ -234,6 +263,24 @@ def get_procedures():
     procedures = [unmodel_procedure(db_procedure) for db_procedure in db_procedures]
 
     return procedures
+
+#STATS
+def count_today_visits_and_appointments():
+  """Returns a namedtuple with two values:visits & appointments"""
+
+  data = {"visits":0,"appointments":0}
+  today = namedtuple("Today",["visits","appointments"])
+
+  with Session(database_engine) as session:
+    visits_count = session.exec(select(func.count(Visit.visit_id)).where(func.date(Visit.start_time) == datetime.now().date())).one()
+    data["visits"] = visits_count if visits_count else 0
+  
+  with Session(database_engine) as session:
+    appointments_count = session.exec(select(func.count(Appointment.appointment_id)).where(func.date(Appointment.appointment_time) == datetime.now().date())).one()
+    data["appointments"] = appointments_count if appointments_count else 0
+  
+  return today(visits=data["visits"],appointments=data["appointments"])
+  
 
 #FROM 3RD PARTY APIs
 def fetch_insured_client(insurance_data:dict):

@@ -3,7 +3,7 @@
 #GENERAL IMPORTS
 import json
 from collections import namedtuple
-from sqlmodel import SQLModel,Session
+from sqlmodel import Session,SQLModel,select
 from uuid import uuid4
 
 #PROJECT IMPORTS
@@ -26,67 +26,29 @@ def populate_db():
   
   with Session(database_engine) as session:
     register_facility_subscription(template.default_subscription)
-  
-  with Session(database_engine) as session:
-    a=template.default_subscription
-    a["receipt"] = '20ujdf'
-    update_facility_subscription(a)
 
-  #Initial users
+  #Users
   with Session(database_engine) as session:
-    db_users:list[User] = list(session.exec(select(User)).all())
-    if not db_users:
+    if not session.exec(select(User)).all():
       for user in template.users:
         register_staff(user)
       
   #Initial services
   with Session(database_engine) as session:
-    db_services:list[Service] = list(session.exec(select(Service)).all())
-    if not db_services:
+    if not session.exec(select(Service)).all():
       for service in template.services:
-        register_service(service)
+        register_service(service,default=True)
 
   #Initial formulary
   with Session(database_engine) as session:
-    db_formulary:list[Formulary] = list(session.exec(select(Formulary)).all())
-    if not db_formulary:
-      register_formulary(template.medicines)
+    if not session.exec(select(Formulary)).all():
+      register_formulary(template.medicines,default=True)
 
   #Initial requisition
   with Session(database_engine) as session:
     db_requisitions:list[Requisition] = list(session.exec(select(Requisition)).all())
-    
-    if not db_requisitions:
-      register_requisition(template.requisition)
-      initiate_requisition(template.requisition)
-      order_requisition(template.requisition)
-      receive_requisition(template.requisition)
-      #Initial medicines
-      for medicine in template.medicines:
-        medicine["active"] = True
-        medicine["invoice"],medicine["delivery_note"] = "inv001","dn001"
-        register_medicine(medicine)
-        #update_medicine(medicine=medicine,order=True,receive=True)
 
 #REGISTER FUNCTIONS
-def register_facility_subscription(subscription:dict):
-  db_facility_subscription = FacilitySubscription(
-    facility_id = subscription["facility_id"],
-    receipt = subscription["receipt"],
-    tier = subscription["tier"],
-    cost = subscription["cost"],
-    paid_amount = subscription["paid_amount"],
-    pending_amount = subscription["pending_amount"],
-    end_time = subscription["end_time"]
-  )
-
-  with Session(database_engine) as session:
-    if session.exec(select(FacilitySubscription).where(FacilitySubscription.receipt == db_facility_subscription.receipt)).first():
-      return
-    else:
-      session.add(db_facility_subscription)
-      session.commit()
-
 def register_facility(facility:dict):
   """Model Facility and saves data into facility table in database"""
 
@@ -113,6 +75,24 @@ def register_facility(facility:dict):
       return
     else:
       session.add(db_facility)
+      session.commit()
+
+def register_facility_subscription(subscription:dict):
+  db_facility_subscription = FacilitySubscription(
+    facility_id = subscription["facility_id"],
+    receipt = subscription["receipt"],
+    tier = subscription["tier"],
+    cost = subscription["cost"],
+    paid_amount = subscription["paid_amount"],
+    pending_amount = subscription["pending_amount"],
+    end_time = subscription["end_time"]
+  )
+
+  with Session(database_engine) as session:
+    if session.exec(select(FacilitySubscription).where(FacilitySubscription.receipt == db_facility_subscription.receipt)).first():
+      return
+    else:
+      session.add(db_facility_subscription)
       session.commit()
 
 def register_staff(staff:dict):
@@ -160,7 +140,7 @@ def register_login(login:dict):
       session.add(db_login)
       session.commit()
 
-def register_service(service:dict):
+def register_service(service:dict,default:bool=False):
   """"""
   #REGISTER SERVICE
   db_service = Service(
@@ -182,34 +162,34 @@ def register_service(service:dict):
         #REGISTER PAYMENT SCHEMES
         schemes = service["schemes"]
         for scheme in schemes:
-          register_scheme(scheme)
+          register_scheme(scheme,default=default)
           
     return {"status":True,"message":"Service successfully added!","type":"positive","position":"top"}
   except:
     return {"status":False,"message":"Service not added!","type":"negative","position":"center"}
 
-def register_formulary(medicines:list[dict]):
+def register_formulary(medicines:list[dict],default:bool=False):
   """A function to create row in formulary table and populate it in database table"""
   
   try:
+    print(len(medicines))
     for medicine in medicines:
-      #Formaulary
+      #Formulary
       db_medicine = Formulary(
-        medicine_id = medicine["medicine_id"],
-        name = medicine["name"],
-        type = medicine["type"],
-        category = medicine["category"],
-        drug_class = medicine["drug_class"] if "drug_class" in medicine else None,
-        fda_pregnancy_category_1 = medicine["fda_pregnancy_category_1"] if "fda_pregnancy_category_1" in medicine else None,
-        fda_pregnancy_category_2 = medicine["fda_pregnancy_category_2"] if "fda_pregnancy_category_2" in medicine else None,
-        fda_pregnancy_category_3 = medicine["fda_pregnancy_category_3"] if "fda_pregnancy_category_3" in medicine else None,
+        medicine_id = medicine["medicine_id"].lower(),
+        name = medicine["name"].lower(),
+        type = medicine["type"].lower(),
+        category = medicine["category"].lower(),
+        drug_class = medicine["drug_class"].lower() if "drug_class" in medicine else None,
+        fda_pregnancy_category_1 = medicine["fda_pregnancy_category_1"].lower() if "fda_pregnancy_category_1" in medicine else None,
+        fda_pregnancy_category_2 = medicine["fda_pregnancy_category_2"].lower() if "fda_pregnancy_category_2" in medicine else None,
+        fda_pregnancy_category_3 = medicine["fda_pregnancy_category_3"].lower() if "fda_pregnancy_category_3" in medicine else None,
         prescribable = medicine["prescribable"] if "prescribable" in medicine else None,
-        prescription_level = medicine["prescription_level"] if "prescription_level" in medicine else None,
-        active = True
+        prescription_level = medicine["prescription_level"].lower() if "prescription_level" in medicine else True,
       )
       
       with Session(database_engine) as session:
-        if list(session.exec(select(Formulary).where(Formulary.medicine_id == db_medicine.medicine_id)).all()):
+        if session.exec(select(Formulary).where(Formulary.medicine_id == db_medicine.medicine_id)).first():
           return
         else:
           session.add(db_medicine)
@@ -218,7 +198,13 @@ def register_formulary(medicines:list[dict]):
       #Initiate Schemes
       schemes = medicine["schemes"]
       for scheme in schemes:
-        register_scheme(scheme)
+        register_scheme(scheme,default=default)
+      
+      #Initial requisition
+      default_requisition = medicine["requisition"]
+      
+      register_requisition(default_requisition)
+      update_requisition(requisition=default_requisition,receive=True)
           
     return {"message":"Medicine successfully added to the formulary!","position":"top","type":"positive"}
   except:
@@ -258,7 +244,32 @@ def register_inventory(inventory:dict,count:bool=False,dispensed:bool=False,tran
     session.add(db_inventory)
     session.commit()
 
-def register_scheme(scheme:dict):
+def register_requisition(requisition:dict):
+  """A function to create row in requisition table and populate it in database table"""
+
+  db_requisition = Requisition(
+    requisition_id = requisition["requisition_id"].lower(),
+    medicine_id = requisition["medicine_id"].lower(),
+    medicine_requisition_id = f"{requisition['requisition_id']}{requisition['medicine_id']}".lower(),
+    vendor = requisition["vendor"].lower(),
+    billed_amount = requisition["billed_amount"],
+    ordered_by = requisition["ordered_by"].lower(),
+    order_unit = requisition["order_unit"].lower(),
+    order_unit_size = requisition["order_unit_size"],
+    ordered_amount = requisition["ordered_amount"],
+    unit_price = requisition["unit_price"],
+    ordered_price = requisition["unit_price"] * (requisition["ordered_amount"]/requisition["order_unit_size"])
+  )
+  
+  #Register
+  with Session(database_engine) as session:
+    if session.exec(select(Requisition).where(Requisition.medicine_requisition_id == db_requisition.medicine_requisition_id)).all():
+      return
+    else:
+      session.add(db_requisition)
+      session.commit()
+
+def register_scheme(scheme:dict,default:bool=False):
   """"""
   #REGISTERING SERVICE SCHEMES
   db_scheme = Scheme(
@@ -271,7 +282,7 @@ def register_scheme(scheme:dict):
   )
   
   with Session(database_engine) as session:
-    if list(session.exec(select(Scheme).where(Scheme.scheme_id == db_scheme.scheme_id))):
+    if session.exec(select(Scheme).where(Scheme.scheme_id == db_scheme.scheme_id)).first():
       return
     else:
       session.add(db_scheme)
@@ -281,12 +292,15 @@ def register_scheme(scheme:dict):
   pricings = scheme["prices"]
   for pricing in pricings:
     pricing["scheme_id"] = f"{scheme['scheme_name']}-{scheme['service_id'] if 'service_id' in scheme else scheme['medicine_id'] if 'medicine_id' in scheme else 000}".lower()
-    register_pricing(pricing)
+    register_pricing(pricing,default=default)
   
-def register_pricing(pricing:dict):
+def register_pricing(pricing:dict,default:bool=False):
   """Adds a row in pricing table from data in 'pricing' dictionary"""
   #Turn off the previous pricing
-  updatable = update_pricing(pricing)
+  if default:
+    updatable = True
+  else:
+    updatable = update_pricing(pricing)
   
   if updatable:
     #Enter new pricing
@@ -301,86 +315,13 @@ def register_pricing(pricing:dict):
       priority = pricing["priority"] if "priority" in pricing else pricing["standard"] if "standard" in pricing else 0,
       topup = pricing["topup"] if "topup" in pricing else 0
     )
-
+    
     with Session(database_engine) as session:
       session.add(db_pricing)
       session.commit()
   
   else:
     return
-
-def register_requisition(requisition:dict):
-  """A function to create row in requisition table and populate it in database table"""
-
-  db_requisition = Requisition(
-    requisition_id = requisition["requisition_id"],
-  )
-  
-  #Register
-  with Session(database_engine) as session:
-    if list(session.exec(select(Requisition).where(Requisition.requisition_id == db_requisition.requisition_id)).all()):
-      return
-    else:
-      session.add(db_requisition)
-      session.commit()
-  
-  #Initiate
-  initiate_requisition(requisition)
-
-def register_medicine(medicine:dict):
-  """A function to create row in medicine table and populate it in database table"""
-  
-  db_medicine = Medicine(
-    requisition_id = medicine["requisition_id"],
-    medicine_id = medicine["medicine_id"],
-    requisition_medicine_id = f"{medicine['medicine_id']}{medicine['requisition_id']}",
-    name = medicine["name"],
-    type = medicine["type"],
-    category = medicine["category"],
-    drug_class = medicine["drug_class"] if "drug_class" in medicine else None,
-    fda_pregnancy_category_1 = medicine["fda_pregnancy_category_1"] if "fda_pregnancy_category_1" in medicine else None,
-    fda_pregnancy_category_2 = medicine["fda_pregnancy_category_2"] if "fda_pregnancy_category_2" in medicine else None,
-    fda_pregnancy_category_3 = medicine["fda_pregnancy_category_3"] if "fda_pregnancy_category_3" in medicine else None,
-    prescription_level = medicine["prescription_level"],
-    order_unit = medicine["order_unit"],
-    order_unit_size = medicine["order_unit_size"],
-    initial_store_balance = medicine["initial_store_balance"],
-    store_balance = medicine["store_balance"],
-    physical_count = medicine["physical_count"],
-    amc = medicine["amc"] if "amc" in medicine else None,
-    mos = medicine["mos"] if "mos" in medicine else None,
-    ordered = medicine["ordered"],
-    ordered_amount = medicine["ordered_amount"],
-    ordered_price = medicine["ordered_price"],
-    unit_price = medicine["unit_price"],
-    ordered_by = medicine["ordered_by"],
-    ordered_on = datetime.now()
-  )
-
-  with Session(database_engine) as session:
-    if list(session.exec(select(Medicine).where(Medicine.requisition_medicine_id == db_medicine.requisition_medicine_id))): 
-      return
-    else:
-      session.add(db_medicine)
-      session.commit()
-
-def register_stationery(stationery:dict):
-  """A function to create row in stationery table and populate it with 'stationery' data"""
-
-  db_stationery = Stationery(
-    stationery_id = stationery["stationery_id"],
-    requisition_id = stationery["requisition_id"],
-    ordered = True,
-    ordered_amount = stationery["ordered_amount"],
-    ordered_price = stationery["ordered_price"],
-  )
-
-  with Session(database_engine) as session:
-    if list(session.exec(select(Stationery).where(Stationery.stationery_id == db_stationery.stationery_id)).all()):
-      return
-    else:
-      session.add(db_stationery)
-      session.commit()
 
 def register_icd_diagnosis(diagnosis:dict,icd10=False,icd11=True):
   """"""
@@ -411,31 +352,6 @@ def register_icd_diagnosis(diagnosis:dict,icd10=False,icd11=True):
       else:
         session.add(db_diagnosis)
         session.commit()
-
-def initiate_requisition(requisition:dict):
-  """"""
-
-  #Requisition
-  try:
-    with Session(database_engine) as session:
-      db_requisition:Requisition = list(session.exec(select(Requisition).where(Requisition.requisition_id == requisition["requisition_id"])))[0]
-      db_requisition.initiated = True
-      db_requisition.initiated_by = requisition["initiated_by"]
-      db_requisition.initiation_date = datetime.now()
-    
-      session.commit()
-    #Medicines
-    with Session(database_engine) as session:
-      db_medicines:list[Medicine] = list(session.exec(select(Medicine).where(Medicine.requisition_id == requisition["requisition_id"])))
-      db_medicines_ids = [db_medicine.medicine_id for db_medicine in db_medicines]
-
-      for medicine in requisition["medicines"]:
-        if medicine["medicine_id"] not in db_medicines_ids:
-          register_medicine(medicine)
-
-      return {"message":"Requisition initiated successfully","type":"positive","position":"top"}
-  except:
-    return {"message":"Requisition not initiated!","type":"negative","position":"center"}
 
 
 #UPDATE FUNCTIONS
@@ -533,31 +449,29 @@ def update_service(service:dict):
   except:
     return {"status":False,"message":"Service not updated!","type":"negative","position":"top"}
 
-def update_formulary(medicine:dict,delete:bool=False):
+def update_formulary(medicine:dict,suspend:bool=False):
   """"""
   
-  if delete:
+  if suspend:
     with Session(database_engine) as session:
-      db_medicine:Formulary = list(session.exec(select(Formulary).where(Formulary.medicine_id == medicine["medicine_id"])))[0]
-      if db_medicine:
-        session.delete(db_medicine)
+      db_medicine:Formulary = session.exec(select(Formulary).where(Formulary.medicine_id == medicine["medicine_id"])).first()
+      db_medicine.active = False
       session.commit()
 
       return {"message":"Medicine delete successfully from the formulary!","type":"positive","position":"top"}
     
   else:
     with Session(database_engine) as session:
-      db_medicine:Formulary = list(session.exec(select(Formulary).where(Formulary.medicine_id == medicine["medicine_id"])))[0]
+      db_medicine:Formulary = session.exec(select(Formulary).where(Formulary.medicine_id == medicine["medicine_id"])).first()
 
       db_medicine.name = medicine["name"]
       db_medicine.type = medicine["type"]
-      db_medicine.type = medicine["category"],
+      db_medicine.category = medicine["category"],
       db_medicine.drug_class = medicine["drug_class"] if "drug class" in medicine else None
       db_medicine.fda_pregnancy_category_1 = medicine["fda_pregnancy_category_1"]
       db_medicine.fda_pregnancy_category_2 = medicine["fda_pregnancy_category_2"]
       db_medicine.fda_pregnancy_category_3 = medicine["fda_pregnancy_category_3"]
       db_medicine.prescription_level = medicine["prescription_level"],
-      db_medicine.active = True
 
       session.commit()
 
@@ -725,71 +639,46 @@ def update_medicine(medicine:dict,transfer:bool=False,count:bool=False,cancel:bo
 
       session.commit()
 
-def update_requisition(requisition:dict,cancel:bool=False,initiate:bool=False,order:bool=False,receive:bool=False):
+def update_requisition(requisition:dict,cancel:bool=False,delete:bool=False,receive:bool=False,count:bool=False):
   """Updates the row in requisition table based on values of requisition dict"""
+
+  requisition["medicine_requisition_id"] = f"{requisition['requisition_id']}{requisition['medicine_id']}".lower()
   
-  if initiate:
-    return initiate_requisition(requisition)
-
-  if order:
-    return order_requisition(requisition)
-
   if receive:
-    return receive_requisition(requisition)
+    with Session(database_engine) as session:
+      db_requisition:Requisition = session.exec(select(Requisition).where(Requisition.medicine_requisition_id == requisition["medicine_requisition_id"])).first()
+      db_requisition.received = True
+      db_requisition.received_amount = requisition["received_amount"]
+      db_requisition.received_price = requisition["received_price"]
+      db_requisition.received_by = requisition["received_by"].lower()
+      db_requisition.received_on = datetime.now()
+      db_requisition.invoice = requisition["invoice"].lower() if "invoice" in requisition else None
+      db_requisition.delivery_note = requisition["delivery_note"].lower() if "delivery_note" in requisition else None
+      db_requisition.brand_name = requisition["brand_name"].lower() if "brand_name" in requisition else None
+      db_requisition.manufacturer = requisition["manufacturer"].lower() if "manufacturer" in requisition else None
+      db_requisition.batch_no = requisition["batch_no"].lower() if "batch_no" in requisition else None
+      db_requisition.expire_date = requisition["expire_date"] if "expire_date" in requisition else None
+      db_requisition.balance = requisition["received_amount"]
+
+      session.commit()
+      
+  
+  if count:
+    pass
 
   if cancel:
-    return cancel_requisition(requisition)
-
-def order_requisition(requisition:dict):
-  """"""
-
-  try:
     with Session(database_engine) as session:
-      db_requisition:Requisition = list(session.exec(select(Requisition).where(Requisition.requisition_id == requisition["requisition_id"])))[0]
-      db_requisition.placed = True
-      db_requisition.vendor = requisition["vendor"].lower()
-      db_requisition.placed_by = requisition["placed_by"]
-      db_requisition.placement_date = datetime.now()
-
-      session.commit()
-
-      return {"message":"Requisition ordered successfully","type":"positive","position":"top"}
-  except:
-    return {"message":"Requisition couldn't be order.Review it again!","type":"negative","position":"center"}
-
-def receive_requisition(requisition:dict):
-
-  try:
-    with Session(database_engine) as session:
-      db_requisition:Requisition = list(session.exec(select(Requisition).where(Requisition.requisition_id == requisition["requisition_id"])))[0]
-      db_requisition.received = True
-      db_requisition.received_by = requisition["received_by"]
-      db_requisition.receive_date = datetime.now()
-      db_requisition.invoice_id = requisition["invoice_id"]
-      db_requisition.delivery_note_id = requisition["delivery_note_id"]
-
-      session.commit()
-
-      return {"message":"Requisition received successfully","type":"positive","position":"top"}
-  except:
-    return {"message":"Requisition couldn't be received.Review it again!","type":"negative","position":"center"}
-
-
-   #Cancelling
-
-def close_requisitions():
-  """Changes value of column 'closed' from False to True if all rows in its child table Medicine have column 'active' with value False"""
-  
-  with Session(database_engine) as session:
-    db_requisitions:list[Requisition] = list(session.exec(select(Requisition).where(Requisition.closed == False)))
-    
-    for db_requisition in db_requisitions:
-      availables = [db_medicine.medicine_id for db_medicine in db_requisition.medicines if db_medicine.active]
+      db_requisition:Requisition = session.exec(select(Requisition).where(Requisition.requisition_id == requisition["requisition_id"])).first()
       
-      if not availables:
-        db_requisition.closed = True
-  
-    session.commit()
+      db_requisition.active = False
+
+      session.commit()
+
+  if delete:
+    with Session(database_engine) as session:
+      db_requisition:Requisition = session.exec(select(Requisition).where(Requisition.requisition_id == requisition["requisition_id"])).first()
+      session.delete(db_requisition)
+      session.commit()
 
 def update_service_prices(service_id:str,nhif:bool=False):
   """Retrieves updated prices from the respective"""
@@ -802,30 +691,6 @@ def update_service_prices(service_id:str,nhif:bool=False):
     pass
   finally:
     pass
-
-
-
-#CANCEL FUNCTIONS
-def cancel_requisition(requisition:dict):
-  """A function to cancel a requisition"""
-
-  try:
-    with Session(database_engine) as session:
-      db_requisition:Requisition = list(session.exec(select(Requisition).where(Requisition.requisition_id == requisition["requisition_id"])))[0]
-      db_requisition.cancelled = True
-      db_requisition.closed = True
-      db_requisition.cancelled_by = requisition["cancelled_by"]
-      db_requisition.cancel_date = datetime.now()
-
-      session.commit()
-
-    return {"message":"Requisition cancelled successfully","type":"positive","position":"top"}
-  except:
-    return {"message":"Requisition couldn't be cancelled!","type":"negative","position":"top"}
-  
-
-
-
 
 
 

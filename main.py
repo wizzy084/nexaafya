@@ -7,7 +7,7 @@ from nicegui import app,ui
 #PROJECT IMPORTS
 from services.background_tasks import expire_sessions
 from services.provider.ui import populate_db
-from uix.web.main import router as web_router
+from uix.web.pages import router as web_router
 
 
 #ROUTING
@@ -20,7 +20,7 @@ if __name__ in {"__main__", "__mp_main__"}:
   populate_db()
 
   #MAIN THREAD
-  ui.run(favicon="uix/web/assets/icons/favicons/nexasoft5.ico")
+  ui.run(favicon="uix/web/assets/icons/favicons/nexasoft5.ico",storage_secret='xxx')
   
   #BG THREAD
   visits_thread = threading.Thread(target=expire_sessions)

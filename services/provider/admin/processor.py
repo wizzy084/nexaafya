@@ -4,9 +4,12 @@
 from collections import namedtuple
 import simple_icd_10 as icd_10
 
-#PROJECT IMPORTS
-from ._snippets import *
+#FastAPI & SQLModel IMPORTS
+from sqlmodel import Session,select
 
+#PROJECT IMPORTS
+from services.provider.configs import database_engine
+from ._snippets import *
 
 ##
 def get_facility_data(minimal:bool=False):
@@ -30,35 +33,38 @@ def subscription_countdown():
     else:
       return -(now - subscription.end_time).days
 
-def get_staffs(private:bool=False):
+def get_staffs(private:bool=False,short:bool=False):
   """Retrieves rows data from 'users' table and format them into a list of dictionaries"""
+
+  users = []
+  _shortName = namedtuple("shortName",["username","name","roles"])
 
   with Session(database_engine) as session:
     db_users:list[User] = list(session.exec(select(User)).all())
-    users = sorted([unmodel_user(db_user) for db_user in db_users],key=lambda e:e["registered_on"])
-    #For full access
-    if private:
-      return users
-    #For public limited access
+
+    if short:
+      users = [_shortName(username=db_user.username,name=f"{db_user.first_name} {db_user.last_name}",roles=db_user.roles) for db_user in db_users]
+    
     else:
-      for user in users:
-        user.pop("password")
-      return users
+      users = [unmodel_user(db_user) for db_user in db_users]
+
+      if not private:
+        for user in users:
+          user._replace(password=None)
+  
+  return users
 
 def get_staff(username:str,private:bool=False):
   """"""
   staff = None
 
-  if private:
-    for _staff in get_staffs(private=True):
-      if _staff["username"] == username:
-        staff = _staff
-  else:
-    for _staff in get_staffs():
-      if _staff["username"] == username:
-        staff = _staff
+  with Session(database_engine) as session:
+    db_user:User = session.exec(select(User).where(User.username == username.lower())).first()
+    staff = unmodel_user(db_user)
+
+    if not private:
+      staff = staff._replace(password=None)
     
-  
   return staff
     
 def get_staff_username(name:str|None,role:str|None=None):

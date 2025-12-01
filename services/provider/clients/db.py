@@ -4,10 +4,9 @@
 from datetime import datetime
 from sqlalchemy import Boolean,ExceptionContext
 from sqlalchemy.engine.base import Engine
-from sqlmodel import Session,SQLModel
+from sqlmodel import func,Session,SQLModel
 
 #IN-PROJECT IMPORTS
-from services.provider.admin.models import Medicine
 from ._snippets import *
 from services.provider.configs import database_engine
 
@@ -73,7 +72,8 @@ def feed_visit(visit:dict,db_client:Client):
     visit_id = visit["visit_id"],
     start_time = datetime.now(),
     payment_mode = visit["payment_mode"],
-    package = visit["package"].lower()
+    package = visit["package"].lower(),
+    attendee_id = visit["attendee_id"]
   )
   
 
@@ -84,14 +84,14 @@ def feed_visit(visit:dict,db_client:Client):
       session.add(db_visit)
       session.commit()
 
-def feed_appointment(appointment:dict,db_client:Client):
+def feed_appointment(appointment:dict):
   """Adds details of 'next_kin' to create new row in 'next_of_kin' table in database"""
 
   db_appointment = Appointment(
-    client_id = db_client.client_id,
+    client_id = appointment["client_id"],
     appointment_id = appointment["appointment_id"],
     created_on = datetime.now(),
-    appointment_date = appointment["date"],
+    appointment_time = appointment["date"],
     attendee_id = appointment["attendee_id"],
   )
 
@@ -519,11 +519,12 @@ def register_appointment(appointment:dict):
   """Creates a new row in 'appointment' table in database using details from 'client_id' interger input"""
  
   with Session(database_engine) as session:
-    db_client:Client = list(session.exec(select(Client).where(Client.client_id == appointment["client_id"])))[0]
-
-    feed_appointment(appointment,db_client)
+    if session.exec(select(Appointment).where(func.date(Appointment.appointment_time) == datetime.now().date())).first():
+      return {"message":"Client has appointment today!","caption":"View appointments tab","position":"top","type":"warning"}
+    else:
+      feed_appointment(appointment)
     
-    return {"message":"Appointment made sucessfully! View it in appointments tab","type":"positive"}
+      return {"message":"Appointment made sucessfully! View it in appointments tab","type":"positive","position":"top"}
 
 def register_consultation(consultation:dict):
   """Ata cjui cha kuandika"""
@@ -1132,7 +1133,7 @@ def reschedule_appointment(appointment:dict):
 
   with Session(database_engine) as session:
     db_appointment:Appointment = list(session.exec(select(Appointment).where(Appointment.appointment_id == appointment["appointment_id"])))[0]
-    db_appointment.appointment_date = appointment["new_date"]
+    db_appointment.appointment_time = appointment["new_date"]
 
     session.commit()
 
