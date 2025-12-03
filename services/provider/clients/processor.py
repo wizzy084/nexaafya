@@ -250,7 +250,7 @@ def get_active_procedures():
   """Retrieves data from visit table in the database if its linked to non-empty procedure table and returns a list of dictionaries correspondng to the row data"""
   
   with Session(database_engine) as session:
-    db_visits:list[Visit] = list(session.exec(select(Visit).where(Visit.is_active)))
+    db_visits:list[Visit] = list(session.exec(select(Visit).where(not Visit.cancelled)))
     procedure_visits = [unmodel_visit(db_visit) for db_visit in db_visits if db_visit.procedures]    
     
     return procedure_visits

@@ -51,20 +51,20 @@ def unmodel_nonpharmacological(db_nonpharmacological:NonPharmacological):
 
   _Nonpharmacological = namedtuple("_Nonpharmacological",["visit_id","nonpharmacological_id","attendee_id","name","planned_on","notes","done","done_on","editable","last_edited_on","editor_id","payment"])
 
-  return {
-    "visit_id":db_nonpharmacological.visit_id,
-    "nonpharmacological_id":db_nonpharmacological.nonpharmacological_id,
-    "attendee_id":db_nonpharmacological.attendee_id,
-    "name":db_nonpharmacological.name,
-    "planned_on":db_nonpharmacological.planned_on,
-    "notes":db_nonpharmacological.notes,
-    "done":db_nonpharmacological.done,
-    "done_on":db_nonpharmacological.done_on,
-    "editable":db_nonpharmacological.editable,
-    "last_edited_on":db_nonpharmacological.last_edited_on,
-    "editor_id":db_nonpharmacological.editor_id,
-    "payment":unmodel_payment(db_nonpharmacological.payment) if db_nonpharmacological.payment else None
-  }
+  return _Nonpharmacological(
+    visit_id = db_nonpharmacological.visit_id,
+    nonpharmacological_id = db_nonpharmacological.nonpharmacological_id,
+    attendee_id = db_nonpharmacological.attendee_id,
+    name = db_nonpharmacological.name,
+    planned_on = db_nonpharmacological.planned_on,
+    notes = db_nonpharmacological.notes,
+    done = db_nonpharmacological.done,
+    done_on = db_nonpharmacological.done_on,
+    editable = db_nonpharmacological.editable,
+    last_edited_on = db_nonpharmacological.last_edited_on,
+    editor_id = db_nonpharmacological.editor_id,
+    payment = unmodel_payment(db_nonpharmacological.payment) if db_nonpharmacological.payment else None
+  )
 
 def unmodel_medication(db_medication:Medication):
   """Converts a row in medication table into a dictionary 'medication'"""
@@ -152,197 +152,220 @@ def unmodel_anthropometrics(db_anthropometrics:Anthropometrics):
 def unmodel_clinical_history(db_clinical_history:ClinicalHistory):
   """Converts a row in clinicalhistory table into a dictionary"""
 
-  return {
-    "consultation_id":db_clinical_history.consultation_id,
-    "hx_id":db_clinical_history.hx_id,
-    "history_time":db_clinical_history.history_time,
-    "chief_complaints":json.loads(db_clinical_history.chief_complaints) if db_clinical_history.chief_complaints else [],
-    "hpi1":db_clinical_history.hpi1,
-    "hpi2":db_clinical_history.hpi2,
-    "hpi3":db_clinical_history.hpi3,
-    "medical_history":db_clinical_history.medical_history,
-    "surgical_history":db_clinical_history.surgical_history,
-    "family_history":db_clinical_history.family_history,
-    "social_history":db_clinical_history.social_history,
-    "editable":db_clinical_history.editable,
-    "edited":db_clinical_history.edited,
-    "last_edited_on":db_clinical_history.last_edited_on,
-    "editor_id":db_clinical_history.editor_id
-  }
+  _ClinicalHistory = namedtuple("_ClinicalHistory",["consultation_id","hx_id","history_time","chief_complaints","hpi1","hpi2","hpi3","medical_history","surgical_history","family_history","social_history","editable","edited","last_edited_on","editor_id"])
+
+  return _ClinicalHistory(
+    consultation_id = db_clinical_history.consultation_id,
+    hx_id = db_clinical_history.hx_id,
+    history_time = db_clinical_history.history_time,
+    chief_complaints = json.loads(db_clinical_history.chief_complaints) if db_clinical_history.chief_complaints else [],
+    hpi1 = db_clinical_history.hpi1,
+    hpi2 = db_clinical_history.hpi2,
+    hpi3 = db_clinical_history.hpi3,
+    medical_history = db_clinical_history.medical_history,
+    surgical_history = db_clinical_history.surgical_history,
+    family_history = db_clinical_history.family_history,
+    social_history = db_clinical_history.social_history,
+    editable = db_clinical_history.editable,
+    edited = db_clinical_history.edited,
+    last_edited_on = db_clinical_history.last_edited_on,
+    editor_id = db_clinical_history.editor_id
+  )
 
 def unmodel_ge_exam(db_ge_exam:GeneralExamination):
   """Converts a row in ge_exam into a dictionary"""
 
-  return {
-    "consultation_id":db_ge_exam.consultation_id,
-    "ge_id":db_ge_exam.ge_id,
-    "ge_exam_time":db_ge_exam.ge_exam_time,
-    "notes":db_ge_exam.notes,
-    "editable":db_ge_exam.editable,
-    "edited":db_ge_exam.edited,
-    "last_edited_on":db_ge_exam.last_edited_on,
-    "editor_id":db_ge_exam.editor_id
-  }
+  _GeneralExam = namedtuple("_GeneralExam",["consultation_id","ge_id","ge_exam_time","notes","editable","edited","last_edited_on","editor_id"])
+
+  return _GeneralExam(
+    consultation_id = db_ge_exam.consultation_id,
+    ge_id = db_ge_exam.ge_id,
+    ge_exam_time = db_ge_exam.ge_exam_time,
+    notes = db_ge_exam.notes,
+    editable = db_ge_exam.editable,
+    edited = db_ge_exam.edited,
+    last_edited_on = db_ge_exam.last_edited_on,
+    editor_id = db_ge_exam.editor_id
+  )
 
 def unmodel_orodental_exam(db_orodental_exam:OrodentalExamination):
   """Converts orodentalexamination table into a dictionary"""
 
-  return {
-    "consultation_id":db_orodental_exam.consultation_id,
-    "orodental_exam_id":db_orodental_exam.orodental_exam_id,
-    "orodental_exam_time":db_orodental_exam.orodental_exam_time,
-    "extraoral":db_orodental_exam.extraoral,
-    "intraoral":db_orodental_exam.intraoral,
-    "editable":db_orodental_exam.editable,
-    "edited":db_orodental_exam.edited,
-    "last_edited_on":db_orodental_exam.last_edited_on,
-    "editor_id":db_orodental_exam.editor_id
-  }
+  _OrodentalExam = namedtuple("_OrodentalExam",["consultation_id","orodental_exam_id","orodental_exam_time","extraoral","intraoral","editable","edited","last_edited_on","editor_id"])
+
+  return _OrodentalExam(
+    consultation_id = db_orodental_exam.consultation_id,
+    orodental_exam_id = db_orodental_exam.orodental_exam_id,
+    orodental_exam_time = db_orodental_exam.orodental_exam_time,
+    extraoral = db_orodental_exam.extraoral,
+    intraoral = db_orodental_exam.intraoral,
+    editable = db_orodental_exam.editable,
+    edited = db_orodental_exam.edited,
+    last_edited_on = db_orodental_exam.last_edited_on,
+    editor_id = db_orodental_exam.editor_id
+  )
 
 def unmodel_cns_exam(db_cns_exam:CNSExamination):
   """Converts a cnsexamination table row into a dictionary"""
 
-  return {
-    "consultation_id":db_cns_exam.consultation_id,
-    "cns_exam_id":db_cns_exam.cns_exam_id,
-    "gcs":json.loads(db_cns_exam.gcs),
-    "cranials":db_cns_exam.cranials,
-    "dermatomes":db_cns_exam.dermatomes,
-    "myotomes":db_cns_exam.myotomes,
-    "gait":db_cns_exam.gait,
-    "reflexes":db_cns_exam.reflexes,
-    "special_tests":db_cns_exam.special_tests,
-    "editable":db_cns_exam.editable,
-    "edited":db_cns_exam.edited,
-    "last_edited_on":db_cns_exam.last_edited_on,
-    "editor_id":db_cns_exam.editor_id
-  }
+  _CNSExam = namedtuple("_CNSExam",["consultation_id","cns_exam_id","gcs","cranials","dermatomes","myotomes","gait","reflexes","special_tests","editable","edited","last_edited_on","editor_id"])
+
+  return _CNSExam(
+    consultation_id = db_cns_exam.consultation_id,
+    cns_exam_id = db_cns_exam.cns_exam_id,
+    gcs = json.loads(db_cns_exam.gcs),
+    cranials = db_cns_exam.cranials,
+    dermatomes = db_cns_exam.dermatomes,
+    myotomes = db_cns_exam.myotomes,
+    gait = db_cns_exam.gait,
+    reflexes = db_cns_exam.reflexes,
+    special_tests = db_cns_exam.special_tests,
+    editable = db_cns_exam.editable,
+    edited = db_cns_exam.edited,
+    last_edited_on = db_cns_exam.last_edited_on,
+    editor_id = db_cns_exam.editor_id
+  )
 
 def unmodel_cvs_exam(db_cvs_exam:CardiovascularExamination):
   """Converts a cardiovascularexamination table rows into dictionaries"""
 
-  return {
-    "consultation_id":db_cvs_exam.consultation_id,
-    "cvs_exam_id":db_cvs_exam.cvs_exam_id,
-    "cvs_exam_time":db_cvs_exam.cvs_exam_time,
-    "inverted_j":db_cvs_exam.inverted_j,
-    "inspection":db_cvs_exam.inspection,
-    "palpation":db_cvs_exam.palpation,
-    "auscultation":db_cvs_exam.auscultation,
-    "special_tests":json.loads(db_cvs_exam.special_tests) if db_cvs_exam.special_tests else None,
-    "editable":db_cvs_exam.editable,
-    "edited":db_cvs_exam.edited,
-    "last_edited_on":db_cvs_exam.last_edited_on,
-    "editor_id":db_cvs_exam.editor_id
-  }
+  _CVSExam = namedtuple("_CVSExam",["consultation_id","cvs_exam_id","cvs_exam_time","inverted_j","inspection","palpation","auscultation","special_tests","editable","edited","last_edited_on","editor_id"])
+
+  return _CVSExam(
+    consultation_id = db_cvs_exam.consultation_id,
+    cvs_exam_id = db_cvs_exam.cvs_exam_id,
+    cvs_exam_time = db_cvs_exam.cvs_exam_time,
+    inverted_j = db_cvs_exam.inverted_j,
+    inspection = db_cvs_exam.inspection,
+    palpation = db_cvs_exam.palpation,
+    auscultation = db_cvs_exam.auscultation,
+    special_tests = json.loads(db_cvs_exam.special_tests) if db_cvs_exam.special_tests else None,
+    editable = db_cvs_exam.editable,
+    edited = db_cvs_exam.edited,
+    last_edited_on = db_cvs_exam.last_edited_on,
+    editor_id = db_cvs_exam.editor_id
+  )
 
 def unmodel_rs_exam(db_rs_exam:RespiratoryExamination):
   """Converts data from respiratoryexamination table rows into dictionaries"""
 
-  return {
-    "consultation_id":db_rs_exam.consultation_id,
-    "rs_exam_id":db_rs_exam.rs_exam_id,
-    "rs_exam_time":db_rs_exam.rs_exam_time,
-    "inspection":db_rs_exam.inspection,
-    "palpation":db_rs_exam.palpation,
-    "percussion":db_rs_exam.percussion,
-    "auscultation":db_rs_exam.auscultation,
-    "special_tests":json.loads(db_rs_exam.special_tests) if db_rs_exam.special_tests else None,
-    "editable":db_rs_exam.editable,
-    "edited":db_rs_exam.edited,
-    "last_edited_on":db_rs_exam.last_edited_on,
-    "editor_id":db_rs_exam.editor_id
-  }
+  _RSExam = namedtuple("_RSExam",["consultation_id","rs_exam_id","rs_exam_time","inspection","palpation","percussion","auscultation","special_tests","editable","edited","last_edited_on","editor_id"])
+
+  return _RSExam(
+    consultation_id = db_rs_exam.consultation_id,
+    rs_exam_id = db_rs_exam.rs_exam_id,
+    rs_exam_time = db_rs_exam.rs_exam_time,
+    inspection = db_rs_exam.inspection,
+    palpation = db_rs_exam.palpation,
+    percussion = db_rs_exam.percussion,
+    auscultation = db_rs_exam.auscultation,
+    special_tests = json.loads(db_rs_exam.special_tests) if db_rs_exam.special_tests else None,
+    editable = db_rs_exam.editable,
+    edited = db_rs_exam.edited,
+    last_edited_on = db_rs_exam.last_edited_on,
+    editor_id = db_rs_exam.editor_id
+  )
 
 def unmodel_abd_exam(db_abd_exam:AbdominalExamination):
   """Converts data from abdominalexamination table rows into dictionaries"""
 
-  return {
-    "consultation_id":db_abd_exam.consultation_id,
-    "abd_exam_id":db_abd_exam.abd_exam_id,
-    "inspection":db_abd_exam.inspection,
-    "palpation":db_abd_exam.palpation,
-    "percussion":db_abd_exam.percussion,
-    "auscultation":db_abd_exam.auscultation,
-    "dre":db_abd_exam.dre,
-    "special_tests":json.loads(db_abd_exam.special_tests) if db_abd_exam.special_tests else None,
-    "editable":db_abd_exam.editable,
-    "edited":db_abd_exam.edited,
-    "last_edited_on":db_abd_exam.last_edited_on,
-    "editor_id":db_abd_exam.editor_id
-  }
+  _AbdExam = namedtuple("_AbdExam",["consultation_id","abd_exam_id","inspection","palpation","percussion","auscultation","dre","special_tests","editable","edited","last_edited_on","editor_id"])
+
+  return _AbdExam(
+    consultation_id = db_abd_exam.consultation_id,
+    abd_exam_id = db_abd_exam.abd_exam_id,
+    inspection = db_abd_exam.inspection,
+    palpation = db_abd_exam.palpation,
+    percussion = db_abd_exam.percussion,
+    auscultation = db_abd_exam.auscultation,
+    dre = db_abd_exam.dre,
+    special_tests = json.loads(db_abd_exam.special_tests) if db_abd_exam.special_tests else None,
+    editable = db_abd_exam.editable,
+    edited = db_abd_exam.edited,
+    last_edited_on = db_abd_exam.last_edited_on,
+    editor_id = db_abd_exam.editor_id
+  )
 
 def unmodel_gus_exam(db_gus_exam:GenitourinaryExamination):
   """Converts data from genitourinaryexamination table rows into dictionaries"""
 
-  return {
-    "consultation_id":db_gus_exam.consultation_id,
-    "gus_exam_id":db_gus_exam.gus_exam_id,
-    "inspection":db_gus_exam.inspection,
-    "palpation":db_gus_exam.palpation,
-    "special_tests":json.loads(db_gus_exam.special_tests) if db_gus_exam.special_tests else None,
-    "editable":db_gus_exam.editable,
-    "edited":db_gus_exam.edited,
-    "last_edited_on":db_gus_exam.last_edited_on,
-    "editor_id":db_gus_exam.editor_id
-  }
+  _GUSExam = namedtuple("_GUSExam",["consultation_id","gus_exam_id","gus_exam_time","inspection","palpation","special_tests","editable","edited","last_edited_on","editor_id"])
+
+  return _GUSExam(
+    consultation_id = db_gus_exam.consultation_id,
+    gus_exam_id = db_gus_exam.gus_exam_id,
+    gus_exam_time = db_gus_exam.gus_exam_time,
+    inspection = db_gus_exam.inspection,
+    palpation = db_gus_exam.palpation,
+    special_tests = json.loads(db_gus_exam.special_tests) if db_gus_exam.special_tests else None,
+    editable = db_gus_exam.editable,
+    edited = db_gus_exam.edited,
+    last_edited_on = db_gus_exam.last_edited_on,
+    editor_id = db_gus_exam.editor_id
+  )
 
 def unmodel_mss_exam(db_mss_exam:MusculoskeletalExamination):
   """Converts data from musculoskeletalexamination table row into dictionaries"""
+
+  _MSSExam = namedtuple("_MSSExam",["consultation_id","mss_exam_id","mss_exam_time","upper_limbs","lower_limbs","special_tests","editable","edited","last_edited_on","editor_id"])
   
-  return {
-    "consultation_id":db_mss_exam.consultation_id,
-    "mss_exam_id":db_mss_exam.mss_exam_id,
-    "mss_exam_time":db_mss_exam.mss_exam_time,
-    "upper_limbs":db_mss_exam.upper_limbs,
-    "lower_limbs":db_mss_exam.lower_limbs,
-    "special_tests":json.loads(db_mss_exam.special_tests) if db_mss_exam.special_tests else None,
-    "editable":db_mss_exam.editable,
-    "edited":db_mss_exam.edited,
-    "last_edited_on":db_mss_exam.last_edited_on,
-    "editor_id":db_mss_exam.editor_id
-  }
+  return _MSSExam(
+    consultation_id = db_mss_exam.consultation_id,
+    mss_exam_id = db_mss_exam.mss_exam_id,
+    mss_exam_time = db_mss_exam.mss_exam_time,
+    upper_limbs = db_mss_exam.upper_limbs,
+    lower_limbs = db_mss_exam.lower_limbs,
+    special_tests = json.loads(db_mss_exam.special_tests) if db_mss_exam.special_tests else None,
+    editable = db_mss_exam.editable,
+    edited = db_mss_exam.edited,
+    last_edited_on = db_mss_exam.last_edited_on,
+    editor_id = db_mss_exam.editor_id
+  )
 
 def unmodel_derma_exam(db_derma_exam:DermatologicalExamination):
   """Converts data from dermatologicalexamination table row into dictionaries"""
 
-  return {
-    "consultation_id":db_derma_exam.consultation_id,
-    "derma_exam_id":db_derma_exam.derma_exam_id,
-    "derma_exam_time":db_derma_exam.derma_exam_time,
-    "primary_lesions":db_derma_exam.primary_lesions,
-    "secondary_lesions":db_derma_exam.secondary_lesions,
-    "special_tests":json.loads(db_derma_exam.special_tests) if db_derma_exam.special_tests else None,
-    "editable":db_derma_exam.editable,
-    "edited":db_derma_exam.edited,
-    "last_edited_on":db_derma_exam.last_edited_on,
-    "editor_id":db_derma_exam.editor_id
-  }
+  _DermaExam = namedtuple("_DermaExam",["consultation_id","derma_exam_id","derma_exam_time","primary_lesions","secondary_lesions","special_tests","editable","edited","last_edited_on","editor_id"])
+
+  return _DermaExam(
+    consultation_id = db_derma_exam.consultation_id,
+    derma_exam_id = db_derma_exam.derma_exam_id,
+    derma_exam_time = db_derma_exam.derma_exam_time,
+    primary_lesions = db_derma_exam.primary_lesions,
+    secondary_lesions = db_derma_exam.secondary_lesions,
+    special_tests = json.loads(db_derma_exam.special_tests) if db_derma_exam.special_tests else None,
+    editable = db_derma_exam.editable,
+    edited = db_derma_exam.edited,
+    last_edited_on = db_derma_exam.last_edited_on,
+    editor_id = db_derma_exam.editor_id
+  )
 
 def unmodel_laboratory(db_laboratory:Laboratory):
   """Converts data from laboratory table row into dictionaries"""
 
-  return {
-    "visit_id":db_laboratory.visit_id,
-    "lab_id":db_laboratory.lab_id,
-    "attendee_id":db_laboratory.attendee_id,
-    "test":db_laboratory.test,
-    "request_time":db_laboratory.request_time,
-    "results":db_laboratory.results,
-    "results_time":db_laboratory.results_time,
-    "processed":db_laboratory.processed,
-    "test_performed_id":db_laboratory.test_performer_id,
-    "results_verifier_id":db_laboratory.results_verifier_id,
-    "results_doc":db_laboratory.results_doc,
-    "cancelled":db_laboratory.cancelled,
-    "cancelled_on":db_laboratory.cancelled_on,
-    "cancelled_by":db_laboratory.cancelled_by,
-    "editable":db_laboratory.editable,
-    "edited":db_laboratory.edited,
-    "last_edited_on":db_laboratory.last_edited_on,
-    "editor_id":db_laboratory.editor_id,
-    "payment":unmodel_payment(db_laboratory.payment) if db_laboratory.payment else None
-  }
+  _Lab = namedtuple("_Lab",["visit_id","lab_id","attendee_id","test","request_time","results","results_time","processed","test_performer_id","results_verifier_id","results_doc","cancelled","cancelled_on","cancelled_by","editable","edited","last_edited_on","editor_id","payment"])
+
+  return _Lab(
+    visit_id = db_laboratory.visit_id,
+    lab_id = db_laboratory.lab_id,
+    attendee_id = db_laboratory.attendee_id,
+    test = db_laboratory.test,
+    request_time = db_laboratory.request_time,
+    results = db_laboratory.results,
+    results_time = db_laboratory.results_time,
+    processed = db_laboratory.processed,
+    test_performed_id = db_laboratory.test_performer_id,
+    results_verifier_id = db_laboratory.results_verifier_id,
+    results_doc = db_laboratory.results_doc,
+    cancelled = db_laboratory.cancelled,
+    cancelled_on = db_laboratory.cancelled_on,
+    cancelled_by = db_laboratory.cancelled_by,
+    editable = db_laboratory.editable,
+    edited = db_laboratory.edited,
+    last_edited_on = db_laboratory.last_edited_on,
+    editor_id = db_laboratory.editor_id,
+    payment = unmodel_payment(db_laboratory.payment) if db_laboratory.payment else None
+  )
 
 def unmodel_imaging(db_imaging:Imaging):
   """Converts data from imaging table row into dictionaries"""
@@ -489,7 +512,7 @@ def unmodel_consultation(db_consultation:Consultation):
 
 def unmodel_visit(db_visit:Visit):
   """Converts a row(s) in visit table into a dictionary 'visit'"""
-  _Visit = namedtuple("_Visit",["client_id","client_name","client_created_on","client_birthdate","client_gender","client_address","visit_id","start_time","end_time","cancelled","payment_mode","package","payments","consultations","anthropometrics","vital_signs","labs","imagings","procedures","surgeries","medications","medical_items","nonpharmacologicals"])
+  _Visit = namedtuple("_Visit",["client_id","client_name","client_created_on","client_birthdate","client_gender","client_address","visit_id","start_time","end_time","active","cancelled","payment_mode","package","payments","consultations","anthropometrics","vital_signs","labs","imagings","procedures","surgeries","medications","medical_items","nonpharmacologicals"])
 
   return _Visit(
     client_id = db_visit.client_id,
@@ -501,6 +524,7 @@ def unmodel_visit(db_visit:Visit):
     visit_id = db_visit.visit_id,
     start_time = db_visit.start_time,
     end_time =db_visit.end_time,
+    active = db_visit.active,
     cancelled = db_visit.cancelled,
     payment_mode = db_visit.payment_mode.lower(),
     package = db_visit.package,

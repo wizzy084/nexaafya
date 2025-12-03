@@ -23,7 +23,7 @@ def BrandName(size:str=None):
 class ClientCard():
   """A class to construct a card for client data display"""
 
-  def __init__(self,details:dict[str,str],name_only:bool=False,small:bool=False):
+  def __init__(self,details:dict[str,str],short:bool=False,name_only:bool=False,small:bool=False):
     """
     Displays display card with basic client information.
     if small is set to True, then the middle name is denoted as an initial.
@@ -35,7 +35,7 @@ class ClientCard():
       ui.label(text=f"{details['short_name'].lower()}").style(add="text-shadow:2px 2px #505050").classes(add="lg:hidden w-full px-1 bg-inherit small-caps text-bold text-3xl text-center")     #For small screen
       ui.label(text=f"{details['name'].lower()}").style(add="text-shadow:2px 2px #505050").classes(add="lg-show w-full px-1 bg-inherit small-caps text-bold text-3xl text-center")     #For large screen
       #Particulars
-      with html.span().classes(add=f"w-full flex flex-row justify-center flex-wrap"):
+      with html.span().classes(add=f"{'hidden' if short else ''} w-full flex flex-row justify-center flex-wrap"):
         #Client age
         ui.chip(text=details["age"],text_color="yellow-500",color="").props(add="dense").classes(add="rounded-sm bg-inherit text-base text-bold shadow-sm shadow-yellow-500")
         #Client gender
@@ -67,6 +67,11 @@ def StatusDot(active:bool=True):
 
   return f"<span class='fa-solid fa-circle { 'text-green-600' if active  else 'text-red-600'}'></span>"
 
+
+def TriagePanel():
+  """Displays two rows with vital signs & anthropometrics"""
+
+  
 
 ###
 

@@ -82,7 +82,7 @@ class Page():
       elif "receptionist" in self.user.roles:
         self.sections = {"clients":["fa-solid fa-users-rectangle",ReceptionManager],"triage & dispensing":["fa-solid fa-heart-pulse",NursingManager]}
       elif "doctor" in self.user.roles:
-        self.sections = {"services":["fa-solid fa-stethoscope",ConsultationsManager]}
+        self.sections = {"services":["fa-solid fa-stethoscope",ClinicianServicesManager]}
       elif "nurse" in self.user.roles:
         self.sections = {"services":["fa-solid fa-heart-pulse",NursingServicesManagementDisplay]}
       elif "radiographer" in self.user.roles or "radiologist" in self.user.roles:
@@ -315,45 +315,22 @@ class NursingManager():
         ui.toggle(options=["triage","dispensing"]).props(add="glossy spread size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="w-full bg-[#07004d] rounded-none text-bold").bind_value(carousel)
 
 
-class ConsultationsManager():
+class ClinicianServicesManager():
   """A class of UI for managing consultations"""
 
   def __init__(self,user):
     #DATA
     self.user = user
-    self.initial_data()
     
     #UI
-    with html.div().classes(add="w-full h-full flex flex-col p-0 gap-1 bg-inherit animate__animated animate__fadeIn") as self.master_container:
-      self.Carousel()  
-
-  def initial_data(self):
-    #Consultations
-    self.active_clients = sorted([client for client in get_clients() if client.client_id in [visit.client_id for visit in get_active_visits()]],key=lambda e:e.visits[-1].start_time,reverse=True)
-    self.raw_consultations = [visit for visit in [client["visits"][-1] for client in self.active_clients] if visit["consultations"] and (visit["consultations"][0]["payment"]["paid"] or visit["consultations"][0]["payment"]["billed"])]
-    self.new_consultations = [visit for visit in self.raw_consultations if not visit["consultations"][0]["initiated"]]
-    self.cont_consultations = [visit for visit in self.raw_consultations if visit["consultations"][0]["initiated"]]
-    self.consulted_clients = [client for client in self.active_clients if client["client_id"] in [consult["client_id"] for consult in self.new_consultations + self.cont_consultations]]
-    self.consulted_visits = self.consultations = self.new_consultations + self.cont_consultations
-    self.lab_consultations = []
-    self.imaging_consultations = []
-    self.procedure_consultations = []
-    self.pharmacy_consultations = []
-  
-  #FUNCTIONALITIES
-  
-  #UI
-  def Carousel(self):
-    self.master_container.clear()
-    with self.master_container:
-      #Display
-      with ui.carousel(value="consults").style(add="overflow-y:hidden;").props(add="animated swipeable transition-prev='jump-right' transition-next='jump-left' transition-duration='100'").classes(add="grow flex flex-col q-pa-none w-full bg-inherit rounded shadow-md shadow-blue-500 animate__animated animate__fadeIn") as carousel:
+    with html.div().classes(add="w-full h-full flex flex-col p-0 gap-1 bg-inherit animate__animated animate__fadeIn"):
+      with ui.carousel(value="consults").style(add="overflow-y:hidden;").props(add="animated transition-prev='jump-right' transition-next='jump-left' transition-duration='100'").classes(add="grow flex flex-col q-pa-none w-full bg-inherit rounded-none shadow-sm shadow-blue-500 animate__animated animate__fadeIn") as carousel:
         with carousel.add_slot("default"):
           #Consults
-          with ui.carousel_slide(name="consults").classes(add="q-pa-none gap-0 w-full h-full rounded-b bg-sky-100 flex flex-col"):
-            ConsultationsManager(user=self.user,consulted_clients=self.consulted_clients,consulted_visits=self.consulted_visits)
+          with ui.carousel_slide(name="consults").classes(add="q-pa-none gap-0 w-full h-full p-0 rounded-none bg-sky-100 flex flex-col"):
+            ConsultationsManager(user=self.user)
               
-          with ui.carousel_slide(name="procedures").classes(add="q-pa-none gap-0 w-full h-full rounded-b bg-sky-100 flex flex-col"):
+          with ui.carousel_slide(name="procedures").classes(add="q-pa-none gap-0 w-full h-full p-0 rounded-b bg-sky-100 flex flex-col"):
             ProceduresManager(user=self.user)
           
           with ui.carousel_slide(name="appointments").classes(add="q-pa-none p-0.5"):
@@ -361,7 +338,13 @@ class ConsultationsManager():
               AppointmentsManager(user=self.user)
 
       #Controls
-      with html.div().classes(add="w-full py-1 flex flex-row justify-center gap-5 lg:gap-7"):
-        ui.toggle(options=["consults","procedures","appointments"]).props(add="glossy size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="lg-show bg-[#07004d] rounded-full ring-1 ring-blue-500 shadow-md shadow-sky-600 text-bold").bind_value(carousel)
-  
-  
+      #Controls
+      ##Large Screen
+      with html.div().classes(add="lg-show w-full py-1 text-center"):
+        ui.toggle(options=["consults","procedures","appointments"]).props(add="glossy size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="bg-[#07004d] rounded-full ring-1 ring-blue-500 shadow-md shadow-sky-600 text-bold").bind_value(carousel)
+      ##Small Screen
+      with html.div().classes(add="lg:hidden w-full"):
+        ui.toggle(options=["consults","procedures","appointments"]).props(add="glossy spread size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="w-full bg-[#07004d] rounded-none text-bold").bind_value(carousel)
+
+
+

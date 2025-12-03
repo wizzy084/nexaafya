@@ -73,6 +73,7 @@ class Visit(SQLModel,table=True,extend_existing=True):
     attendee_id:str|None = None
     start_time:datetime|None = None
     end_time:datetime|None = None
+    active:bool = True
     cancelled:bool = False
     payment_mode:str|None = None
     package:str = "standard"
