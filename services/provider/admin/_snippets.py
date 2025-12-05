@@ -134,7 +134,7 @@ def unmodel_formulary(db_formulary:Formulary):
     prescription_level = db_formulary.prescription_level,
     active = db_formulary.active,
     schemes = [unmodel_scheme(db_scheme) for db_scheme in db_formulary.schemes],
-    requisitions = [unmodel_requisition(db_requisition) for requisition in db_formulary.requisitions],
+    requisitions = [unmodel_requisition(db_requisition) for db_requisition in db_formulary.requisitions],
     inventory = [unmodel_inventory(db_inventory) for db_inventory in db_formulary.inventory]
   )
 
@@ -175,7 +175,7 @@ def unmodel_requisition(db_requisition:Requisition):
     received_amount = db_requisition.received_amount,
     received_price = db_requisition.received_price,
     rejected = db_requisition.rejected,
-    rejection_reasons = json.loads(db_requisition.rejection_reasons),
+    rejection_reasons = json.loads(db_requisition.rejection_reasons) if db_requisition.rejection_reasons else [],
     rejected_amount = db_requisition.rejected_amount,
     rejected_price = db_requisition.rejected_price
   )

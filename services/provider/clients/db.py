@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy import Boolean,ExceptionContext
 from sqlalchemy.engine.base import Engine
 from sqlmodel import func,Session,SQLModel
+import uuid
 
 #IN-PROJECT IMPORTS
 from ._snippets import *
@@ -955,28 +956,18 @@ def register_diagnosis(diagnosis:dict):
     
       feedable_diagnosis = {
         "consultation_id":diagnosis["consultation_id"],
-        "diagnosis_id":f"{diagnosis['consultation_id']}dx{len(db_diagnoses) + 1}",
+        "diagnosis_id":f"{diagnosis['consultation_id']}dx{str(uuid.uuid4()).split('-')[1]}",
         "provisional":provisional,
         "provisional_icd":provisional_icd,
         "provisional_generic":provisional_generic,
-        "differentials":diagnosis["differentials"]
+        "differentials":json.dumps(diagnosis["differentials"])
        }
   
       feed_diagnosis(feedable_diagnosis)
 
       session.commit()
       return {"message":"Provisional Diagnosis saved!","type":"positive","position":"top"}
-  #Definitive
-  if "definitive" in diagnosis:
-    with Session(database_engine) as session:
-      db_diagnosis = list(session.exec(select(Diagnosis).where(Diagnosis.diagnosis_id == diagnosis["diagnosis_id"])))[0]
-      db_diagnosis.definitive = diagnosis["definitive"]
-      db_diagnosis.definitive_icd = diagnosis["definitive_icd"]
-      db_diagnosis.definitive_generic = diagnosis["definitive_generic"]
-    
-      session.commit()
-      return {"message":"Definitive Diagnosis saved!","type":"positive","position":"top"}
-    
+      
 def register_imaging(imaging:dict):
   """Creates a new row in imaging table and adds details from 'imaging' dictionary"""
   try:
@@ -1054,6 +1045,22 @@ def update_consultation(consultation:dict):
     db_consultation.initiated = True
     db_consultation.consultant_id = consultation["consultant_id"]
     session.commit()
+
+def update_diagnosis(diagnosis:dict):
+  """Update the values of definitive diagnosis"""
+
+  with Session(database_engine) as session:
+    db_diagnosis = list(session.exec(select(Diagnosis).where(Diagnosis.diagnosis_id == diagnosis["diagnosis_id"])))[0]
+    if db_diagnosis.definitive:
+      return {"status":False,"message":"Definitive Already ruled out/saved!","type":"warning","position":"top"}
+    else:
+      db_diagnosis.definitive = diagnosis["definitive"]
+      db_diagnosis.definitive_icd = diagnosis["definitive_icd"]
+      db_diagnosis.definitive_generic = diagnosis["definitive_generic"]
+
+      session.commit()
+      return {"status":True,"message":"Definitive Diagnosis saved!","type":"positive","position":"top"}
+
 
 def update_visit(visit:dict):
   """A function that retrieves a row in visit table and modifies value(s) of its column(s)"""

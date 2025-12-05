@@ -961,6 +961,18 @@ medicines = [
     "fda_pregnancy_category_3":"d",
     "prescribable":True,
     "prescription_level":"a",
+    "inventory":{
+      "medicine_id":"ibf200tab",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"ibf200tab",
@@ -1013,6 +1025,18 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":True,
     "prescription_level":"b",
+    "inventory":{
+      "medicine_id":"ampclx500cap",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"ampclx500cap",
@@ -1065,6 +1089,18 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":True,
     "prescription_level":"a",
+    "inventory":{
+      "medicine_id":"mtz200tab",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"mtz200tab",
@@ -1117,6 +1153,18 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":True,
     "prescription_level":"a",
+    "inventory":{
+      "medicine_id":"amx250cap",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"amx250cap",
@@ -1169,6 +1217,18 @@ medicines = [
     "fda_pregnancy_category_3":"c",
     "prescribable":True,
     "prescription_level":"a",
+    "inventory":{
+      "medicine_id":"cipro500tab",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"cipro500tab",
@@ -1221,6 +1281,18 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":True,
     "prescription_level":"a",
+    "inventory":{
+      "medicine_id":"pcm500tab",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"pcm500tab",
@@ -1273,6 +1345,18 @@ medicines = [
     "fda_pregnancy_category_3":"d",
     "prescribable":True,
     "prescription_level":"a",
+    "inventory":{
+      "medicine_id":"mlx10tab",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"mlx10tab",
@@ -1313,6 +1397,18 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":False,
     "prescription_level":"a",
+    "inventory":{
+      "medicine_id":"povi2sol",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"povi2sol",
@@ -1353,6 +1449,18 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":True,
     "prescription_level":"b",
+    "inventory":{
+      "medicine_id":"chx2sol",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"chx2sol",
@@ -1383,7 +1491,7 @@ medicines = [
     ]
   },
   {
-     "medicine_id":f"diclo25amp",
+    "medicine_id":f"diclo25amp",
     "name":"diclofenac 25mg/ml 3ml ampoule",
     "type":"analgesic",
     "category":"medicine",
@@ -1393,6 +1501,18 @@ medicines = [
     "fda_pregnancy_category_3":"d",
     "prescribable":True,
     "prescription_level":"a",
+    "inventory":{
+      "medicine_id":"diclo25amp",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"diclo25amp",
@@ -1445,6 +1565,18 @@ medicines = [
     "fda_pregnancy_category_3":"b",
     "prescribable":False,
     "prescription_level":"a",
+    "inventory":{
+      "medicine_id":"mtz500sol",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"mtz500sol",
@@ -1497,6 +1629,18 @@ medicines = [
     "fda_pregnancy_category_3":"c",
     "prescribable":True,
     "prescription_level":"a",
+    "inventory":{
+      "medicine_id":"nystsusp",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"nystsusp",
@@ -1549,6 +1693,18 @@ medicines = [
     "fda_pregnancy_category_3":"d",
     "prescribable":True,
     "prescription_level":"a",
+    "inventory":{
+      "medicine_id":"diclo20gel",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"diclo20gel",
@@ -1601,6 +1757,18 @@ medicines = [
     "fda_pregnancy_category_3":"d",
     "prescribable":True,
     "prescription_level":"a",
+    "inventory":{
+      "medicine_id":"diclosod50tab",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"diclosod500tab",
@@ -1641,7 +1809,9 @@ medicines = [
         ]
       }
     ]
-  },
+  }
+]
+xx = [
   {
     "medicine_id":"hpx3sol",
     "name":"hydrogen peroxide 3% 100mls sol",
@@ -1653,6 +1823,18 @@ medicines = [
     "fda_pregnancy_category_3":None,
     "prescribable":True,
     "prescription_level":"a",
+    "inventory":{
+      "medicine_id":"hpx3sol",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"hpx3sol",
@@ -1705,6 +1887,18 @@ medicines = [
     "fda_pregnancy_category_3":None,
     "prescribable":True,
     "prescription_level":None,
+    "inventory":{
+      "medicine_id":"dental-floss",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"dental-floss",
@@ -1745,6 +1939,18 @@ medicines = [
     "fda_pregnancy_category_3":None,
     "prescribable":True,
     "prescription_level":None,
+    "inventory":{
+      "medicine_id":"senso-tpaste",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"senso-tpaste",
@@ -1785,6 +1991,18 @@ medicines = [
     "fda_pregnancy_category_3":None,
     "prescribable":True,
     "prescription_level":None,
+    "inventory":{
+      "medicine_id":"tbrush-softs",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"tbrush-softs",
@@ -1825,6 +2043,18 @@ medicines = [
     "fda_pregnancy_category_3":None,
     "prescribable":True,
     "prescription_level":None,
+    "inventory":{
+      "medicine_id":"floride-tpaste",
+      "invoice":"inv001",
+      "issuer":"nexasoft",
+      "receiver":"main store",
+      "issuer_previous_amount":0,
+      "issuer_amount":0,
+      "receiver_previous_amount":0,
+      "receiver_amount":0,
+      "logger":"nexasoft",
+      "count":True
+    },
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"floride-tpaste",

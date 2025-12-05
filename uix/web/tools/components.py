@@ -68,11 +68,6 @@ def StatusDot(active:bool=True):
   return f"<span class='fa-solid fa-circle { 'text-green-600' if active  else 'text-red-600'}'></span>"
 
 
-def TriagePanel():
-  """Displays two rows with vital signs & anthropometrics"""
-
-  
-
 ###
 
 class SystemsReview():

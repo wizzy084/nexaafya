@@ -264,7 +264,7 @@ class ClientsManager():
         service["service_id"] = service["consultation_id"]
         service["attendee_id"] = self.user.username
         service["done"] = service["initiated"]
-        service["done_on"] = service["clinical_history"]["history_time"]
+        service["done_on"] = service["clinical_history"].history_time
         service["done_by"] = service["consultant_id"]
         service["cancelled"] = False
         service["service_time"] = service["start_time"]
@@ -483,7 +483,7 @@ class ClientsManager():
     #UI Update
     self.initial_data()
 
-    visit =[visit for visit in [client for client in self.clients if client.client_id == int(pay_data["visit_id"].split("v")[0])][0]["visits"] if visit.visit_id == pay_data["visit_id"]][0]
+    visit =[visit for visit in [client for client in self.clients if client.client_id == int(pay_data["visit_id"].split("v")[0])][0].visits if visit.visit_id == pay_data["visit_id"]][0]
     services = self.formatted_services(self._services(visit)["services"]["all"])
     self.PaymentsPanel(services=services)
 
@@ -2570,8 +2570,12 @@ class ConsultationsManager():
         ui.separator().classes(add="w-full bg-[#09026f]")
       
       #Header
-      with html.section().classes(add="w-full p-1 bg-harmony"):
-        ui.label("CONSULTATIONS").classes(add="w-full rounded-t text-2xl lg:text-3xl text-yellow-500 font-semibold")
+      with html.section().classes(add="w-full p-1 bg-harmony flex flex-row justify-between items-center"):
+        ui.label("CONSULTATIONS").classes(add="grow rounded-t text-2xl lg:text-3xl text-yellow-500 font-semibold")
+        with html.span().classes(add="") as clocker:
+          label = ui.label().classes(add="inline text-yellow-500 font-bold")
+          ui.timer(1.0, lambda: label.set_text(f'{datetime.now().strftime("%a %d %b %Y")}    {datetime.now():%X}'))
+
 
       #Body
       with html.div().classes(add="grow w-full p-0 flex flex-col justify-center content-center") as self.consultations_panel:
@@ -2596,6 +2600,15 @@ class ConsultationsManager():
 
     self.diagnoses = get_diagnoses()
     self.active_consultation = None
+
+  def format_active_consultation(self,consult):
+
+    consultation = consult._asdict()
+    consultation["clinical_history"] = consult.clinical_history._asdict()
+    consultation["general_exam"] = consult.general_exam._asdict()
+    consultation["orodental_exam"] = consult.orodental_exam._asdict()
+
+    return consultation
 
   def client_mini(self,visit):
     """Returns a string of html elements for display in small screens"""
@@ -2652,7 +2665,7 @@ class ConsultationsManager():
       imgs = f"<span class=''><span class='fas fa-x-ray'></span><sup class=''>{len(visit.imagings)}</sup></span>"
 
     if visit.procedures:
-      procs = f"<span class=''><span class=''></span><sup class=' fa-solid fa-stethoscope'>{len(visit.procedures)}</sup></span>"
+      procs = f"<span class=''><span class='fa-solid fa-head-side-mask'></span><sup class=''>{len(visit.procedures)}</sup></span>"
 
     if visit.medications + visit.medical_items:
       meds = f"<span class=''><span class='fa-solid fa-pills'></span><sup class=''>{len(visit.medications + visit.medical_items)}</sup></span>"
@@ -2719,7 +2732,7 @@ class ConsultationsManager():
     """Returns the last visit of client as a namedtuple object"""
 
     return sorted(client.visits,key=lambda visit:visit.start_time,reverse=True)[0]
-
+  
   def register_appointment(self,appointment:dict):
     """Register a new appointment and store data to database"""
     
@@ -2834,10 +2847,11 @@ class ConsultationsManager():
           with html.div().classes(add="lghidden w-full grow flex flex-col"):
             with ui.tab_panels(tabs=visits_mini_tabs,value=visits[0].visit_id).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='700'").classes(add="bg-inherit grow w-full rounded-b grid grid-cols-1 shadow-sm shadow-black") as xxx:
               with ui.tab_panel(name=visit.visit_id).classes(add="p-0 flex flex-col gap-0") as self.visit_tab:
-                if visit.active:
-                  await self.ActiveConsultationPanel(visit)
-                else:
-                  await self.PreviousVisitPanel(visit)
+                for visit in visits:
+                  if visit.active:
+                    await self.ActiveConsultationPanel(visit)
+                  else:
+                    await self.PreviousVisitPanel(visit)
 
     # UI
     self.consultations_dialog = ui.dialog().props(add="transition-show='jump-up' transition-hide='jump-down' transition-duration='500'")
@@ -2881,6 +2895,9 @@ class ConsultationsManager():
 
   async def ActiveConsultationPanel(self,visit):
     """Optimized active consultation panel"""
+    self.active_visit = visit
+    self.active_consultation = visit.consultations[0]
+
     #Load triage data
     async def load_data():
       _anthrops = sorted([a for a in visit.anthropometrics if a.done and a.weight],key=lambda a: a.anthropometrics_time, reverse=True)
@@ -2906,9 +2923,10 @@ class ConsultationsManager():
   async def _render_active_consultation(self,visit,anthrops,vitals):
     """Render active consultation content"""
     #DATA
-    consult = visit.consultations[0]
+    self.active_consultation = self.format_active_consultation(visit.consultations[0])
+    self.active_diagnoses = [diagnosis._asdict() for diagnosis in self.active_consultation["diagnoses"]]
 
-    def default_display(e):
+    def default_display(consultation=None,visit=None,attendee_id=None,parent=None):
       pass
 
     clerkship_sections = {
@@ -2928,8 +2946,8 @@ class ConsultationsManager():
         if tab.props['name'] == e.value:
           tab.clear()
           with tab:
-            with html.div().classes(add="grow w-full fa-fade"):
-              clerkship_sections[e.value][1](parent=self,visit=visit,consultation=consult,attendee_id=self.user.username)
+            with html.div().classes(add="grow w-full p-1 flex flex-col justify-between gap-2"):
+              clerkship_sections[e.value][1](parent=self,visit=visit,consultation=self.active_consultation,attendee_id=self.user.username)
 
     #UI
     self.visit_tab.clear()
@@ -2977,13 +2995,12 @@ class ConsultationsManager():
             for section_title in clerkship_sections_titles:
               ui.tab(section_title)
         
-        with ui.tab_panels(clerkship_tabs,value=clerkship_sections_titles[-1],on_change=lambda e:render_display(e)).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='700'").classes(add="bg-inherit grow w-full grid grid-cols-1 animate__animated aimate__fadeIn") as xtabs:
+        with ui.tab_panels(clerkship_tabs,value=clerkship_sections_titles[0],on_change=lambda e:render_display(e)).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='700'").classes(add="bg-inherit grow w-full grid grid-cols-1 animate__animated aimate__fadeIn") as xtabs:
           for section_title,section_func in clerkship_sections.items():
             with ui.tab_panel(section_title).props(add="keep-alive").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col"):
               with html.div().classes(add="grow w-full flex flex-col justify-center items-center"):
-                section_func[0](visit.consultations[0])
+                section_func[0](consultation=visit.consultations[0],visit=visit,attendee_id=self.user.username,parent=self)
                 
-  
   async def xxxConsultationsDialog(self,client):
     """Displays from consultations in the previous visits"""
 
@@ -3279,153 +3296,11 @@ class ConsultationsManager():
                       },
                       pagination=5,title="MEDICAL ITEMS"
                     ).classes(add="uppercase")
-            
-  def xxxActiveConsultationPanel(self,visit:dict,edit:bool=False):
-    """"""
-    #DATA
-    self.active_visit = visit
-    _anthrops = sorted([anthrop for anthrop in self.active_visit.anthropometrics if anthrop.done and anthrop.weight],key=lambda anthrop:anthrop.anthropometrics_time,reverse=True)
-    anthrops = _anthrops[0] if _anthrops else self.active_visit.anthropometrics[-1]
-    _vitals = sorted([vital for vital in self.active_visit.vital_signs if vital.done],key=lambda vital:vital.vitals_time,reverse=True)
-    vitals = _vitals[0] if _vitals else self.active_visit.vital_signs[-1]
-    imagings = self.active_visit.imagings
-    self.active_consultation = self.active_visit.consultations[0]
-
-    clerkship_sections = ["present history","medical & surgical history","family & social history","physical examination","provisional diagnoses","workup","definitive diagnoses","management"]
-    
-    #UI
-    self.visit_tab.clear()
-    with self.visit_tab.classes(add="flex flex-col gap-0.5 animate__animated animate__fadeIn animate__slow",remove="items-center justify-center"):
-      #Triage
-      with html.div().classes(add="bg-harmony w-full flex flex-col lg:flex-row"):
-        #Anthropometrics
-        with html.div().classes(add=f"bg-inherit flex flex-row justify-center items-center lg:justify-around gap-3"):
-          #BWt
-          with ui.chip(icon="fa-solid fa-weight-scale",color="",text_color="yellow-8").props(add="dense").classes(add="bg-inherit m-0 rounded text-base lg:text-lg text-yellow-500"):
-            ui.badge(text=f"{anthrops.weight if anthrops.weight else '---'} {'kg' if anthrops.weight else ''}",color="").classes(add=f"bg-inherit ml-0.5 text-base text-bold text-sky-300")
-          #height/Length
-          with ui.chip(icon="fa-solid fa-ruler-vertical",color="",text_color="yellow-8").props(add="dense").classes(add="bg-inherit m-0 rounded text-base lg:text-lg text-yellow-500"):
-            ui.badge(text=f"{anthrops.height if anthrops.height else '---'} {'cm' if anthrops.height else ''}",color="").classes(add=f"bg-inherit ml-0.5 text-base text-bold text-sky-300")
-          
-          if get_duration(visit.client_birthdate)["years"] < 2:
-            #MUAC
-            with ui.chip(text="MUAC",color="").classes(add="hidden m-0 p-0 bg-inherit rounded text-md text-bold text-yellow-500"):
-              ui.badge(text=f"{anthrops.muac if anthrops.muac else '---'} {'cm' if anthrops.muac else ''}",color="").props(add="dense").classes(add=f"bg-inherit ml-0.5 text-lg text-bold text-sky-300")
-            #Head Circumference
-            with ui.chip(text="HC",color="").classes(add="hidden m-0 p-0 bg-inherit rounded text-md text-bold text-yellow-500"):
-              ui.badge(text=f"{anthrops.head_circum if anthrops.head_circum else '---'} {'cm' if anthrops.head_circum else ''}",color="").classes(add=f"bg-inherit ml-0.5 text-lg text-bold text-sky-300")
-
-        #Vitals
-        with html.div().classes(add="grow bg-inherit p-1 flex flex-row justify-around items-center text-bold"):
-          #T
-          with ui.chip(icon="fa-solid fa-temperature-high",text_color="yellow-8",color="").classes(add="bg-inherit m-0 px-0.5 py-0 rounded text-md text-yellow-500"):
-            ui.badge(text=f"{vitals.temperature if vitals.temperature else '---'} {'℃' if vitals.temperature else ''}",color="").classes(add=f"bg-inherit m-0 p-0 text-base text-bold text-{'sky-300' if (not vitals.temperature) else 'green-400' if self.normal(t=vitals.temperature) else 'red-600'}")
-          #BP
-          with ui.chip(icon="fa-solid fa-pump-medical",text_color="yellow-8",color="").classes(add=f"{'hidden' if get_duration(visit.client_birthdate)['years'] < 12 else ''} bg-inherit m-0 p-0 rounded text-base text-bold"):
-            ui.badge(text=f"{vitals.sbp if vitals.sbp else '---'}/{vitals.dbp if vitals.dbp else '---'} {'mmHg' if vitals.sbp or vitals.dbp else ''}",color="").classes(add=f"bg-inherit m-0 p-0 text-base text-bold text-{'sky-300' if ((not vitals.sbp) and (not vitals.dbp)) else 'green-400' if (self.normal(sbp=vitals.sbp) or self.normal(dbp=vitals.dbp)) else 'red-600'}")
-          #PR
-          with ui.chip(icon="fa-solid fa-heart-pulse",text_color="yellow-8",color="").classes(add="bg-inherit m-0 px-0.5 py-0 rounded text-md text-yellow-500"):
-            ui.badge(text=f"{vitals.pulse_rate if vitals.pulse_rate else '---'} {'bpm' if vitals.pulse_rate else ''}",color="").classes(add=f"bg-inherit m-0 p-0 text-base text-bold text-{'sky-300' if (not vitals.pulse_rate) else 'green-400' if self.normal(t=vitals.pulse_rate) else 'red-600'}")
-          #RR
-          with ui.chip(icon="fa-solid fa-lungs",text_color="yellow-8",color="").classes(add="bg-inherit m-0 px-0.5 py-0 rounded text-md text-yellow-500"):
-            ui.badge(text=f"{vitals.resp_rate if vitals.resp_rate else '---'} {'cpm' if vitals.resp_rate else ''}",color="").classes(add=f"bg-inherit m-0 p-0 text-base text-bold text-{'sky-300' if (not vitals.resp_rate) else 'green-400' if self.normal(t=vitals.resp_rate) else 'red-600'}")
-          #O2SAT
-          with ui.chip(text="O₂",text_color="yellow-8",color="").classes(add="bg-inherit m-0 p-0 rounded text-base text-bold"):
-            ui.badge(text=f"{vitals.o2sat if vitals.o2sat else '---'} {'%' if vitals.o2sat else ''}",color="").classes(add=f"bg-inherit m-0 ml-0.5 p-0 text-base text-bold text-{'sky-300' if (not vitals.o2sat) else 'green-400' if self.normal(osat=vitals.o2sat) else 'red-600'}")
-
-      #Consultation
-      #Small Screen
-      with html.section().classes(add="lg:hidden grow w-full flex flex-col"):
-        #Tabs
-        with html.div().classes(add="w-full p-0 rounded-b shadow-sm shadow-[#07004d]"):
-          with ui.tabs(value=clerkship_sections[0]).props(add="inline-label mobile-arrows outside-arrows active-class='text-sky-500'").classes(add="w-full rounded-b bg-harmony py-1 text-yellow-500 font-bold") as clerkship_tabs:
-            for section in clerkship_sections:
-              ui.tab(name=section).props(add="dense")
-        
-        #Panels
-        with html.div().classes(add="order-first grow w-full rounded-br flex flex-col"):
-          with ui.tab_panels(tabs=clerkship_tabs,value=clerkship_sections[0]).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='700'").classes(add="bg-inherit grow w-full grid grid-cols-1"):
-            #Present history
-            with ui.tab_panel(name="present history").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col gap-0.5") as self.hpi_panel:
-              self.PresentingIllness(consultation=self.active_consultation)
-            
-            #Medical & Surgical History
-            with ui.tab_panel(name="medical & surgical history").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-around gap-0.5"):
-              self.PastMedicalSurgicalHistory(consultation=self.active_consultation)
-            
-            #Family & Social History
-            with ui.tab_panel(name="family & social history").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-around gap-0.5"):
-              self.FamilySocialHistory(consultation=self.active_consultation)
-            
-            #Physical Examination
-            with ui.tab_panel(name="physical examination").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-between gap-0.5"):
-              self.PhysicalExamination(consultation=self.active_consultation)
-            
-            #Provisional Diagnoses
-            with ui.tab_panel(name="provisional diagnoses").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col gap-0.5"):
-              self.ProvisionalDiagnoses(consultation=self.active_consultation)
-            
-            #Workup
-            with ui.tab_panel(name="workup").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col gap-0.5"):
-              ImagingsForm(parent=self,attendee_id=self.user.username,visit=self.active_visit)
-            
-            #Definitive Diagnoses
-            with ui.tab_panel(name="definitive diagnoses").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col gap-0.5"):
-              self.DefinitiveDiagnoses(consultation=self.active_consultation)
-            
-            #Management
-            with ui.tab_panel(name="management").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col gap-0.5"):
-              pass #ManagementPlanForm(visit=self.active_visit,parent=self,attendee_id=self.user.username)
-
-      #Large Screen
-      with html.section().classes(add="grow w-full lg-flex flex-row gap-1"):
-        #Tabs
-        with html.div().classes(add="p-1 shadow-sm shadow-[#07004d]"):
-          with ui.tabs(value=clerkship_sections[0]).props(add="inline-label mobile-arrows outside-arrows stretch vertical active-class='text-sky-500'").classes(add="w-full py-1 text-yellow-500 font-bold") as clerkship_tabs:
-            for section in clerkship_sections:
-              ui.tab(name=section).props(add="").classes(add="bg-harmony my-1 rounded")
-        
-        #Panels
-        with html.div().classes(add="grow rounded-br flex flex-col"):
-          with ui.tab_panels(tabs=clerkship_tabs,value=clerkship_sections[0]).props(add="animated infinite transition-prev='jump-down' transition-next='jump-up' transition-duration='500'").classes(add="bg-inherit grow w-full grid grid-cols-1"):
-            pass
-            #Present history
-            with ui.tab_panel(name="present history").classes(add="w-full h-full p-1 rounded-br flex flex-col lg:justify-around") as self.hpi_panel:
-              self.PresentingIllness(consultation=self.active_consultation)
-            
-            #Medical & Surgical History
-            with ui.tab_panel(name="medical & surgical history").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-around gap-0.5"):
-              self.PastMedicalSurgicalHistory(consultation=self.active_consultation)
-            
-            #Family & Social History
-            with ui.tab_panel(name="family & social history").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-around gap-0.5"):
-              self.FamilySocialHistory(consultation=self.active_consultation)
-            
-            #Physical Examination
-            with ui.tab_panel(name="physical examination").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-around gap-0.5"):
-              self.PhysicalExamination(consultation=self.active_consultation)
-            
-            #Provisional Diagnoses
-            with ui.tab_panel(name="provisional diagnoses").classes(add="w-full h-full p-0.5 rounded-0 grid grid-cols-2 gap-0.5"):
-              self.ProvisionalDiagnoses(consultation=self.active_consultation)
-            
-            #Workup
-            with ui.tab_panel(name="workup").classes(add="w-full h-full p-0.5 rounded-0 grid grid-cols-2 gap-0.5"):
-              ImagingsForm(parent=self,attendee_id=self.user.username,visit=self.active_visit)
-            
-            #Definitive Diagnoses
-            with ui.tab_panel(name="definitive diagnoses").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col lg:grid grid-cols-2 lg:h-full gap-0.5"):
-              self.DefinitiveDiagnoses(consultation=self.active_consultation)
-            
-            #Management
-            with ui.tab_panel(name="management").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col gap-0.5"):
-              pass #ManagementPlanForm(visit=self.active_visit,parent=self,attendee_id=self.user.username)
-      
+       
   def PresentingIllness(self,consultation:dict,parent=None,visit=None,attendee_id=None):
     """"""
     #DATA
-    history = consultation.clinical_history._asdict()
-    
+    history = self.active_consultation["clinical_history"]
     complaints = {
       "count":len(history["chief_complaints"]),
       "complaint1":history["chief_complaints"][0] if len(history["chief_complaints"]) > 0 else None,
@@ -3466,6 +3341,7 @@ class ConsultationsManager():
       comps = [comp for key,comp in complaints.items() if key != "count" and comp]
       status = clients_db.register_chief_complaints({"consultant_id":self.user.username,"hx_id":history["hx_id"],"complaints":json.dumps(comps) if comps else None})
       ui.notify(message=status["message"],type=status["type"],position=status["position"])
+      self.active_consultation["clinical_history"]["chief_complaints"] = comps
       
       #Updating complaints
       #Complaint1
@@ -3495,12 +3371,18 @@ class ConsultationsManager():
     def save_hpi():
       #DB SAVING
       status = clients_db.register_hpi({"hx_id":history["hx_id"],"editor_id":self.user.username,"hpi1":hpis["hpi1"],"hpi2":hpis["hpi2"],"hpi3":hpis["hpi3"]})
+      
+      #UPDATE ACTIVE CONSULTATION
+      self.active_consultation["clinical_history"]["hpi1"] = hpis["hpi1"]
+      self.active_consultation["clinical_history"]["hpi2"] = hpis["hpi2"]
+      self.active_consultation["clinical_history"]["hpi3"] = hpis["hpi3"]
+
       #NOTIFY
       ui.notify(message=status["message"],type=status["type"],position=status["position"])
     
     #UI
     #Complaints
-    with html.section().classes(add="w-full grid grid-cols-2 lg:grid-cols-4 gap-1 lg:gap-3"):
+    with html.section().classes(add="w-full grid grid-cols-2 lg:grid-cols-4 gap-1 lg:items-center lg:justify-center lg:gap-3"):
       #Complaint1
       ui.input(label="1ST COMPLAINT").props(add=f"clearable").classes(add="bg-white shadow-md shadow-[#07004d] rounded px-5 text-base").bind_value(complaints,"complaint1")
       #Complaint2
@@ -3518,7 +3400,7 @@ class ConsultationsManager():
   def PastMedicalSurgicalHistory(self,consultation:dict,parent=None,visit=None,attendee_id=None):
     """"""
     #DATA
-    history = consultation.clinical_history._asdict()
+    history = self.active_consultation["clinical_history"]
     pmh = {
       "hx_id":history["hx_id"],
       "mhx":history["medical_history"],
@@ -3531,15 +3413,19 @@ class ConsultationsManager():
       #DATABASE SAVING
       status = clients_db.register_pmh(pmh)
 
+      #UPDATE ACTIVE CONSULTATION
+      self.active_consultation["clinical_history"]["medical_history"] = pmh["mhx"]
+      self.active_consultation["clinical_history"]["surgical_history"] = pmh["shx"]
+
       #NOTIFY
       ui.notify(message=status["message"],type=status["type"],position=status["position"])
 
     #UI
     with html.div().classes(add="w-full flex flex-col lg:flex-row gap-3"):
       #Medical Hx
-      ui.textarea(label="MEDICAL HISTORY",placeholder="...").props(add="clearable stack-label input-class='lg:h-[300px]' label-color='#07004d'").classes(add="grow shadow-md shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(pmh,"mhx")
+      ui.textarea(label="MEDICAL HISTORY",placeholder="...").props(add="clearable stack-label input-class='lg:h-[250px]' label-color='#07004d'").classes(add="grow shadow-md shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(pmh,"mhx")
       #Surgical Hx
-      ui.textarea(label="SURGICAL HISTORY",placeholder="...").props(add="clearable stack-label input-class='lg:h-[300px]' label-color='#07004d'").classes(add="grow shadow-md shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(pmh,"shx")
+      ui.textarea(label="SURGICAL HISTORY",placeholder="...").props(add="clearable stack-label input-class='lg:h-[250px]' label-color='#07004d'").classes(add="grow shadow-md shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(pmh,"shx")
   
     #BUTTONS
     with html.div().classes(add="w-full flex flex-row justify-center"):
@@ -3548,7 +3434,7 @@ class ConsultationsManager():
   def FamilySocialHistory(self,consultation:dict,parent=None,visit=None,attendee_id=None):
     """"""
     #DATA
-    history = consultation.clinical_history._asdict()
+    history = self.active_consultation["clinical_history"]
     fsh = {
       "hx_id":history["hx_id"],
       "fhx":history["family_history"],
@@ -3561,41 +3447,53 @@ class ConsultationsManager():
       #DATABASE SAVING
       status = clients_db.register_fsh(fsh)
 
+      #UPDATE ACTIVE CONSULTATION
+      self.active_consultation["clinical_history"]["family_history"] = fsh["fhx"]
+      self.active_consultation["clinical_history"]["social_history"] = fsh["shx"]
+
       #NOTIFY
       ui.notify(message=status["message"],type=status["type"],position=status["position"])
 
     #UI
     with html.div().classes(add="w-full flex flex-col lg:flex-row gap-3"):
       #Family Hx
-      ui.textarea(label="FAMILY HISTORY").props(add="clearable stack-label input-class='lg:h-[300px]' label-color='#07004d'").classes(add="grow shadow-md shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(fsh,"fhx")
+      ui.textarea(label="FAMILY HISTORY").props(add="clearable stack-label input-class='lg:h-[250px]' label-color='#07004d'").classes(add="grow shadow-md shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(fsh,"fhx")
       #Social Hx
-      ui.textarea(label="SOCIAL HISTORY").props(add="clearable stack-label input-class='lg:h-[300px]' label-color='#07004d'").classes(add="grow shadow-md shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(fsh,"shx")
+      ui.textarea(label="SOCIAL HISTORY").props(add="clearable stack-label input-class='lg:h-[250px]' label-color='#07004d'").classes(add="grow shadow-md shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(fsh,"shx")
   
     #BUTTONS
     with html.div().classes(add="w-full flex flex-row justify-center"):
-      ui.button(text="SAVE",icon="fa-regular fa-floppy-disk",color="",on_click=save_family_social_history).classes(add="bg-harmony rounded shadow-md shadow-[#07004d] text-lg lg:text-xl text-yellow-500 text-bold")
+      ui.button(text="SAVE",icon="fa-regular fa-floppy-disk",color="",on_click=save_family_social_history).props(add="glossy").classes(add="bg-harmony rounded shadow-md shadow-[#07004d] text-lg lg:text-xl text-yellow-500 text-bold")
 
   def PhysicalExamination(self,consultation:dict,parent=None,visit=None,attendee_id=None):
     """"""
+    general_exam = self.active_consultation["general_exam"]
+    orodental_exam = self.active_consultation["orodental_exam"]
     #DATA
     ge = {
-      "ge_id":consultation.general_exam.ge_id,
+      "ge_id":general_exam["ge_id"],
       "editor_id":self.user.username,
-      "notes":consultation.general_exam.notes
+      "notes":general_exam["notes"]
     }
     orodental = {
-      "orodental_exam_id":consultation.orodental_exam.orodental_exam_id,
+      "orodental_exam_id":orodental_exam["orodental_exam_id"],
       "editor_id":self.user.username,
-      "intraoral":consultation.orodental_exam.intraoral if consultation.orodental_exam.intraoral else None,
-      "extraoral":consultation.orodental_exam.extraoral if consultation.orodental_exam.extraoral else None
+      "intraoral":orodental_exam["intraoral"],
+      "extraoral":orodental_exam["extraoral"]
     }
-    
+    ui.notify(orodental_exam)
+    ui.notify(orodental)
 
     #FXS
     def save_examination():
       #DATABASE SAVING
       ge_status = clients_db.register_general_exam(ge)
       orodental_status = clients_db.register_orodental_exam(orodental)
+
+      #UPDATE ACTIVE CONSULTATION
+      self.active_consultation["general_exam"]["notes"] = general_exam["notes"]
+      self.active_consultation["orodental_exam"]["intraoral"] = orodental_exam["intraoral"]
+      self.active_consultation["orodental_exam"]["extraoral"] = orodental_exam["extraoral"]
 
       #NOTIFY
       status = set()
@@ -3608,188 +3506,199 @@ class ConsultationsManager():
         return
 
     #UI
-    with html.div().classes(add="w-full flex flex-col lg:flex-row gap-1"):
+    with html.div().classes(add="grow w-full p-1 flex flex-col justify-between lg:flex-row gap-1"):
       #GE
-      ui.textarea(label="GENERAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[300px]' label-color='#07004d'").classes(add="grow shadow-md shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(ge,"notes")
+      ui.textarea(label="GENERAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[250px]' label-color='#07004d'").classes(add="lg:w-[30%] shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(ge,"notes")
       #ODE
-      ui.textarea(label="EXTRAORAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[300px]' label-color='#07004d'").classes(add="grow shadow-md shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(orodental,"extraoral")
-      ui.textarea(label="INTRAORAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[300px]' label-color='#07004d'").classes(add="grow shadow-md shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(orodental,"intraoral")
+      ui.textarea(label="EXTRAORAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[250px]' label-color='#07004d'").classes(add="lg:w-[30%] shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(orodental,"extraoral")
+      ui.textarea(label="INTRAORAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[250px]' label-color='#07004d'").classes(add="lg:w-[30%] shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(orodental,"intraoral")
       
     #BUTTONS
     with html.div().classes(add="w-full py-1 flex flex-row justify-center"):
-      ui.button(text="SAVE",icon="fa-regular fa-floppy-disk",color="",on_click=save_examination).classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-lg lg:text-xl text-yellow-500 text-bold")
+      ui.button(text="SAVE",icon="fa-regular fa-floppy-disk",color="",on_click=save_examination).props(add="glossy").classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-lg lg:text-xl text-yellow-500 text-bold")
 
   def ProvisionalDiagnoses(self,consultation:dict,parent=None,visit=None,attendee_id=None):
 
-    #DATA
-    _raw_dxs = consultation.diagnoses
-    displayable_dxs = [diagnosis._asdict() for diagnosis in _raw_dxs]
-    newly_uploaded_dxs = []
-    if consultation.diagnoses + newly_uploaded_dxs:
-      _pdxs = [f"{dx["provisional_icd"]} : {dx["provisional"]}" for dx in consultation.diagnoses + newly_uploaded_dxs]
-      _ddxs = []
-      for consult_diagnosis in consultation["diagnoses"] + newly_uploaded_dxs:
-        for consult_ddx in consult_diagnosis["differentials"]:
-          _ddxs.append(consult_ddx)
-      consultation_dxs = _pdxs + _ddxs
-    else:
-      consultation_dxs = []
-    
-
     #FXS
-    def display_pdxs():
-
-      pdx_panel.clear()
-      if displayable_dxs:
-        with pdx_panel.classes(remove="flex"):
-          for diagnosis in displayable_dxs:
-            dx = f"{diagnosis['provisional_icd']} : {diagnosis['provisional']}"
-            with ui.list().props(add=f"dense pdx='{dx}'").classes(add="px-2 mb-2 bg-sky-50 rounded shadow-sm shadow-[#07004d] uppercase").on("click",lambda e:DifferentialDiagnosesDialog(raw_pdx=e.sender.props['pdx'],raw_ddxs=e.sender.props['ddxs'])):
-              ui.item_label(text=dx).classes(add="text-xl text-sky-700 text-bold")
-
-              for ddx in diagnosis['differentials']:
-                ui.item(text=ddx).classes(add="px-2 text-lg text-bold text-harmony italic")
+    async def load_provisional_diagnoses():
+      diagnoses_select.options = self.diagnoses
+      diagnoses_select.update()
+    
+    def DifferentialDiagnosesDialog(pdx):
+      """"""
+      #DATA & CONTROLS
+      if not pdx:
+        return
       
-      else:
-        with pdx_panel.classes(add="flex flex-col justify-center items-center"):
-          ui.label("No Provisional Diagnosis!").classes(add="text-red-500 font-bold italic text-xl fa-fade")
+      ddxs = set()
 
-    def DifferentialDiagnosesDialog(pdx:str|None=None,raw_pdx:str|None=None,raw_ddxs:list|None=None):
-      pdx = f"{pdx.split(':')[0]} : {pdx.split(':')[1]}" if pdx else raw_pdx if raw_pdx else None
-      ddxs = set(json.loads(raw_ddxs)) if raw_ddxs else set()
+      #FXS
+      async def load_differential_diagnoses():
+        differentials = self.diagnoses
+        differentials.remove(pdx)
 
-      def _display_pdx(pdx,ddxs):
-        _raw_dx = {"provisional_icd":pdx.split(" : ")[0],"provisional":pdx.split(" : ")[1],"differentials":ddxs}
-        if pdx not in consultation_dxs:
-          newly_uploaded_dxs.append(_raw_dx)
-          displayable_dxs.append(_raw_dx)
-
-          dx_data = {"consultation_id":consultation["consultation_id"],"provisional":pdx.lower(),"differentials":json.dumps(list(ddxs))}
-          status = clients_db.register_diagnosis(dx_data)
-          ui.notify(message=status["message"],type=status["type"],position=status["position"])
-
-        else:
-          ui.notify(message="Diagnosis already added!",status="warning",position="top")
-
-        display_pdxs()
+        differentials_select.options = differentials
+        differentials_select.update()
+      
+      def display_differentials(new_ddx=None):
+        """Displays differentials selected"""
         
+        if new_ddx:
+          ddxs.add(new_ddx)
+
+        ddx_display.clear()
+        if ddxs:
+          with ddx_display.classes(add="animate__animated animate__fadeIn animate__slow gap-y-2 justify-start items-start",remove="items-center justify-center"):
+            for ddx in ddxs:
+              ui.chip(text=ddx,text_color="#07004d",color="",removable=True,on_value_change=lambda e:clear_differential(e.sender._text)).props(add="icon-remove='delete'").classes(add="bg-inherit rounded-sm shadow-sm shadow-[#07004d]")
+        else:
+          with ddx_display.classes(add="animate__animated animate__fadeIn animate__slow justify-center items-center",remove="justify-start items-start"):
+            ui.label("No Differential Diagnosis!").classes(add="text-bold italic text-red-400 fa-fade")
+      
+      def clear_differential(saved_ddx):
+        if not saved_ddx:
+          return
+
+        ddxs.remove(saved_ddx)
+
+      def save_diagnosis():
+        diagnosis = {
+          "consultation_id":self.active_consultation.consultation_id,
+          "provisional":pdx,
+          "differentials":list(ddxs)
+        }
+
+        self.active_diagnoses.append(diagnosis)
+
+        status = clients_db.register_diagnosis(diagnosis=diagnosis)
+
+        ui.notify(message=status["message"],position=status["position"],type=status["type"])
+
         ddx_dialog.close()
 
-      def add_ddx_and_display(ddx):
-        if not ddx:
-          return 
-
-        ddxs.add(f"{ddx.split(':')[0]} : {ddx.split(':')[1]}".lower())
-        
-        ddx_display.clear()
-        with ddx_display:
-          for ddx in ddxs:
-            ui.chip(text=ddx,color="sky-50",text_color="sky-600",removable=True,on_value_change=lambda e:remove_ddx_and_display(e.sender._text)).props(add="icon-remove='fas fa-circle-xmark' ripple").classes(add="rounded shadow-sm shadow-[#07004d] m-0 pl-2 pr-5 py-1 text-lg text-wrap text-bold animate__animated animate__fadeIn")
-       
-      def remove_ddx_and_display(ddx):
-        ddxs.remove(ddx)
-        
-        ddx_display.clear()
-        with ddx_display:
-          for ddx in ddxs:
-            ui.chip(text=ddx,color="sky-50",text_color="sky-600",removable=True,on_value_change=lambda e:remove_ddx_and_display(e.sender._text)).props(add="icon-remove='fas fa-circle-xmark' ripple").classes(add="rounded shadow-sm shadow-[#07004d] m-0 pl-2 pr-5 py-1 text-lg text-bold animate__animated animate__fadeIn")
+        #DISPLAY
+        provisional_diagnoses_panel.clear()
+        with provisional_diagnoses_panel:
+          self.DiagnosesDisplay()
       
-      def delete_diagnosis(pdx):
-        pass
-
-      with ui.dialog().props(add="transition-show='jump-up' transition-hide='jump-down' transition-duration='500' ") as ddx_dialog,html.div().style(add="min-width:50%;min-height:60%;").classes(add="bg-sky-100 p-0.5 flex flex-col items-center gap-y-3"):
-        ui.label(text=pdx).classes(add="w-full p-3 bg-harmony text-center text-yellow-500 text-2xl text-bold")
-
-        ui.select(options=self.diagnoses,label="DIFFERENTIAL DIAGNOSIS",with_input=True,on_change=lambda e:add_ddx_and_display(ddx=e.value)).props(add="clearable").classes(add="lg:w-3/5 mx-5 px-5 rounded shadow-md shadow-[#07004d] bg-white text-lg")
+      #UI
+      with ui.dialog().props(add="transition-show='scale' transition-hide='scale' transition-duration='500' ") as ddx_dialog,html.div().style(add="min-width:50%;min-height:60%;").classes(add="bg-sky-100 p-0.5 flex flex-col items-center gap-y-3"):
+        #Diagnosis Label
+        with html.div().classes(add="w-full bg-harmony flex flex-row items-center"):
+          ui.label(text=pdx).classes(add="grow px-1 bg-inherit text-center text-yellow-500 text-2xl text-bold")
+          ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=ddx_dialog.close).classes(add="bg-inherit text-red-500 text-lg text-bold")
         
-        with html.div().classes(add="w-full grid grid-cols-1 gap-y-3 p-1") as ddx_display:
-         pass
+        #DDx Select
+        with html.div().classes(add="w-full py-3 flex flex-row justify-center"):
+          differentials_select = ui.select(options=[],label="DIFFERENTIAL DIAGNOSIS",with_input=True,on_change=lambda e:display_differentials(e.value)).props(add="clearable").classes(add="lg:w-3/5 mx-5 px-5 rounded shadow-md shadow-[#07004d] bg-white text-lg")
         
-        ui.space()
+        ui.separator().classes(add="w-full")
+
+        with html.div().classes(add="grow bw-full flex flex-col") as ddx_display:
+          display_differentials()
+        
+        ui.separator().classes(add="w-full")
+
+        #ui.space()
         with html.div().classes(add=f"w-full p-3 justify-self-end flex flex-row justify-center gap-5"):
-          ui.button(text="save diagnosis",color="",on_click=lambda e:_display_pdx(pdx=pdx,ddxs=ddxs)).classes(add="bg-harmony text-yellow-500 text-lg lg:text-xl")
-          ui.button(text="delete diagnosis",color="",on_click=lambda e:delete_pdx(pdx=raw_pdx)).classes(add="hidden bg-harmony text-red-500 text-lg lg:text-xl")
-    
+          ui.button(text="save diagnosis",color="",on_click=save_diagnosis).classes(add="bg-harmony text-yellow-500 text-lg lg:text-xl")
+          #ui.button(text="delete diagnosis",color="",on_click=lambda e:delete_pdx(pdx=raw_pdx)).classes(add="hidden bg-harmony text-red-500 text-lg lg:text-xl")
+  
       ddx_dialog.open()
+    
+      #BACKGROUND LOADS
+      ui.timer(0.1,lambda:load_differential_diagnoses(),once=True)
 
     #UI
-    with html.section().classes(add="w-full p-2 lg:h-full flex flex-col items-center gap-3"):
-      #Dx Selector
-      ui.select(options=self.diagnoses,label="PROVISIONAL DIAGNOSIS",with_input=True,on_change=lambda e:DifferentialDiagnosesDialog(pdx=e.value)).props(add="clearable").classes(add="lg:w-3/5 px-5 rounded shadow-md shadow-[#07004d] bg-white text-lg")
+    with html.section().classes(add="grow w-full flex flex-col lg:grid grid-cols-3 items-center gap-3 lg:gap-0"):
+      #Selecteor
+      with html.div().classes(add="w-full lg:h-full py-3 flex flex-row justify-center items-start"):
+        diagnoses_select = ui.select(options=[],label="PROVISIONAL DIAGNOSIS",with_input=True,on_change=lambda e:DifferentialDiagnosesDialog(pdx=e.value)).props(add=f"clearable").classes(add="lg:w-3/5 px-5 rounded shadow-md shadow-[#07004d] bg-white text-lg")
 
-      #Clinical Summary
-      with html.div().classes(add="lg-show grow w-full"):
-        ui.label('')
-
-    #Display
-    with html.section().classes(add="grow p-2 w-full lg:h-full") as pdx_panel:
-      display_pdxs()
+      #Diagnoses Display
+      with html.div().classes(add="grow lg:col-span-2 w-full lg:h-full flex flex-col shadow-sm shadow-[#07004d]") as provisional_diagnoses_panel:
+        self.DiagnosesDisplay()
+        
+    #Background loads
+    ui.timer(0.1,lambda: asyncio.create_task(load_provisional_diagnoses()),once=True)
 
   def DefinitiveDiagnoses(self,consultation:dict,parent=None,visit=None,attendee_id=None):
     #DATA
-    _consultation_dxs = consultation.diagnoses
-    consultation_dxs = [diagnosis._asdict() for diagnosis in _consultation_dxs]
-    selectable_diagnoses = [f"{dx['provisional_icd'].upper()} : {dx['provisional'].title()}" for dx in consultation_dxs]
-    _ddxs = []
-    for dx in consultation_dxs:
-      for ddx in dx["differentials"]:
-        _ddxs.append(ddx.title())
-    selectable_diagnoses.extend(_ddxs)
-    def_dxs = [f"{dx['definitive_icd'].upper()} : {dx['definitive'].title()}" for dx in consultation_dxs if dx["definitive"]]
-
+    _selectable_diagnoses = set()
+    _selectable_diagnoses.update([f"{provisional['provisional_icd'].upper()}:{provisional['provisional']}" for provisional in self.active_diagnoses])
+    for diagnosis in self.active_diagnoses:
+      _selectable_diagnoses.update(diagnosis["differentials"])
+    
+    selectable_diagnoses = list(_selectable_diagnoses)
+    
     #FXS
-    def display_dxs():
-      
-      dx_panel.clear()
-      if def_dxs:
-        with dx_panel.classes(remove="justify-center items-center",add="gap-3"):
-          for dx in def_dxs:
-            ui.chip(text=dx,color="sky-50",text_color="sky-700").props(add=" icon-remove='fa-regular fa-circle-xmark' ripple").classes(add=f"shadow-[#07004d] w-full rounded shadow-sm m-0 pl-2 pr-5 py-1 text-xl text-bold uppercase")
-      
-      else:
-        with dx_panel.classes(add="flex flex-col justify-center items-center"):
-          ui.label("No definitive diagnosis saved!").classes(add="text-bold italic text-red-500 text-xl fa-fade")
-      
-    def save_diagnosis(dx:str):
+    def update_diagnosis(dx:str):
       if not dx:
         return
-
-      if dx in def_dxs:
-        ui.notify(message="Diagnosis already saved!",position="top",type="warning")
-        return
-
-      icd,defn = dx.split(" : ")[0].lower(),dx.split(" : ")[1].lower()
       
-      #Save Dx
-      for diagnosis in consultation_dxs:
-        if diagnosis["provisional_icd"].lower() == icd:
-          data = {"diagnosis_id":diagnosis["diagnosis_id"],"definitive_icd":icd,"definitive":defn,"definitive_generic":icd.split(".")[0] if "." in icd else icd}
-          clients_db.register_diagnosis(data)
-          
-        else:
-          if dx.lower() in [ddx.lower() for ddx in diagnosis["differentials"]]:
-            data = {"diagnosis_id":diagnosis["diagnosis_id"],"definitive_icd":icd,"definitive":defn,"definitive_generic":icd.split(".")[0] if "." in icd else icd}
-            clients_db.register_diagnosis(diagnosis=data)
-
+      definitive = dx.split(":")[1]
+      definitive_icd = dx.split(":")[0]
+      definitive_generic = definitive_icd.split(".")[0] if "." in definitive_icd else definitive_icd
       
-      #Display
-      def_dxs.append(f"{icd.upper()} : {defn.title()}")
+      for active_dx in self.active_diagnoses:
+        if (active_dx["provisional_icd"].lower() == definitive_icd.lower() or ("differentials" in active_dx and dx.lower() in [i.lower() for i in active_dx["differentials"]])):
+          active_dx["definitive"] = definitive
+          active_dx["definitive_icd"] = definitive_icd
+          active_dx["definitive_generic"] = definitive_generic
 
-      display_dxs()
+          break
+      
+      #Update
+      status = clients_db.update_diagnosis(active_dx)
 
+      ui.notify(message=status["message"],position=status["position"],type=status["type"])
+      
+      #Displaying output
+      if status["status"]:
+        definitive_diagnoses_panel.clear()
+        with definitive_diagnoses_panel:
+          self.DiagnosesDisplay(definitive=True)
+      
     #UI
-    with html.section().classes(add="w-full lg:w-auto p-2 lg:h-full flex flex-col items-center gap-3"):
-      #Dx Selector
-      ui.select(options=selectable_diagnoses,label="DEFINITIVE DIAGNOSIS",with_input=True,on_change=lambda e:save_diagnosis(dx=e.value)).props(add="clearable").classes(add="lg:w-3/5 px-5 rounded shadow-md shadow-[#07004d] bg-white text-lg")
+    with html.section().classes(add="grow w-full flex flex-col lg:grid grid-cols-3 items-center gap-3 lg:gap-0"):
+      #Selecteor
+      with html.div().classes(add="w-full lg:h-full py-3 flex flex-row justify-center items-start"):
+        ui.select(options=selectable_diagnoses,label="DEFINITIVE DIAGNOSIS",with_input=True,on_change=lambda e:update_diagnosis(dx=e.value)).props(add=f"clearable").classes(add="lg:w-3/5 px-5 rounded shadow-md shadow-[#07004d] bg-white text-lg")
 
-      #Clinical Summary
-      with html.div().classes(add="lg-show grow w-full"):
-        ui.label('')
+      #Diagnoses Display
+      with html.div().classes(add="grow lg:col-span-2 w-full lg:h-full py-2 flex flex-col shadow-sm shadow-[#07004d]") as definitive_diagnoses_panel:
+        self.DiagnosesDisplay(definitive=True)
+    
+  def DiagnosesDisplay(self,definitive:bool=False):
+    """Displays list of diagnoses for client"""
+    
+    if definitive:
+      if self.active_diagnoses:
+        with html.ol().classes(add="grow bg-inherit w-full list-inside list-decimal"):
+          for active_diagnosis in self.active_diagnoses:
+            if "definitive" in active_diagnosis and active_diagnosis["definitive"]:
+              html.li(active_diagnosis["definitive"]).classes(add="my-1 text-xl font-bold")
+      
+      else:
+        with html.div().classes(add="grow w-full flex flex-col justify-center items-center"):
+          ui.label("No diagnosis saved!").classes(add="text-red-400 text-bold text-base italic fa-fade")
 
-    #Display
-    with html.section().classes(add="p-2 w-full lg:w-auto lg:h-full flex flex-col") as dx_panel:
-      display_dxs()
+    else:
+      if self.active_diagnoses:
+        #Provisional diagnosis
+        with html.ol().classes(add="grow bg-inherit w-full list-inside list-decimal"):
+          for active_diagnosis in self.active_diagnoses:
+            with html.li(active_diagnosis["provisional"]).classes(add="my-1 px-2 text-xl text-harmony font-bold"):
+              if "differentials" in active_diagnosis and active_diagnosis["differentials"]:
+                with html.ul().classes(add="list-inside list-discd text-lg text-gray-500"):
+                  for differentials in active_diagnosis["differentials"]:
+                    html.li(differentials)
 
+      else:
+        with html.div().classes(add="grow w-full flex flex-col justify-center items-center"):
+          ui.label("No diagnosis saved!").classes(add="text-red-400 text-bold text-base italic fa-fade")
+
+  
 
 class ImagingsForm():
   """A class to display form inputs fo requesting imagings"""
@@ -3800,24 +3709,25 @@ class ImagingsForm():
     self.initial_data()
     
     #UI
-    #Imaging select
-    with html.div().classes(add="w-full lg:w-auto lg:h-full flex flex-col"):
-      with html.section().classes(add="w-full p-5 flex flex-row justify-center"):
-        ui.select(options=self.selectable_imagings,label="IMAGINGS",on_change=lambda e:self.ImagingDialog(e.value)).props(add="clearable stacked-label").classes(add="w-52 px-5 rounded shadow-md shadow-[#07004d] bg-white text-lg uppercase")
+    with html.div().classes(add="grow w-full flex flex-col lg:grid lg:grid-cols-3"):
+      #Imaging select
+      with html.div().classes(add="w-full lg:h-full flex flex-col"):
+        with html.section().classes(add="w-full p-5 flex flex-row justify-center"):
+          ui.select(options=self.selectable_imagings,label="IMAGINGS",on_change=lambda e:self.ImagingDialog(imaging_input=e.value)).props(add="clearable stacked-label").classes(add="w-52 px-5 rounded shadow-md shadow-[#07004d] bg-white text-lg uppercase")
+        
+        #Commentary
+        with html.section().classes(add="grow lg-show w-full"):
+          pass
       
-      #Commentary
-      with html.section().classes(add="grow lg-show w-full"):
-        pass
-      
-    #Imaging display
-    with html.div().classes(add="grow w-full lg:w-auto lg:h-full p-2  flex flex-col gap-3") as self.imaging_details_display:
-      self.display_imagings()
+      #Imaging display
+      with html.div().classes(add="grow w-full lg:col-span-2 lg:h-full p-2  flex flex-col gap-3") as self.imaging_details_display:
+        self.ImagingsDisplay()
 
   #FUNCTIONALITIES
   def initial_data(self):
     self.insurance_authorization_no = self.visit.consultations[0].payment.authorization_no
     self.imagings = [self.format_imaging(service) for service in get_services() if service.type == "imaging"]
-    self.visit_imagings = self.visit.imagings
+    self.visit_imagings = [img._asdict() for img in self.visit.imagings]
     self.selectable_imagings = [imaging["name"].upper() for imaging in self.imagings]
     
   def save_imaging(self,imaging:dict):
@@ -3828,11 +3738,7 @@ class ImagingsForm():
     status = clients_db.register_imaging(imaging)
     ui.notify(message=status["message"],type=status["type"],position=status["position"])
       
-    self.display_imagings()
-
-    #MAIN UI UPDATE
-    self.parent.initial_data()
-
+    self.ImagingsDisplay()
     self.imaging_dialog.close()
  
   def cancel_imaging(self,imaging_id:str):
@@ -3887,46 +3793,109 @@ class ImagingsForm():
 
 
   #DISPLAYS
-  def display_imagings(self):
+  def ImagingsDisplay(self):
     """A method to display diagnoses from db"""
+    #FXS
+    def ImagingStatus(imaging,lg:bool=False):
+      """A function to return a styled icon based on status of imaging"""
+      if lg:
+        return f"<span class=' text-bold text-{"gray-600" if imaging["cancelled"] else "green-600" if imaging["processed"] else"yellow-600"}'><span class='{"fa-regular fa-circle-xmark" if imaging["cancelled"] else "fa-solid fa-check-double" if imaging["processed"] else "fa-solid fa-spinner fa-spin"}'></span><span class='ml-1'>{"Cancelled" if imaging["cancelled"] else "Done" if imaging["processed"] else "Awaiting"}</span></span>"
+      else:
+        return f"<span class=' text-bold text-{"gray-600" if imaging["cancelled"] else "green-600" if imaging["processed"] else"yellow-600"}'><span class='{"fa-regular fa-circle-xmark" if imaging["cancelled"] else "fa-solid fa-check-double" if imaging["processed"] else "fa-solid fa-spinner fa-spin"}'></span></span></span>"
     
+    def ImagingPlanner(imaging):
+      planner = get_staff(username=imaging["attendee_id"])
+
+      return f"{planner.title} {planner.last_name} {planner.first_name[0]}.".title()
+    
+    #UI
     self.imaging_details_display.clear()
     if self.visit_imagings:
-      with self.imaging_details_display:
-        for imaging in self.visit_imagings:
-          ui.chip(text=imaging["study"].title(),color="sky-50",text_color=f"{'green-900' if imaging["processed"] else 'sky-700'}",removable=False if imaging["processed"] else True,on_click=lambda e:self.ImagingsDisplayDialog([img for img in self.visit_imagings if img['imaging_id'] == e.sender.props['id']][0]),on_value_change=lambda e:self.cancel_imaging(imaging["imaging_id"])).props(add=f"id={imaging['imaging_id']} icon-remove='fa-regular fa-circle-xmark' ripple").classes(add=f"{'ring-1 ring-green-600 shadow-green-900' if imaging['processed'] else 'shadow-[#07004d]'} w-full rounded shadow-sm m-0 pl-2 pr-5 py-1 text-xl text-bold uppercase")
+      with self.imaging_details_display.classes(remove="items-center justify-center"):
+        #Small Screen
+        ui.aggrid(
+          {
+            "columnDefs":[
+              {"headerName":"","field":"sno","width":50},
+              {"headerName":"STUDY","field":"name"},
+              {"headerName":"STATUS","field":"status","width":100}
+            ],
+            "rowData":[
+              {
+                "sno":self.visit_imagings.index(imaging) + 1,
+                "name":imaging["study"].upper(),
+                "status":ImagingStatus(imaging),
+              } for imaging in self.visit_imagings
+            ]
+          },
+          theme="quartz",
+          html_columns=[2]
+        ).props(add="").classes(add="lg:hidden grow w-full animate__animated animate__fadeIn")
+        
+        #Large Screen
+        ui.aggrid(
+          {
+            "columnDefs":[
+              {"headerName":"","field":"sno","width":50},
+              {"headerName":"STUDY","field":"name"},
+              {"headerName":"PLANNED BY","field":"planner","width":100},
+              {"headerName":"DURATION","field":"duration","width":100},
+              {"headerName":"STATUS","field":"status","width":110}
+            ],
+            "rowData":[
+              {
+                "sno":self.visit_imagings.index(imaging) + 1,
+                "name":imaging["study"].upper(),
+                "planner":ImagingPlanner(imaging),
+                "duration":format_age(imaging["request_time"]),
+                "status":ImagingStatus(imaging=imaging,lg=True),
+              } for imaging in self.visit_imagings
+            ]
+          },
+          theme="quartz",
+          html_columns=[4]
+        ).props(add="").classes(add="lg-show grow w-full animate__animated animate__fadeIn")
+
     else:
       with self.imaging_details_display.classes(add="justify-center items-center"):
         ui.label("No imaging requested!").classes(add="text-bold italic text-red-500 text-xl fa-fade")
 
-  def ImagingDialog(self,imaging:str):
+  def ImagingDialog(self,imaging_input):
     """A method to display a dialog for differential diagnoses"""
-
-    if not imaging:
+    #DATA & CONTROLS
+    if not imaging_input:
       return
     
-    #Notification if imaging already ordered
-    if imaging.lower() in [imaging["study"].lower() for imaging in self.visit_imagings]:
-      ui.notify(message="Imaging already requested in this visit",type="warning",position="top")
-      return
+    imaging = [_imaging for _imaging in self.imagings if _imaging["study"].lower() == imaging_input.lower()][0]
 
-    #DATA
-    imaging = [_imaging for _imaging in self.imagings if _imaging["study"].lower() == imaging.lower()][0]
+    requested = False
+
+    if [img for img in self.visit_imagings if img["study"] == imaging_input.lower()]:
+      requested = True
 
     #UI
-    with ui.dialog().props(add="transition-show='jump-up' transition-hide='jump-down' transition-duration='500' ") as self.imaging_dialog,html.div().style(add="min-width:50%;").classes(add="bg-sky-50 p-0.5"):
-      #Imaging details
-      with html.div().classes(add="w-full bg-harmony px-1 rounded-t"):
-        ui.label(text=imaging["study"]).classes(add="w-full p-3 text-center text-yellow-500 text-3xl text-bold")
-      ui.separator()
-      with html.div().classes(add="w-full bg-harmony flex flex-row justify-around"):
-        #Payment details
-        ui.chip(text=imaging["payment"]["payment_mode"],icon="fas fa-wallet",color="",text_color="yellow").classes(add=f"uppercase bg-inherit text-bold text-base")
-        ui.chip(text=imaging["displayable_price"],icon="fas fa-coins",color="",text_color="yellow").classes(add="bg-inherit text-bold text-base")
-
+    with ui.dialog().props(add="transition-show='jump-up' transition-hide='jump-down' transition-duration='500' ") as self.imaging_dialog,html.div().style(add="min-width:50%;").classes(add="bg-sky-50 p-0.5 flex flex-col"):
+      #Header
+      with html.div().classes(add="w-full bg-harmony px-1 flex flex-row items-center"):
+        ui.label(text=imaging["study"]).classes(add="grow px-3 text-yellow-500 text-2xl text-bold uppercase")
+        ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=self.imaging_dialog.close).classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-red-500 text-lg text-bold")
+      
+      #Details
+      with html.div().classes(add="w-full px-1 bg-harmony grid grid-cols-3"):
+        #Payment Mode
+        ui.html(f"<span class='fa-solid fa-wallet text-sky-500'></span><span class='ml-2 text-yellow-400'>{imaging['payment']['payment_mode']}</span>",sanitize=False).classes(add="bg-inherit text-base uppercase font-bold")
+        #Price
+        ui.html(f"<span class='fa-solid fa-coins text-sky-500'></span><span class='ml-2 text-yellow-400'>{imaging['payment']['cost']:,.2f} TZS</span>",sanitize=False).classes(add="col-span-2 bg-inherit text-base uppercase font-bold")
+      
+      #Hint if there are concerns
+      with html.div().classes(add="w-full flex flex flex-col items-center justify-center"):
+        if requested:
+          ui.html(f"<span class='fa-solid fa-house-medical-circle-exclamation'></span><span class='ml-2 italic'>It's already requested!</span>",sanitize=False).classes(add="bg-inherit text-lg text-red-400 font-bold fa-fade")
+      
       #Imaging notes
-      with html.div().classes(add="w-full flex flex-row justify-center p-3"):
+      with html.div().classes(add="grow w-full flex flex-row justify-center p-3"):
         ui.textarea(label="ADDITIONAL NOTES",placeholder="Write any additional details to help radiologist/radiographer").props(add="clearable stack-label input-class='").classes(add="w-4/5 px-5 rounded shadow-md shadow-[#07004d] bg-white text-lg").bind_value(imaging,"notes")
+      
       #Buttons
       with html.div().classes(add="w-full p-2 flex flex-row justify-around gap-x-2"):
         ui.button(text="REQUEST IMAGING",color="",on_click=lambda e:self.save_imaging(imaging=imaging)).classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-yellow-500 text-lg text-bold")
@@ -4032,45 +4001,46 @@ class ManagementPlanForm():
     self.initial_data()
 
     #UI
-    with html.div().classes(add="w-full grow flex flex-col"):
+    with html.div().classes(add="w-full grow flex flex-col gap-1"):
       #Management selections
       with html.section().classes(add="w-full p-2 flex flex-row justify-center gap-3"):
-        ui.select(options=self.selectable_medicines,label="MEDICINES",with_input=True,on_change=lambda e:self.MedicineDialog(medicine=e.value)).props(add="clearable").classes(add="px-5 rounded shadow-md shadow-[#07004d] bg-white text-lg")
-        ui.select(options=self.selectable_procedures,label="PROCEDURES",with_input=True,on_change=lambda e:self.ProcedureDialog(procedure=e.value)).props(add="clearable").classes(add="px-5 rounded shadow-md shadow-[#07004d] bg-white text-lg")
-
+        ui.select(options=self.selectable_medicines,label="MEDICINES",with_input=True,on_change=lambda e:self.MedicineDialog(medicine_input=e.value)).props(add="clearable").classes(add="px-5 rounded shadow-sm shadow-[#07004d] bg-white text-lg")
+        ui.select(options=self.selectable_procedures,label="PROCEDURES",with_input=True,on_change=lambda e:self.ProcedureDialog(procedure_input=e.value)).props(add="clearable").classes(add="px-5 rounded shadow-sm shadow-[#07004d] bg-white text-lg")
+      
+      ui.separator().classes(add="w-full")
+      
       #Management display
-      with html.section().classes(add="grow p-0 w-full flex flex-col shadow-sm shadow-[#07004d]"):
+      with html.section().classes(add="grow p-0 w-full flex flex-col"):
         #Tabs
-          with html.div().classes(add="w-full px-1 grid grid-cols-10 items-center gap-1"):
-            with ui.tabs(value="medicines" if self.visit_medicines else "procedures").props(add="inline-label active-class='text-sky-700 font-bold'").classes(add="col-span-9 py-1") as management_tabs:
-              ui.tab(name="medicines",label=f"MEDICINES",icon="fa-solid fa-pills").props(add="dense")
-              ui.tab(name="procedures",label=f"PROCEDURES",icon="fas fa-hospital").props(add="dense")
+        with html.div().classes(add="w-full px-1 grid grid-cols-10 items-center gap-1"):
+          with ui.tabs(value="procedures" if self.visit_procedures and not self.visit_medicines else "medicines").props(add="inline-label active-class='text-sky-700 font-bold'").classes(add="col-span-9 py-1") as management_tabs:
+            ui.tab(name="medicines",label=f"MEDICINES",icon="fa-solid fa-pills").props(add="dense")
+            ui.tab(name="procedures",label=f"PROCEDURES",icon="fas fa-hospital").props(add="dense")
+        
+        #Panels
+        with html.div().classes(add="grow w-full rounded-br flex flex-col"):
+          with ui.tab_panels(tabs=management_tabs,value="procedures" if self.visit_procedures and not self.visit_medicines else "medicines").props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='700'").classes(add="bg-inherit grow w-full grid grid-cols-1"):
+            #Medicines
+            with ui.tab_panel(name="medicines").classes(add="w-full h-full p-0 rounded-0 flex flex-col"):
+              with html.div().classes(add="grow w-full h-full flex flex-col") as self.medicines_display:
+                self.MedicinesDisplay(medicines=self.visit_medicines)
+            
+            #Procedures
+            with ui.tab_panel(name="procedures").classes(add="w-full h-full p-0 rounded-0 flex flex-col"):
+              with html.div().classes(add="grow w-full h-full flex flex-col") as self.procedures_display:
+                self.ProceduresDisplay(procedures=self.visit_procedures)
           
-          #Panels
-          with html.div().classes(add="grow w-full rounded-br flex flex-col"):
-            with ui.tab_panels(tabs=management_tabs,value="medicines" if self.visit_medicines else "procedures").props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='700'").classes(add="bg-inherit grow w-full grid grid-cols-1"):
-              #Medicines
-              with ui.tab_panel(name="medicines").classes(add="w-full h-full p-0 rounded-0 flex flex-col"):
-                with html.div().classes(add="grow w-full h-full flex flex-col") as self.medicines_display:
-                  self.MedicinesDisplay(medicines=self.visit_medicines)
-              
-              #Procedures
-              with ui.tab_panel(name="procedures").classes(add="w-full h-full p-0 rounded-0 flex flex-col"):
-                with html.div().classes(add="grow w-full h-full flex flex-col") as self.procedures_display:
-                  self.ProceduresDisplay(procedures=self.visit_procedures)
-          
-  
   #FUNCTIONALITIES
   def initial_data(self):
     self.insurance_authorization_no = self.visit.consultations[0].payment.authorization_no
     self.procedures = [self.format_procedure(service) for service in get_services() if service.type == "procedure"]
-    self.formulary_medicines,self.active_medicines = get_formulary(),get_active_medicines()
+    self.formulary_medicines = get_formulary()
     self.medicines = [self.format_medicine(medicine) for medicine in self.formulary_medicines]
     
-    self.selectable_medicines = [medicine.name.upper() for medicine in self.medicines]
-    self.selectable_procedures = [procedure.name.upper() for procedure in self.procedures]
+    self.selectable_medicines = [medicine["name"].upper() for medicine in self.medicines]
+    self.selectable_procedures = [procedure["name"].upper() for procedure in self.procedures]
 
-    _visit_medicines,self.visit_procedures = self.visit.medications + self.visit.medical_items,self.visit.procedures
+    _visit_medicines,self.visit_procedures = self.visit.medications + self.visit.medical_items,[procedure._asdict() for procedure in self.visit.procedures]
     self.visit_medicines = [medicine._asdict() for medicine in _visit_medicines]
     for medicine in self.visit_medicines:
       medicine["id"] = medicine["medication_id"] if "medication_id" in medicine else medicine["medical_item_id"]
@@ -4079,13 +4049,14 @@ class ManagementPlanForm():
     """Format medicine from formulary to include details from requisition medicines"""
     #
     medicine = medicine._asdict()
+    #Formatting payment details
     if self.visit.payment_mode != "cash":
       medicine_payment_schemes = [scheme._asdict() for scheme in medicine["schemes"] if scheme.scheme_name == self.visit.payment_mode.lower() and scheme.active]
       if medicine_payment_schemes:
         medicine_payment_scheme = medicine_payment_schemes[0]
         payment_mode = self.visit.payment_mode
       else:
-        medicine_payment_scheme = [scheme._asdict() for scheme in medicine_payment_schemes if scheme.scheme_name == "cash"][0]
+        medicine_payment_scheme = [scheme._asdict() for scheme in medicine["schemes"] if scheme.scheme_name == "cash"][0]
         payment_mode = "cash"
     else:
       medicine_payment_scheme = [scheme._asdict() for scheme in medicine["schemes"] if scheme.scheme_name == "cash" and scheme.active][0]
@@ -4093,12 +4064,21 @@ class ManagementPlanForm():
 
     visit_id = self.visit.visit_id
     medication_id = f"{visit_id}med{uuid.uuid4()}"
-    active_requisition_medicines = sorted([req_medicine for req_medicine in self.active_medicines if medicine["medicine_id"] == req_medicine["medicine_id"]],key=lambda med:med["expire_date"])
-    medicine_price = [price for price in medicine_payment_scheme["prices"] if price["active"]][0]
+    medicine_price = [price._asdict() for price in medicine_payment_scheme["prices"] if price.active][0]
 
+    #Formatting inventory details
+    if medicine["inventory"]:
+      dispensing_inventory = sorted([inventory for inventory in medicine["inventory"] if inventory.issuer == "dispensing store" or inventory.receiver == "dispensing store"],key=lambda inv:inv.date,reverse=True)
+      if dispensing_inventory:
+        balance = _inventory.issuer_current_amount if _inventory.issuer == "dispensing store" else _inventory.receiver_current_amount
+      else:
+        balance = 0
+    else:
+      balance = 0
+    
+    #Finall
     medicine.update(
       {
-      "active_medicines":active_requisition_medicines,
       "id":medication_id,
       "visit_id":visit_id,
       "medication_id":medication_id if medicine["category"] == "medicine" else None,
@@ -4106,8 +4086,8 @@ class ManagementPlanForm():
       "prescriber_id":self.attendee_id,
       "dosage":"---",
       "prescribed_items_no":0,
-      "dispensable_medicines":sum([med["dispensing_balance"] for med in active_requisition_medicines]),
       "dispensed_items_no":0,
+      "balance":balance,
       "prescribed_on":datetime.now(),
       "dispensed":False,
       "dispensing_time":None,
@@ -4117,30 +4097,31 @@ class ManagementPlanForm():
       "cancelled_by":None,
       "payment":{
         "visit_id":visit_id,
-        "payment_id":f"{medication_id}pay{uuid.uuid4()}",
+        "payment_id":f"{medication_id}pay{str(uuid.uuid4()).split('-')[1]}",
         "medication_id":medication_id if medicine["category"] == "medicine" else None,
         "medical_item_id":medication_id if medicine["category"] == "medical supply" else None,
         "authorization_no":self.insurance_authorization_no,
         "payment_mode":payment_mode,
-        "unit_price":medicine_price[self.visit['package'].lower()],
+        "unit_price":medicine_price[self.visit.package.lower()],
         "cost":0,
         "billed":True
       }
     }
     )
+
     return medicine
 
   def format_procedure(self,procedure):
     #
     procedure = procedure._asdict()
-
+    
     if self.visit.payment_mode != "cash":
       procedure_payment_schemes = [scheme for scheme in procedure["schemes"] if scheme.scheme_name == self.visit.payment_mode.lower() and scheme.active]
       if procedure_payment_schemes:
         procedure_payment_scheme = procedure_payment_schemes[0]
         payment_mode = self.visit.payment_mode
       else:
-        procedure_payment_scheme = [scheme for scheme in procedure_payment_schemes if scheme.scheme_name == "cash"][0]
+        procedure_payment_scheme = [scheme for scheme in procedure["schemes"] if scheme.scheme_name == "cash"][0]
         payment_mode = "cash"
     else:
       procedure_payment_scheme = [scheme for scheme in procedure["schemes"] if scheme.scheme_name == "cash" and scheme.active][0]
@@ -4178,65 +4159,12 @@ class ManagementPlanForm():
 
   def save_medication(self,medicine:dict,prescription:dict):
     """Saving medication details in class state"""
-    #CONTROLS
-    if prescription["prescribed_items_no"] > medicine["dispensable_medicines"]:
-      ui.notify(message=f"Only {medicine['dispensable_medicines']:,.0f} items available",type="warning",position="top")
-      return
-
-    #FXS
-    def units(medicine:dict,plural:bool=False):
-      if plural:
-        return 'TABLETS' if medicine['name'].lower().split()[-1].startswith('tab') else 'CAPSULES' if medicine['name'].lower().split()[-1].startswith('cap') else 'BOTTLES' if (medicine['name'].lower().split()[-1].startswith('syrup') or medicine['name'].lower().split()[-1].startswith('susp')) else 'VIALS' if medicine['name'].lower().split()[-1].startswith('vial') else 'AMPOULES' if medicine['name'].lower().split()[-1].startswith('ampoule') else 'ITEMS'
-      else:
-        return 'TABLET' if medicine['name'].lower().split()[-1].startswith('tab') else 'CAPSULE' if medicine['name'].lower().split()[-1].startswith('cap') else 'BOTTLE' if (medicine['name'].lower().split()[-1].startswith('syrup') or medicine['name'].lower().split()[-1].startswith('susp')) else 'VIAL' if medicine['name'].lower().split()[-1].startswith('vial') else 'AMPOULE' if medicine['name'].lower().split()[-1].startswith('ampoule') else 'ITEM'
-    
-    def return_medicine(medicine:dict):
-      return medicine
-
-    def dispense_medicine(medicine:dict,prescription:dict):
-      medicine = medicine
-      index,active_meds_count,remainder = 0,len(medicine["active_medicines"]),0
-
-      while index < active_meds_count:
-        med = medicine["active_medicines"][index]
-        medicine["remainder"] = med["dispensing_balance"] - prescription["prescribed_items_no"]
-        medicine["active_medicines"].pop(index)
-        if medicine["remainder"] >= 0:
-          medicine["requisition_medicine_id"] = med["requisition_medicine_id"]
-          med["dispensing_balance"] -= prescription["prescribed_items_no"]
-          med["active"] = True if med["dispensing_balance"] else False
-          medicine["active_medicines"].insert(index,med)
-          remainder = 0
-          return
-        else:
-          med["dispensing_balance"] = 0
-          med["active"] = False
-          medicine["active_medicines"].insert(index,med)
-          prescription["prescribed_items_no"] = remainder = abs(medicine["remainder"])
-          index += 1
-      
-      if remainder:
-        with ui.dialog().props(add="transition-show='scale' transition-hide='scale' transition-duration='500'") as confirm_dialog,html.div().style(add="min-width:50%;").classes(add="bg-sky-100 p-0.5 flex flex-col gap-3"):
-          with html.div().classes(add="w-full p-5"):
-            ui.label(f"Only {medicine['prescribed_items_no'] - remainder} could be prescribed!").classes(add="w-full text-center italic text-lg text-harmony")
-            ui.label("Proceed???").classes(add="w-full text-center text-lg text-harmony italic")
-          
-          with html.div().classes(add="w-full p-3 flex flex-row justify-center gap-x-5"):
-            ui.button(text="NO",color="",on_click=confirm_dialog.close).props(add="").classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-red-500 text-xl text-bold")
-            ui.button(text="YES",color="",on_click=lambda e:return_medicine(medicine)).props(add="").classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-green-500 text-xl text-bold")
-        
-        confirm_dialog.open()
-      
-      else:
-        return medicine
 
     #Update state
     if medicine["category"] == "medicine":
       medicine["dosage"] = prescription["dosage"]
       medicine["prescribed_items_no"] = prescription["prescribed_items_no"]
       medicine["payment"]["cost"] = prescription["cost"]
-      #dispense_medicine(medicine=medicine,prescription=prescription)
-      
 
       self.visit_medicines.append(medicine)
       
@@ -4245,8 +4173,6 @@ class ManagementPlanForm():
     if medicine["category"] == "medical supply":
       medicine["prescribed_items_no"] = prescription["prescribed_items_no_items"]
       medicine["payment"]["cost"] = prescription["cost"]
-
-      dispense_medicine(medicine=medicine,prescription=prescription)
 
       self.visit_medicines.append(medicine)
 
@@ -4271,63 +4197,56 @@ class ManagementPlanForm():
     self.ProceduresDisplay(procedures=self.visit_procedures)
 
     self.procedure_dialog.close()
-
-    self.parent.initial_data()
-    self.initial_data()
   
-
   #DISPLAYS
-  def MedicineDialog(self,medicine):
+  def MedicineDialog(self,medicine_input):
     """Displays dialog for prescription"""
-    #CONTROLS
-    if not medicine:
+    #DATA & CONTROLS
+    if not medicine_input:
       return
-
-    #DATA
-    medicine = [_medicine for _medicine in self.medicines if _medicine['name'] == medicine.lower()][0]
+    medicine = [_medicine for _medicine in self.medicines if _medicine['name'] == medicine_input.lower()][0]
     prescription = {
-      "dispensing_balance":sum([_medicine["dispensing_balance"] for _medicine in medicine["active_medicines"]]),
+      "dispensing_balance":medicine["balance"],
       "dosage":None,
       "prescribed_items_no":0,
       "prescribed_items_no_items":0,
       "cost":0
     }
 
+    prescribed,os = False,True
+
+    if medicine["balance"]:
+      os = False
+
+    if [med for med in self.visit_medicines if med["name"] == medicine_input.lower()]:
+      prescribed = True
+      
+
     #FXS
-    def TotalCost(value:float=0):
-      """A method to display the total cost of medication or medical items"""
+    def units(medicine:dict,verbose:bool=False,plural:bool=False):
+      unit = ""
 
-      prescription["prescribed_items_no"] = prescription["prescribed_items_no_items"] if medicine["category"] == "medical supply" else prescription["prescribed_items_no"]
-      
-      total_cost = f"{medicine['payment']['unit_price'] * prescription['prescribed_items_no']:,.2f}" if prescription["prescribed_items_no"] else "0.00"
-      
-      prescription["cost"] = medicine['payment']['unit_price'] * prescription['prescribed_items_no'] if prescription['prescribed_items_no'] else 0
-
-      total_cost_pad.clear()  
-      with total_cost_pad:
-        with ui.chip(text=total_cost,icon="fas fa-tags",color="",text_color="yellow").classes(add="bg-inherit mx-0 text-base text-bold"):
-          ui.chip(text="TZS",color="",text_color="yellow").classes(add="bg-inherit p-0 m-0 ml-1 text-base")
-    
-    def units(medicine:dict,plural:bool=False):
       if plural:
-        return 'TABLETS' if medicine['name'].lower().split()[-1].startswith('tab') else 'CAPSULES' if medicine['name'].lower().split()[-1].startswith('cap') else 'BOTTLES' if (medicine['name'].lower().split()[-1].startswith('syrup') or medicine['name'].lower().split()[-1].startswith('susp')) else 'VIALS' if medicine['name'].lower().split()[-1].startswith('vial') else 'AMPOULES' if medicine['name'].lower().split()[-1].startswith('ampoule') else 'ITEMS'
+        if verbose:
+          unit = 'TABLETS' if medicine['name'].lower().split()[-1].startswith('tab') else 'CAPSULES' if medicine['name'].lower().split()[-1].startswith('cap') else 'BOTTLES' if (medicine['name'].lower().split()[-1].startswith('syrup') or medicine['name'].lower().split()[-1].startswith('susp')) else 'VIALS' if medicine['name'].lower().split()[-1].startswith('vial') else 'AMPOULES' if medicine['name'].lower().split()[-1].startswith('ampoule') else 'ITEMS'
+        else:
+          unit = 'TABS' if medicine['name'].lower().split()[-1].startswith('tab') else 'CAPS' if medicine['name'].lower().split()[-1].startswith('cap') else 'BTS' if (medicine['name'].lower().split()[-1].startswith('syrup') or medicine['name'].lower().split()[-1].startswith('susp')) else 'VLS' if medicine['name'].lower().split()[-1].startswith('vial') else 'AMPS' if medicine['name'].lower().split()[-1].startswith('ampoule') else 'ITEMS'
       else:
-        return 'TABLET' if medicine['name'].lower().split()[-1].startswith('tab') else 'CAPSULE' if medicine['name'].lower().split()[-1].startswith('cap') else 'BOTTLE' if (medicine['name'].lower().split()[-1].startswith('syrup') or medicine['name'].lower().split()[-1].startswith('susp')) else 'VIAL' if medicine['name'].lower().split()[-1].startswith('vial') else 'AMPOULE' if medicine['name'].lower().split()[-1].startswith('ampoule') else 'ITEM'
+        if verbose:
+          unit = 'TABLET' if medicine['name'].lower().split()[-1].startswith('tab') else 'CAPSULE' if medicine['name'].lower().split()[-1].startswith('cap') else 'BOTTLE' if (medicine['name'].lower().split()[-1].startswith('syrup') or medicine['name'].lower().split()[-1].startswith('susp')) else 'VIAL' if medicine['name'].lower().split()[-1].startswith('vial') else 'AMPOULE' if medicine['name'].lower().split()[-1].startswith('ampoule') else 'ITEM'
+        else:
+          unit = unit = 'TAB' if medicine['name'].lower().split()[-1].startswith('tab') else 'CAP' if medicine['name'].lower().split()[-1].startswith('cap') else 'BT' if (medicine['name'].lower().split()[-1].startswith('syrup') or medicine['name'].lower().split()[-1].startswith('susp')) else 'VLS' if medicine['name'].lower().split()[-1].startswith('vial') else 'AMP' if medicine['name'].lower().split()[-1].startswith('ampoule') else 'ITEM'
+      
+      return unit
     
     def icon(medicine:dict):
       return f"fas fa-{'tablets' if medicine['name'].lower().split()[-1].startswith('tab') else 'capsules' if medicine['name'].lower().split()[-1].startswith('cap') else 'prescription-bottle-medical' if (medicine['name'].lower().split()[-1].startswith('syrup') or medicine['name'].lower().split()[-1].startswith('susp')) else 'vials' if medicine['name'].lower().split()[-1].startswith('vial') or medicine['name'].lower().split()[-1].startswith('ampoule') else 'file-prescription'}"
     
-    def servicable(medicine:dict):
-      if medicine["active_medicines"]:
-        return True
-      else:
-        False
-
     #UI
     with ui.dialog().props(add="transition-show='scale' transition-hide='scale' transition-duration='500'") as self.medicine_dialog,html.div().style(add="min-width:50%;").classes(add="bg-sky-100 p-0.5 flex flex-col gap-3"):
       #Header
       with html.div().classes(add="w-full bg-harmony px-1 rounded-t"):
-        with html.div().classes(add="w-full flex flex-row justify-between"):
+        with html.div().classes(add="w-full flex flex-row justify-between items-center"):
           ui.label(text=medicine["name"]).classes(add="grow p-3 text-center text-yellow-400 text-lg lg:text-3xl text-bold uppercase")
           ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=self.medicine_dialog.close).classes(add="text-red-500 text-lg")
 
@@ -4336,46 +4255,64 @@ class ManagementPlanForm():
           ui.separator().classes(add="w-full bg-[#09026f]")
 
         #Medication details
-        with html.div().classes(add="w-full grid grid-cols-2 lg:flex lg:justify-between gap-1 small-caps"):
+        with html.div().classes(add="w-full grid grid-cols-5 gap-2 small-caps"):
           #Payment mode
-          ui.chip(text=medicine["payment"]["payment_mode"],icon="fas fa-wallet",color="",text_color="yellow").classes(add=f"bg-inherit uppercase text-bold text-base")
+          ui.html(f"<span class='fa-solid fa-wallet text-sky-500'></span><span class='ml-2 text-yellow-400'>{medicine['payment']['payment_mode']}</span>",sanitize=False).classes(add="bg-inherit text-base uppercase font-bold")
           #Unit cost
-          ui.chip(text=f"{medicine["payment"]['unit_price']:,.2f} TZS/{units(medicine=medicine)}",icon="fas fa-coins",color="",text_color="yellow").classes(add="bg-inherit text-bold text-base")
+          ui.html(f"<span class='fa-solid fa-coins text-sky-500'></span><span class='ml-2 text-yellow-400'>{medicine['payment']['unit_price']:,.2f} TZS/{units(medicine)}</span>",sanitize=False).classes(add="col-span-2 bg-inherit text-base uppercase font-bold")
           #Store balance
-          ui.chip(text=f"{prescription['dispensing_balance']:,.0f} {units(medicine=medicine,plural=True)}",icon=icon(medicine),color="",text_color="yellow").classes(add="bg-inherit text-bold text-base")
+          ui.html(f"<span class='fa-solid fa-store text-sky-500'></span><span class='ml-2 text-yellow-400'>{medicine['balance']:,.0f} {units(medicine,plural=True)}</span>",sanitize=False).classes(add="col-span-2 bg-inherit text-base uppercase font-bold")
           #Total cost
-          with html.span().classes(add="bg-inherit") as total_cost_pad:
-            TotalCost()
+          with html.span().classes(add="col-span-5 lg:col-span-2 bg-inherit text-base"):
+            html.span().classes(add="fa-solid fa-tags text-sky-500")
+            ui.label().classes(add="inline ml-1 font-bold text-yellow-400").bind_text_from(prescription,"cost",backward=lambda cost:f"{cost:,.2f} TZS")
       
-      #Body
+      #Hint if there are concerns
+      with html.div().classes(add="w-full flex flex flex-col items-center justify-center"):
+        if prescribed:
+          ui.html(f"<span class='fa-solid fa-file-circle-check'></span><span class='ml-2 italic'>It's already prescribed</span>",sanitize=False).classes(add="bg-inherit text-lg text-red-400 font-bold fa-fade")
+        
+        if os:
+          ui.html(f"<span class='fa-solid fa-house-medical-circle-exclamation'></span><span class='ml-2 italic'>It's out of stock (O/S)</span>",sanitize=False).classes(add="bg-inherit text-lg text-red-400 font-bold fa-fade")
+      
       #Medicine
       if medicine["category"] == "medicine":
-        with html.form().classes(add="w-full p-3 flex flex-row gap-3"):
+        with html.form().classes(add="grow w-full p-3 flex flex-row gap-3"):
+          #Details
           with html.div().classes(add="grow flex flex-row justify-around"):
             #Dosage
-            ui.input(label="DOSAGE",placeholder="e.g. 500mg tds for 5 days").props(add=f"{'' if servicable(medicine) else 'disable'} required stack-label").classes(add="w-48 lg:w-auto rounded shadow-md shadow-[#07004d] px-3 bg-white text-lg").bind_value(prescription,"dosage")
+            ui.input(label="DOSAGE",placeholder="e.g. 500mg tds for 5 days").props(add=f"required stack-label").classes(add="w-48 lg:w-auto rounded shadow-md shadow-[#07004d] px-3 bg-white text-lg").bind_value(prescription,"dosage")
             #Quantity
-            ui.number(label=f"No of {units(medicine=medicine,plural=True)}",value=1,min=1,on_change=lambda e:TotalCost(value=e.value)).props(add=f"{'' if servicable(medicine) else 'disable'} stack-label").classes(add="w-48 lg:w-auto rounded shadow-md shadow-[#07004d] px-3 bg-white text-lg").bind_value(prescription,"prescribed_items_no")
+            ui.number(label=f"No of {units(medicine=medicine,verbose=True,plural=True)}",value=1,min=1).props(add=f"stack-label").classes(add="w-48 lg:w-auto rounded shadow-md shadow-[#07004d] px-3 bg-white text-lg").bind_value(prescription,"prescribed_items_no").bind_value_to(prescription,"cost",forward=lambda items:items*medicine["payment"]["unit_price"])
           #Buttons
           with html.div().classes(add="w-full flex flex-row justify-center gap-2"):
-            ui.button(text="SAVE MEDICATION",color="",on_click=lambda e:self.save_medication(medicine=medicine,prescription=prescription)).props(add=f"{'' if servicable(medicine) else 'disable'}").classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-yellow-500 text-xl text-bold")
+            ui.button(text="SAVE MEDICATION",color="",on_click=lambda e:self.save_medication(medicine=medicine,prescription=prescription)).props(add=f"").classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-yellow-500 text-xl text-bold")
           
       if medicine["category"] == "medical supply":
-        with html.div().classes(add="w-full p-3 flex flex-row justify-center gap-5"):
-          ui.number(label=f"No of {units(medicine=medicine,plural=True)}",value=1,placeholder="e.g. 2",on_change=lambda e:TotalCost(value=e.value)).props(add=f"{'' if servicable(medicine) else 'disable'} stack-label").classes(add="w-48 lg:w-auto rounded shadow-md shadow-[#07004d] px-3 bg-white text-lg").bind_value(prescription,"prescribed_items_no_items")
-          ui.button(text="SAVE ITEM",color="",on_click=lambda e:self.save_medication(medicine=medicine,prescription=prescription)).props(add=f"{'' if servicable(medicine) else 'disable'}").classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-yellow-500 text-xl text-bold")
+        with html.div().classes(add="grow w-full p-3 flex flex-row justify-center gap-5"):
+          ui.number(label=f"No of {units(medicine=medicine,verbose=True,plural=True)}",value=1,placeholder="e.g. 2").props(add=f"stack-label").classes(add="w-48 lg:w-auto rounded shadow-md shadow-[#07004d] px-3 bg-white text-lg").bind_value(prescription,"prescribed_items_no_items").bind_value_to(prescription,"cost",forward=lambda items:items*medicine["payment"]["unit_price"])
+          ui.button(text="SAVE ITEM",color="",on_click=lambda e:self.save_medication(medicine=medicine,prescription=prescription)).props(add=f"").classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-yellow-500 text-xl text-bold")
           
     self.medicine_dialog.open()
 
-  def ProcedureDialog(self,procedure:str,planned:bool=False):
+  def ProcedureDialog(self,procedure_input):
     """"""
-    if not procedure:
+    #DATA & CONTROLS
+    if not procedure_input:
       return
     
-    #DATA
-    procedure = [_procedure for _procedure in self.visit_procedures if _procedure["name"].lower() == procedure.lower()][0] if planned else [_procedure for _procedure in self.procedures if _procedure["name"].lower() == procedure.lower()][0]
+    planned = False
 
+    procedure = [_procedure for _procedure in self.procedures if _procedure["name"].lower() == procedure_input.lower()][0]
+
+    if [proc for proc in self.visit_procedures if proc['name'] == procedure_input.lower()]:
+      planned = True
+    
     #FXS
+    def total_cost(count):
+      if not count:
+        count = 0
+      return count * procedure["payment"]["unit_cost"]
 
     #UI
     with ui.dialog().props(add="transition-show='scale' transition-hide='scale' transition-duration='500'") as self.procedure_dialog,html.div().style(add="min-width:50%;").classes(add="bg-sky-100 p-0.5 flex flex-col gap-3"):
@@ -4389,16 +4326,28 @@ class ManagementPlanForm():
         for i in range(2):
           ui.separator().classes(add="w-full bg-[#09026f]")
 
-        #Medication details
-        with html.div().classes(add="w-full grid grid-cols-2 gap-1 small-caps"):
+        #Procedure details
+        with html.div().classes(add="w-full grid grid-cols-5 gap-1 small-caps"):
           #Payment mode
-          ui.chip(text=procedure["payment"]["payment_mode"],icon="fas fa-wallet",color="",text_color="yellow").classes(add=f"bg-inherit uppercase text-bold text-base")
+          ui.html(f"<span class='fa-solid fa-wallet text-sky-500'></span><span class='ml-2 text-yellow-500'>{procedure['payment']['payment_mode']}</span>",sanitize=False).classes(add="bg-inherit text-base uppercase font-bold")
+        
           #Price
-          ui.chip(text=f"{procedure['displayable_price']}",icon="fas fa-coins",color="",text_color="yellow").classes(add="bg-inherit text-bold text-base").bind_value(procedure["payment"],"cost")
+          ui.html(f"<span class='fa-solid fa-coins text-sky-500'></span><span class='ml-2 text-yellow-500'>{procedure['displayable_price']}</span>",sanitize=False).classes(add="col-span-2 bg-inherit text-base uppercase font-bold")
+
+          #Total cost
+          with html.span().classes(add="col-span-2 bg-inherit text-base"):
+            html.span().classes(add="fa-solid fa-tags text-sky-500")
+            ui.label().classes(add="inline ml-1 font-bold text-yellow-400").bind_text_from(procedure["payment"],"cost",backward=lambda cost:f"{cost:,.2f} TZS")
       
+      
+      #Hints if something is off
+      with html.div().classes(add="w-full flex flex flex-col items-center justify-center"):
+        if planned:
+          ui.html(f"<span class='fa-solid fa-file-circle-check'></span><span class='ml-2 italic'>It's already planned!</span>",sanitize=False).classes(add="bg-inherit text-lg text-red-400 font-bold fa-fade")
+        
       #Body
       with html.section().classes(add="w-full p-5 flex flex-row justify-around lg:justify-center gap-3"):
-        ui.number(label=f"HOW MANY...?",min=1).props(add="stack-label").classes(add="w-28 rounded shadow-md shadow-[#07004d] px-3 bg-white text-lg").bind_value(procedure,"count")
+        ui.number(label=f"HOW MANY...?",min=1).props(add="stack-label").classes(add="w-28 rounded shadow-md shadow-[#07004d] px-3 bg-white text-lg").bind_value(procedure,"count").bind_value_to(procedure["payment"],"cost",forward=lambda count:total_cost(count))
         ui.button(text="PLAN A PROCEDURE",color="",on_click=lambda e:self.save_procedure(procedure=procedure)).classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-yellow-500 text-xl text-bold")
     
     self.procedure_dialog.open()
@@ -4418,7 +4367,7 @@ class ManagementPlanForm():
     def Prescriber(medicine):
       planner = get_staff(username=medicine["prescriber_id"])
 
-      return f"{planner['title']} {planner['last_name']} {planner['first_name'][0]}.".title()
+      return f"{planner.title} {planner.last_name} {planner.first_name[0]}.".title()
 
     def Dosage(medicine):
       if "dosage" in medicine:
@@ -4501,7 +4450,7 @@ class ManagementPlanForm():
     def ProcedurePlanner(procedure):
       planner = get_staff(username=procedure["attendee_id"])
 
-      return f"{planner['title']} {planner['last_name']} {planner['first_name'][0]}.".title()
+      return f"{planner.title} {planner.last_name} {planner.first_name[0]}.".title()
     
     def removable(procedure):
       return False if procedure["cancelled"] or procedure["done"] or procedure["payment"]["paid"] else True
@@ -4562,33 +4511,7 @@ class ManagementPlanForm():
       with self.procedures_display.classes(add="justify-center items-center"):
         ui.label("No procedure planned!").classes(add="text-bold italic text-red-500 text-xl fa-fade")
 
-  #Counselling
-  def save_and_display_counselling_details(self,counselling):
-    """multiple Fx"""
-    if counselling:
-      self.update_counselling(counselling)
-      self.update_nonpharmacologicals_count(self.nonpharmacologicals_count + 1)
-      self.display_counsellling(counselling=counselling)
-      
-      if len(counselling.split(" ")) > 5:
-        counselling_data = {
-          "visit_id":self.visit["visit_id"],
-          "nonpharmacological_id":f"{self.visit['visit_id']}NP{self.nonpharmacologicals_count + 1}",
-          "attendee_id":self.attendee_id,
-          "name":"generic counselling",
-          "notes":self.counselling,
-          "payment_count":len(self.visit["payments"])
-        }
 
-        clients_db.register_nonpharmacological(counselling_data)
-  
-  def display_counsellling(self,counselling):
-    
-    self.counselling_display.clear()
-    with self.counselling_display:
-      ui.label(text="COUNSELLING").classes(add="w-full px-1 bg-gray-800 text-yellow-500 text-start text-xl text-bold")
-      ui.markdown(content=self.counselling).classes(add="w-[95%] px-1 text-start")
-  
 
 class ProceduresManager():
   """A class of UI for managing consultations"""
@@ -7547,5 +7470,12 @@ class ServicesManager():
         with html.div().classes(add="lg:col-span-5 w-full py-2 flex flex-row justify-center"):
           ui.button(text="SAVE SERVICE",color="",on_click=lambda e:self.save_service(service=data,update=True if edit else False)).props(add="glossy").classes(add="bg-harmony text-yellow-500 text-bold text-xl")
           
+
+###MISCS
+def Clock(parent):
+  parent.clear()
+  with parent:
+    ui.label(datetime.now().strftime("%d %b %Y  %HH:%MM:%SS")).classes(add="text-yellow-500")
+
 
 

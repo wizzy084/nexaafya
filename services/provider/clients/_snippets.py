@@ -417,16 +417,16 @@ def unmodel_diagnosis(db_diagnosis:Diagnosis):
 def unmodel_procedure(db_procedure:Procedure):
   """Converts data from procedure table rows into dictionaries"""
 
-  _Procedure = namedtuple("_Procedure",["client_id","visit_id","procedure_id","attendee_id","client_name","client-birthdate","active_visit","name","count","ordered_on","performer","assistant","done","done_on","procedure_notes","cancelled","cancelled_on","cancelled_by","editable","edited","last_edited_on","editor_id","payment"])
+  _Procedure = namedtuple("_Procedure",["client_id","visit_id","procedure_id","attendee_id","client_name","client_birthdate","active_visit","name","count","ordered_on","performer","assistant","done","done_on","procedure_notes","cancelled","cancelled_on","cancelled_by","editable","edited","last_edited_on","editor_id","payment"])
 
   return _Procedure(
     client_id = db_procedure.visit.client.client_id,
     visit_id = db_procedure.visit_id,
     procedure_id = db_procedure.procedure_id,
     attendee_id = db_procedure.attendee_id,
-    client_name = f"{db_procedure.visit.client.first_name} {db_procedure.visit.client.middle_name[0] if visit.client.middle_name else ''} {db_procedure.visit.client.last_name}",
+    client_name = f"{db_procedure.visit.client.first_name} {db_procedure.visit.client.middle_name if db_procedure.visit.client.middle_name else ''} {db_procedure.visit.client.last_name}",
     client_birthdate = db_procedure.visit.client.birthdate,
-    active_visit = db_procedure.visit.is_active,
+    active_visit = db_procedure.visit.active,
     name = db_procedure.name,
     count = db_procedure.count,
     ordered_on = db_procedure.ordered_on,

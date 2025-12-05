@@ -11,6 +11,7 @@ from services.provider.configs import database_engine
 from services.provider.admin import template
 from services.provider.clients.models import *
 from ._snippets import *
+from nicegui import ui
 
 
 
@@ -43,10 +44,19 @@ def populate_db():
   with Session(database_engine) as session:
     if not session.exec(select(Formulary)).all():
       register_formulary(template.medicines,default=True)
+  
+  #Initial Inventory
+  with Session(database_engine) as session:
+    if not session.exec(select(Inventory)).all():
+      for medicine in template.medicines:
+        register_inventory(medicine["inventory"],count=True)
 
   #Initial requisition
   with Session(database_engine) as session:
-    db_requisitions:list[Requisition] = list(session.exec(select(Requisition)).all())
+    if not session.exec(select(Requisition)).all():
+      for medicine in template.medicines:
+        register_requisition(medicine["requisition"])
+
 
 #REGISTER FUNCTIONS
 def register_facility(facility:dict):

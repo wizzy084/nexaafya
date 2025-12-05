@@ -136,7 +136,7 @@ def get_active_medicines():
 
   #Process database
   with Session(database_engine) as session:
-    db_medicines:list[Medicine] = list(session.exec(select(Medicine)).all())
+    db_medicines:list[Formulary] = list(session.exec(select(Formulary)).all())
 
     return [unmodel_medicine(db_medicine) for db_medicine in db_medicines if db_medicine.active]
 
