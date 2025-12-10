@@ -375,7 +375,7 @@ async def retrieve_payment_scheme(name:str,medicine=None,service=None):
 
 def get_template_services(verbose:bool=False) -> list:
   """Returns list of template services to be registered in the system"""
-  from .template import services
+  services = template.services + template.other_services
   if verbose:
     return []
   else:
@@ -391,17 +391,16 @@ def get_formulary_medicines(verbose:bool=False) -> list:
 
 def get_template_service(service:str) -> dict:
   """Return a namedtuple with details of service"""
-
-  with Session(database_engine) as session:
-    db_service:Service = session.exec(select(Service).where(Service.name == service.lower())).first()
-    return unmodel_service(db_service)
+  service_str = service
+  for service in template.services + template.other_services:
+    if service["name"] == service_str.lower():
+      return service
 
 def get_formulary_medicine(medicine:str) -> dict:
   """Return a namedtuple with details of medicine"""
   meds = template.medicines + template.xx
 
   return [med for med in meds if med['name'] == medicine.lower()][0]
-
 
 def retrieve_updated_prices(data:dict,nhif:bool=False):
   """Retrieves prices of a service from NHIF API"""

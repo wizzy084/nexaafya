@@ -5709,8 +5709,6 @@ class Requisitions():
       
     self.medicine_dialog.open()
   
-          
-
 class StockAnalysisDisplay():
   """A class for UI and functionalities of stock analysis"""
 
@@ -6199,8 +6197,8 @@ class FacilityFormulary():
 
   #FUNCTIONALITIES
   def initial_data(self):
-    self.medicines = [self.format_formulary_medicine(medicine) for medicine in get_formulary()]
-    self.template_medicines = get_formulary_medicines()
+    self.medicines = [self.format_formulary_medicine(medicine) for medicine in admin_processor.get_formulary()]
+    self.template_medicines = admin_processor.get_formulary_medicines()
 
     self.medicine = {}
 
@@ -6217,7 +6215,7 @@ class FacilityFormulary():
     if not medicine:
       return
     
-    medicine = get_formulary_medicine(medicine.lower())
+    medicine = admin_processor.get_formulary_medicine(medicine.lower())
 
     if medicine["medicine_id"] in [medicine["medicine_id"] for medicine in self.medicines]:
       ui.notify(message="Medicine already in the formulary!",position="top",type="warning")
@@ -6646,255 +6644,7 @@ class FacilityFormulary():
                     "priority":float(e.sender.parent_slot.parent.slots["default"].children[4].props["model-value"]) if e.sender.props["scheme"].lower() == "cash" else float(e.sender.parent_slot.parent.slots["default"].children[1].slots["default"].children[1].props["model-value"]),
                     "logger":self.user.username
                   })).props(add=f"glossy scheme='{scheme["scheme_name"]}'").classes(add="col-span-6 justify-self-center bg-harmony text-sky-300 text-bold text-xl")
-
-
-
-
-
-class DispensingStoreManagement():
-  """A class for UI and functionalities of dispensing store management"""
-
-  def __init__(self,requisition):
-    self.requisition = requisition
-    self.visits = len(get_active_visits())
-
-    #UI
-    with html.div().classes(add="w-full h-full rounded-t"):
-      ui.label("DISPENSING STORE").classes(add="w-full py-1 rounded-t bg-gray-900 px-0 py-3 text-sky-300 text-center text-3xl text-bold")
-      with html.div().classes(add="grow w-full p-3 rounded") as self.stocks_panel:
-        self.StocksPanel()
   
-  #FUNCTIONALITES
-  def adc(self,medicine:dict):
-    """A method that calculates average daily consumption of medicine"""
-    
-    pharmacy_visits = (self.visits * 0.75)
-    #Capsules or tableets
-    if medicine["order_unit"] == "capsule" or medicine["order_unit"] == "tablet":
-      return math.ceil(pharmacy_visits * 20)  #Min=10 Max=30 Avg=20
-    elif medicine["order_unit"] == "tube" or medicine["order_unit"] == "bottle" or medicine["order_unit"] == "pack":
-      return math.ceil(pharmacy_visits)
-    else:
-      return math.ceil(pharmacy_visits * 0.3)
-  
-  def dos(self,medicine:dict):
-    "A method to that returns a calculated number of days of stock based on data from medicine input"
-
-    available_amount = medicine["dispensing_balance"]
-    adc = self.adc(medicine)
-    
-    if medicine["dispensing_balance"]:
-      if adc:
-        return round((available_amount/adc))
-      else:
-        return 1
-    else:
-      return 0
-    
-  def stock(self):
-    """A method that returns a dictionary with stock details"""
-    medicines = self.requisition["medicines"]
-    
-    overstocks,understocks,stockouts,stocked = [],[],[],[]
-
-    for medicine in medicines:
-      dos = self.dos(medicine=medicine)
-      stockouts.append(medicine) if dos == 0 else understocks.append(medicine) if dos < 7 else overstocks.append(medicine) if dos >= 14 else stocked.append(medicine)
-      
-    return {"overstocks":overstocks,"stocked":stocked,"understocks":understocks,"stockouts":stockouts}
-
-  #DISPLAYS
-  def StocksPanel(self):
-    """A Main display"""
-    #DATA
-    stocks = self.stock()
-    stockouts,understocks,stocked,overstocks = stocks["stockouts"],stocks["understocks"],stocks["stocked"],stocks["overstocks"]
-    #UI
-    self.stocks_panel.clear()
-    with self.stocks_panel:
-      with html.div().classes(add="w-full flex flex-col gap-5"):
-        #Adequate
-        with ui.button(color="green-600",on_click=lambda e:self.StocksDialog(stocked=stocked)).props(add="dense glossy padding='2px 2px'").classes(add="w-full rounded ring-1 ring-green-600 shadow-md shadow-green-600 hover:shadow-green-500") as stocked_button:
-          with stocked_button.add_slot("default"):
-            with html.span().classes(add="w-full flex flex-row justify-between bg-gray-900 rounded p-2"):
-              ui.label("ADEQUATE STOCKS").classes(add="bg-inherit text-green-600 font-medium text-2xl")
-              ui.badge(text=str(len(stocked)),color="").classes(add=f"{'px-2 text-2xl' if len(stocked) < 10 else 'pl-1 text-xl'}  bg-inherit size-8 rounded-full ring-1 ring-green-600 shadow-md shadow-green-600 text-green-600 text-bold")
-        #Stockouts
-        with ui.button(color="red-500",on_click=lambda e:self.StocksDialog(stockouts=stockouts)).props(add="dense glossy padding='2px 2px'").classes(add="w-full rounded ring-1 ring-red-500 shadow-md shadow-red-500 hover:shadow-red-400") as stockouts_button:
-          with stockouts_button.add_slot("default"):
-            with html.span().classes(add="w-full flex flex-row justify-between bg-gray-900 rounded p-2"):
-              ui.label("STOCKOUTS").classes(add="bg-inherit text-red-500 font-medium text-2xl")
-              ui.badge(text=str(len(stockouts)),color="").classes(add=f"{'px-2 text-2xl' if len(stockouts) < 10 else 'pl-1 text-xl'} bg-inherit size-8 rounded-full ring-1 ring-red-500 shadow-md shadow-red-500 text-red-500 text-bold {'fa-beat-fade' if stockouts else ''}")
-        #Understocks
-        with ui.button(color="yellow-400",on_click=lambda e:self.StocksDialog(understocks=understocks)).props(add="dense glossy padding='2px 2px'").classes(add="w-full rounded ring-1 ring-yellow-400 shadow-md shadow-yellow-400 hover:shadow-yellow-300") as understocks_button:
-          with understocks_button.add_slot("default"):
-            with html.span().classes(add="w-full flex flex-row justify-between bg-gray-900 rounded p-2"):
-              ui.label("UNDERSTOCKS").classes(add="bg-inherit text-yellow-400 font-medium text-2xl")
-              ui.badge(text=str(len(understocks)),color="").classes(add=f"{'px-2 text-2xl' if len(understocks) < 10 else 'pl-1 text-xl'} bg-inherit size-8 rounded-full ring-1 ring-yellow-400 shadow-md shadow-yellow-400 text-yellow-400 text-bold {'fa-beat-fade' if understocks else ''}")
-        #Overstocks
-        with ui.button(color="purple-500",on_click=lambda e:self.StocksDialog(overstocks)).props(add="dense glossy padding='2px 2px'").classes(add="w-full rounded ring-1 ring-purple-500 shadow-md shadow-purple-500 hover:shadow-purple-400") as overstocks_button:
-          with overstocks_button.add_slot("default"):
-            with html.span().classes(add="w-full flex flex-row justify-between bg-gray-900 rounded p-2"):
-              ui.label("OVERSTOCKS").classes(add="bg-inherit text-purple-500 font-medium text-2xl")
-              ui.badge(text=str(len(overstocks)),color="").classes(add=f"{'px-2 text-2xl' if len(overstocks) < 10 else 'pl-1 text-xl'} bg-inherit size-8 rounded-full ring-1 ring-purple-500 shadow-md shadow-purple-500 text-purple-500 text-bold {'fa-beat-fade' if overstocks else ''}")
-        
-  def StocksDialog(self,overstocks=None,stocked=None,understocks=None,stockouts=None):
-    #DATA
-    if overstocks or stocked or understocks or stockouts:
-      requisition = self.requisition
-      medicines = stockouts if type(stockouts) == list else understocks if type(understocks) == list else stocked if type(stocked) == list else overstocks if type(overstocks) == list else []
-    else:
-      ui.notify(message=f"No {'stockouts' if type(stockouts) is list else 'understocks' if type(understocks) is list else 'adequately stocked items' if type(stocked) is list else 'overstocks' if type(overstocks) is list else ''}!",type="info",position="top",color=f"{'red-600' if type(stockouts) is list else 'yellow-500' if type(understocks) is list else 'green-500' if type(stocked) is list else 'violet-500' if type(overstocks) is list else ''}")
-      return
-    
-    #UI
-    with ui.dialog().props(add="transition-show='scale' transition-hide='scale' transition-duration='500'") as self.stocks_dialog,html.div().style(add="min-width:100%;max-height:95%;").classes(add="bg-white ring-1 ring-blue-400 shadow-md shadow-blue-400"):
-      #Dialog Header
-      with html.div().classes(add="w-full py-1 pr-2 flex flex-row gap-5 place-center bg-gray-900"):
-        #Details
-        with html.div().classes(add="grow bg-inherit flex flex-row justify-between content-center pl-3"):
-          #Title
-          ui.label("STOCKOUTS" if type(stockouts) is list else "UNDERSTOCKS" if type(understocks) is list else "ADEQUATE STOCKS" if type(stocked) is list else "OVERSTOCKS" if type(overstocks) is list else "").classes(add=f"text-{'red-600' if type(stockouts) is list else 'yellow-400' if type(understocks) is list else 'green-600' if type(stocked) is list else 'purple-600' if type(overstocks) is list else ''} text-3xl text-bold")
-          #Requisition ID
-          with ui.label("REQUISITION ID:").classes(add="h-fit rounded-t font-medium text-sky-50 text-lg"):
-            ui.label(requisition["requisition_id"]).classes(add="inline ml-0.5 text-yellow-500 text-bold uppercase")
-          #Stock count
-          with ui.label(str(len(medicines))).classes(add="h-fit rounded-t text-bold text-yellow-500 text-lg"):
-            ui.label(f"ITEM{'' if len(medicines) == 1 else 'S'}").classes(add="inline ml-1 text-sky-50 uppercase")
-        #Close button
-        ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=self.stocks_dialog.close).classes(add="my-2 size-12 bg-inherit rounded-full text-red-600 text-bold text-base hover:scale-[1.1]")
-      #Stocks Aggrid
-      with html.div().classes(add="w-full animate__animated animate__fadeIn animate__slow"):
-        self.StocksAggrid(overstocks=overstocks,stocked=stocked,understocks=understocks,stockouts=stockouts)
-    
-    self.stocks_dialog.open()
-  
-  def StocksAggrid(self,stockouts=None,understocks=None,stocked=None,overstocks=None):
-    """"""
-    #DATA
-    medicines = stockouts if stockouts else understocks if understocks else stocked if stocked else overstocks if overstocks else []
-    
-    #UI
-    if stockouts:
-      ui.aggrid(
-        {
-          "columnDefs":[
-            {"headerName":"S/No","field":"sno","width":70},
-            {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","width":450},
-            {"headerName":"TYPE","field":"type","width":150},
-            {"headerName":"UNIT","field":"unit","width":150},
-            {"headerName":"BRAND NAME","field":"brand_name"},
-            {"headerName":"MANUFACTURER","field":"manufacturer"},
-            {"headerName":"DAILY CONSUMPTION","field":"adc","width":150},
-          ],
-          "rowData":[
-            {
-              "sno":medicines.index(medicine) + 1,
-              "name":medicine["name"],
-              "type":medicine["type"],
-              "unit":medicine["order_unit"],
-              "brand_name":medicine["brand_name"] if medicine["brand_name"] else "---",
-              "manufacturer":medicine["manufacturer"] if medicine["manufacturer"] else "---",
-              "adc":f"{self.adc(medicine):,.0f}",
-            }
-            for medicine in medicines
-          ]
-        },theme="quartz"
-        ).classes(add="w-full h-[350px] bg-sky-300 text-sm uppercase")
-    
-    elif understocks:
-      ui.aggrid(
-        {
-          "columnDefs":[
-            {"headerName":"S/No","field":"sno","width":100},
-            {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","width":450},
-            {"headerName":"TYPE","field":"type","width":150},
-            {"headerName":"UNIT","field":"unit","width":150},
-            {"headerName":"BRAND NAME","field":"brand_name"},
-            {"headerName":"EXPIRY DATE","field":"expire_date","width":200},
-            {"headerName":"BALANCE","field":"balance"},
-            {"headerName":"DAILY CONSUMPTION","field":"adc"},
-            {"headerName":"STOCK DAYS","field":"dos"}
-          ],
-          "rowData":[
-            {
-              "sno":medicines.index(medicine) + 1,
-              "name":medicine["name"],
-              "type":medicine["type"],
-              "unit":medicine["order_unit"],
-              "brand_name":medicine["brand_name"] if medicine["brand_name"] else "---",
-              "expire_date":medicine["expire_date"].strftime("%b %Y") if medicine["expire_date"] else "---",
-              "balance":f"{medicine['dispensing_balance']:,.0f}",
-              "adc":f"{self.adc(medicine):,.0f}",
-              "dos":self.dos(medicine)
-            }
-            for medicine in medicines
-          ]
-        },theme="quartz"
-        ).style(add="height:350px").classes(add="w-full bg-sky-300 text-sm uppercase")
-      
-    elif stocked:
-      ui.aggrid(
-        {
-          "columnDefs":[
-            {"headerName":"S/N","field":"sno","width":80},
-            {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","width":450},
-            {"headerName":"TYPE","field":"type","width":150},
-            {"headerName":"UNIT","field":"unit","width":150},
-            {"headerName":"BRAND NAME","field":"brand_name"},
-            {"headerName":"EXPIRY DATE","field":"expire_date","width":200},
-            {"headerName":"BALANCE","field":"balance"},
-            {"headerName":"DAILY CONSUMPTION","field":"adc"},
-            {"headerName":"STOCK DAYS","field":"dos"}
-          ],
-          "rowData":[
-            {
-              "sno":medicines.index(medicine) + 1,
-              "name":medicine["name"],
-              "type":medicine["type"],
-              "unit":medicine["order_unit"],
-              "brand_name":medicine["brand_name"] if medicine["brand_name"] else "---",
-              "expire_date":medicine["expire_date"].strftime("%b %Y") if medicine["expire_date"] else "---",
-              "balance":f"{medicine['dispensing_balance']:,.0f}",
-              "adc":f"{self.adc(medicine):,.0f}",
-              "dos":self.dos(medicine)
-            }
-            for medicine in medicines
-          ]
-        },theme="quartz"
-        ).style(add="height:350px").classes(add="w-full bg-sky-300 text-sm uppercase")
-
-    elif overstocks:
-      ui.aggrid(
-        {
-          "columnDefs":[
-            {"headerName":"S/No","field":"sno","width":100},
-            {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","width":450},
-            {"headerName":"TYPE","field":"type","width":150},
-            {"headerName":"UNIT","field":"unit","width":150},
-            {"headerName":"BRAND NAME","field":"brand_name"},
-            {"headerName":"EXPIRY DATE","field":"expire_date","width":200},
-            {"headerName":"DISPENSING BALANCE","field":"balance"},
-            {"headerName":"DAILY CONSUMPTION","field":"adc"},
-            {"headerName":"STOCK DAYS","field":"dos"}
-          ],
-          "rowData":[
-            {
-              "sno":medicines.index(medicine) + 1,
-              "name":medicine["name"],
-              "type":medicine["type"],
-              "unit":medicine["order_unit"],
-              "brand_name":medicine["brand_name"] if medicine["brand_name"] else "---",
-              "expire_date":medicine["expire_date"].strftime("%b %Y") if medicine["expire_date"] else "---",
-              "balance":f"{medicine['dispensing_balance']:,.0f}",
-              "adc":f"{self.adc(medicine):,.0f}",
-              "dos":self.dos(medicine)
-            }
-            for medicine in medicines
-          ]
-        },theme="quartz"
-        ).style(add="height:350px").classes(add="w-full bg-sky-300 text-sm uppercase")
-
 
 #Management
 class StaffManager():
@@ -6903,7 +6653,7 @@ class StaffManager():
   def __init__(self,user):
     #DATA
     self.user = user
-    self.staffs = [staff for staff in get_staffs() if not staff["is_super"]]
+    self.initial_data()
 
     #UI
     with html.main().classes(add="grow w-full flex flex-col"):
@@ -6913,21 +6663,26 @@ class StaffManager():
       
       #Header
       with html.div().classes(add="w-full flex flex-row items-center bg-harmony"):
-        ui.label("STAFF MANAGEMENT PANEL").classes(add="grow bg-inherit text-yellow-500 text-center text-xl uppercase text-bold")
-        ui.button(icon="fas fa-circle-plus",color="",on_click=self.StaffDialog).classes(add="lg:hidden size-16 bg-inherit text-yellow-500")
-        ui.button(icon="fas fa-circle-plus",color="",on_click=lambda e:self.StaffPanel(lg=True)).classes(add="lg-show size-16 bg-inherit text-yellow-500")
+        ui.label("STAFF MANAGEMENT PANEL").classes(add="grow bg-inherit text-yellow-500 text-center text-xl text-start uppercase text-bold")
+        ui.button(icon="fas fa-circle-plus",color="",on_click=self.StaffDialog).classes(add="size-16 bg-inherit text-yellow-500")
       
       #Body
-      with html.section().classes(add="grow w-full p-0.5 grid grid-cols-1 lg:grid-cols-2 gap-x-0.5"):
-        #Table of staff
-        with html.section().classes(add="w-full h-full flex flex-col") as self.staffs_panel:
-          self.StaffsDisplay(staffs=self.staffs)
-        
-        #Staff Details Interface(for Large screens only)
-        with html.section().classes(add="lg-flex w-full h-full flex-col") as self.staff_panel_lg:
-          pass
+      with html.section().classes(add="grow w-full p-0.5 flex flex-col gap-x-0.5") as self.staffs_panel:
+        self.StaffsDisplay(staffs=self.staffs)
   
   #FUNCTIONALITIES
+  def initial_data(self):
+    self.staffs = [staff._asdict() for staff in admin_processor.get_staffs() if not staff.is_super]
+    for staff in self.staffs:
+      staff["logins"] = [log._asdict() for log in staff["logins"]]
+
+    self.basics = admin_processor.get_facility_data(minimal=True)
+    self.basics = self.basics._replace(primary_roles=json.loads(self.basics.primary_roles))
+    self.basics = self.basics._replace(secondary_roles=json.loads(self.basics.secondary_roles))
+    self.basics = self.basics._replace(designations=json.loads(self.basics.designations))
+    self.basics = self.basics._replace(certifications=json.loads(self.basics.certifications))
+    self.basics = self.basics._replace(titles=json.loads(self.basics.titles))
+
   def save_staff(self,staff_data:dict,lg:bool=False):
     """"""
     #CONTROLS
@@ -6965,27 +6720,15 @@ class StaffManager():
     #UI
     if status["success"]:
       #UI update
-      self.staffs = [staff for staff in get_staffs() if not staff["is_super"]]
-      if lg:
-        self.StaffsDisplay(self.staffs)
-        self.StaffPanel(staff=data,lg=True)
-      else:
-        self.StaffPanel(staff=data)
-    
+      self.initial_data()
+      self.StaffsDisplay(self.staffs)
+      
   def update_staff(self,staff_data,suspend:bool=False,activate:bool=False,edit:bool=False,lg:bool=False):
     """"""
     if activate:
       staff_data["username"] = staff_data["username"].lower()
       staff_data["active"],staff_data["suspended"] = True,False
       status = update_staff(staff=staff_data,activate=True)
-
-      #UI update
-      self.staffs = [staff for staff in get_staffs() if not staff["is_super"]]
-      if lg:
-        self.StaffsDisplay(self.staffs)
-        self.StaffPanel(staff=staff_data,lg=lg)
-      else:
-        self.StaffPanel(staff=staff_data)
 
     if edit:
       data = {
@@ -7011,27 +6754,14 @@ class StaffManager():
         data["roles"].append(staff_data["secondary_role"].lower())
 
       status = update_staff(staff=data,edit=True)
-
-      #UI update
-      self.staffs = [staff for staff in get_staffs() if not staff["is_super"]]
-      if lg:
-        self.StaffsDisplay(self.staffs)
-        self.StaffPanel(staff=data,lg=lg)
-      else:
-        self.StaffPanel(staff=staff_data)
     
     if suspend:
       staff_data["username"] = staff_data["username"].lower()
       staff_data["active"],staff_data["suspended"] = False,True
       status = update_staff(staff=staff_data,suspend=True)
-
-      #UI update
-      self.staffs = [staff for staff in get_staffs() if not staff["is_super"]]
-      if lg:
-        self.StaffsDisplay(self.staffs)
-        self.StaffPanel(staff=staff_data,lg=lg)
-      else:
-        self.StaffPanel(staff=staff_data)
+    
+    self.initial_data()
+    self.StaffsDisplay(self.staffs)
     
     #Notify
     ui.notify(message=status["message"],type=status["type"],position=status["position"])
@@ -7063,7 +6793,7 @@ class StaffManager():
         },
         theme="quartz",
         html_columns=[0]
-      ).classes(add="lg:hidden w-full h-full bg-inherit rounded-none text-sm animate__animated animate__fadeIn animate__slow").on("cellClicked",lambda e:self.StaffDialog(staff=[staff for staff in self.staffs if staff['username'] == e.args['data']['username']][0]))
+      ).classes(add="lg:hidden grow w-full bg-inherit rounded-none text-sm animate__animated animate__fadeIn animate__slow").on("cellClicked",lambda e:self.StaffDialog(staff=[staff for staff in self.staffs if staff['username'] == e.args['data']['username']][0]))
 
 
       #Large Screen
@@ -7089,7 +6819,7 @@ class StaffManager():
         },
         theme="quartz",
         html_columns=[0]
-      ).classes(add="lg-show w-full h-full bg-inherit rounded-b-md text-sm animate__animated animate__fadeIn").on("cellClicked",lambda e:self.StaffPanel(staff=[staff for staff in self.staffs if staff['username'].lower() == e.args['data']['username'].lower()][0],lg=True))
+      ).classes(add="lg-show grow w-full bg-inherit rounded-b-md text-sm animate__animated animate__fadeIn").on("cellClicked",lambda e:self.StaffDialog(staff=[staff for staff in self.staffs if staff['username'].lower() == e.args['data']['username'].lower()][0]))
 
   def StaffDialog(self,staff:dict|None=None):
     """A method to display dialog for staff registration"""
@@ -7180,12 +6910,12 @@ class StaffManager():
       for key,value in staff.items():
         if type(value) is str:
           staff[key] = value.title()
-      staff["title"] = [title for title in TITLES if title.lower() == staff["title"].lower()][0]
-      staff["qualification"] = [qualification for qualification in CERTIFICATIONS if qualification.lower() == staff["qualification"].lower()][0]
-      staff["designation"] = [designation for designation in DESIGNATIONS if designation.lower() == staff["designation"].lower()][0]
-      staff["primary_role"] = [role for role in PRIMARY_ROLES if role.lower() == staff["roles"][0].lower()][0]
+      staff["title"] = [title for title in self.basics.titles if title.lower() == staff["title"].lower()][0]
+      #staff["qualification"] = [qualification for qualification in self.basics.certifications if qualification.lower() == staff["qualification"].lower()][0]
+      staff["designation"] = [designation for designation in self.basics.designations if designation.lower() == staff["designation"].lower()][0]
+      staff["primary_role"] = [role for role in self.basics.primary_roles if role.lower() == staff["roles"][0].lower()][0]
       if len(staff["roles"]) > 1:
-        staff["secondary_role"] = [role for role in SECONDARY_ROLES if role and role.lower() == staff["roles"][1].lower()][0]
+        staff["secondary_role"] = [role for role in self.basics.secondary_roles if role and role.lower() == staff["roles"][1].lower()][0]
       else:
         staff["secondary_role"] = None
 
@@ -7195,18 +6925,18 @@ class StaffManager():
     with html.form().classes(add="grow w-full p-2 flex lg:grid grid-cols-2 flex-col justify-between lg:justify-start gap-2 animate__animated animate__fadeIn animate__slow"):
       #Name
       with html.div().classes(add="grid grid-cols-8 gap-2"):
-        ui.select(label="TITLE",options=TITLES).props(add=f"{'readonly' if staff['suspended'] else ''} required stack-label type='text'").classes(add="col-span-2 px-2 shadow-md shadow-[#07004d] bg-white rounded text-lg capitalize").bind_value(staff,"title")
-        ui.input(label="FIRST NAME").props(add=f"{'readonly' if staff['suspended'] else ''} required stack-label type='text'").classes(add="col-span-3 shadow-md shadow-[#07004d] px-2 bg-white rounded-sm text-lg").bind_value(staff,"first_name")
-        ui.input(label="MIDDLE NAME").props(add=f"{'readonly' if staff['suspended'] else ''} stack-label type='text'").classes(add="col-span-3 shadow-md shadow-[#07004d] px-2 bg-white rounded-sm text-lg").bind_value(staff,"middle_name")
-        ui.input(label="LAST NAME").props(add=f"{'readonly' if staff['suspended'] else ''} required stack-label type='text'").classes(add="col-span-4 shadow-md shadow-[#07004d] px-2 bg-white rounded-sm text-lg").bind_value(staff,"last_name")
-        ui.select(label="GENDER",options=["Male","Female"]).props(add=f"{'readonly' if staff['suspended'] else ''} required type='text'").classes(add="col-span-4 shadow-md shadow-[#07004d] px-2 bg-white rounded-sm text-lg").bind_value(staff,"gender")
+        ui.select(label="TITLE",options=self.basics.titles).props(add=f"{'' if staff['active'] else 'readonly'} required stack-label type='text'").classes(add="col-span-2 px-2 shadow-md shadow-[#07004d] bg-white rounded text-lg capitalize").bind_value(staff,"title")
+        ui.input(label="FIRST NAME").props(add=f"{'' if staff['active'] else 'readonly'} required stack-label type='text'").classes(add="col-span-3 shadow-md shadow-[#07004d] px-2 bg-white rounded-sm text-lg").bind_value(staff,"first_name")
+        ui.input(label="MIDDLE NAME").props(add=f"{'' if staff['active'] else 'readonly'} stack-label type='text'").classes(add="col-span-3 shadow-md shadow-[#07004d] px-2 bg-white rounded-sm text-lg").bind_value(staff,"middle_name")
+        ui.input(label="LAST NAME").props(add=f"{'' if staff['active'] else 'readonly'} required stack-label type='text'").classes(add="col-span-4 shadow-md shadow-[#07004d] px-2 bg-white rounded-sm text-lg").bind_value(staff,"last_name")
+        ui.select(label="GENDER",options=["Male","Female"]).props(add=f"{'' if staff['active'] else 'readonly'} required type='text'").classes(add="col-span-4 shadow-md shadow-[#07004d] px-2 bg-white rounded-sm text-lg").bind_value(staff,"gender")
 
       #Details
       with html.section().classes(add="grid grid-cols-2 lg:grid-cols-1  gap-2"):
         #Birthdate
         with ui.input(label="BIRTHDATE").props(add="bordered readonly").classes(add="w-full px-2 shadow-md shadow-[#07004d] bg-white rounded text-lg").bind_value_from(staff,"birthdate",backward=lambda e:e.strftime("%d %b %Y")) as bdate_display:
           with ui.dialog() as calendar:
-            ui.date(mask="YYYY-MM-DD",on_change=lambda e:calendar.close()).props(add=f"{'readonly' if staff['suspended'] else ''} bordered square today-btn color='harmony' event-color='orange' first-day-of-week='1' navigation-max-year-month='{datetime.now().strftime("%Y/%m")}'").bind_value(target_object=staff,target_name="birthdate",forward=lambda e:datetime.fromisoformat(str(e)[:10]))
+            ui.date(mask="YYYY-MM-DD",on_change=lambda e:calendar.close()).props(add=f"{'' if staff['active'] else 'readonly'} bordered square today-btn color='harmony' event-color='orange' first-day-of-week='1' navigation-max-year-month='{datetime.now().strftime("%Y/%m")}'").bind_value(target_object=staff,target_name="birthdate",forward=lambda e:datetime.fromisoformat(str(e)[:10]))
             with bdate_display.add_slot("append"):
               ui.icon("fas fa-cake-candles",color="pink-500").on("click",calendar.open)
         #Age
@@ -7216,9 +6946,9 @@ class StaffManager():
 
       #Academic Details
       with html.div().classes(add="col-span-2 grid grid-cols-2 gap-2 p-1"):
-        ui.select(label="QUALIFICATION",options=CERTIFICATIONS).props(add=f"{'readonly' if staff['suspended'] else ''} stack-label type='text'").classes(add="shadow-md shadow-[#07004d] px-2 bg-white rounded text-lg").bind_value(staff,"qualification")
+        ui.select(label="QUALIFICATION",options=self.basics.certifications).props(add=f"{'' if staff['active'] else 'readonly'} stack-label type='text'").classes(add="shadow-md shadow-[#07004d] px-2 bg-white rounded text-lg").bind_value(staff,"qualification")
         #Designation
-        ui.select(label="DESIGNATION",options=DESIGNATIONS).props(add=f"{'readonly' if staff['suspended'] else ''} required stack-label type='text'").classes(add="shadow-md shadow-[#07004d] px-2 bg-white rounded text-lg").bind_value(staff,"designation")
+        ui.select(label="DESIGNATION",options=self.basics.designations).props(add=f"{'' if staff['active'] else 'readonly'} required stack-label type='text'").classes(add="shadow-md shadow-[#07004d] px-2 bg-white rounded text-lg").bind_value(staff,"designation")
         #Uploads
         with ui.label().classes(add="hidden col-span-2 rounded flex flex-row justify-center"):
           with ui.dialog().style(add="min-width:50%;") as upload_dialog:
@@ -7232,37 +6962,36 @@ class StaffManager():
         #Primary roles
         with html.div().classes(add="w-full p-0.5 rounded bg-sky-50 shadow-md shadow-[#07004d]"):
           ui.label('primary roles').classes(add="rounded small-caps text-bold text-xl text-harmony")
-          ui.radio(options=PRIMARY_ROLES).props(add=f"{'disable' if staff['suspended'] else ''} inline required").bind_value(staff,"primary_role")
+          ui.radio(options=self.basics.primary_roles).props(add=f"{'' if staff['active'] else 'disable'} inline required").bind_value(staff,"primary_role")
         #Secondary roles
         with html.div().classes(add="w-full p-0.5 rounded bg-sky-50 shadow-md shadow-[#07004d]"):
           ui.label('secondary roles').classes(add="rounded small-caps text-bold text-xl text-harmony")
-          ui.radio(options=SECONDARY_ROLES).props(add=f"{'disable' if staff['suspended'] else ''} inline").classes(add="lg:self-start").bind_value(staff,"secondary_role")
+          ui.radio(options=self.basics.secondary_roles).props(add=f"{'' if staff['active'] else 'disable'} inline").classes(add="lg:self-start").bind_value(staff,"secondary_role")
         
           #Lg buttons
           with html.div().classes(add=f"lg-flex col-start-2 col-span-1 self-end w-full flex-row justify-center gap-5"):
-            if staff["suspended"]:
-              ui.button(text="ACTIVATE",color="",on_click=lambda e:self.update_staff(staff_data=staff,activate=True,lg=True)).classes(add="bg-harmony text-yellow-500 text-bold text-xl")
-            else:
+            if staff["active"]:
               if edit:
                 ui.button(text="SAVE",color="",on_click=lambda e:self.update_staff(staff_data=staff,edit=True,lg=True)).classes(add="bg-harmony text-yellow-500 text-bold text-xl")
                 ui.button(text="SUSPEND",color="",on_click=lambda e:self.update_staff(staff_data=staff,suspend=True)).classes(add="bg-harmony text-yellow-500 text-bold text-xl")
                 
               else:
                 ui.button(text="SAVE",color="",on_click=lambda e:self.save_staff(staff_data=staff,lg=True)).classes(add="bg-harmony text-yellow-500 text-bold text-xl")
-
+            else:
+              ui.button(text="ACTIVATE",color="",on_click=lambda e:self.update_staff(staff_data=staff,activate=True,lg=True)).classes(add="bg-harmony text-yellow-500 text-bold text-xl")
 
       #Buttons
       with html.div().classes(add=f"lg:hidden w-full flex flex-row justify-center gap-5"):
-        if staff["suspended"]:
-          ui.button(text="ACTIVATE",color="",on_click=lambda e:self.update_staff(staff_data=staff,activate=True)).classes(add="bg-harmony text-yellow-500 text-bold text-xl")
-        else:
+        if staff["active"]:
           if edit:
             ui.button(text="SAVE",color="",on_click=lambda e:self.update_staff(staff_data=staff,edit=True)).classes(add="bg-harmony text-yellow-500 text-bold text-xl")
             ui.button(text="SUSPEND",color="",on_click=lambda e:self.update_staff(staff_data=staff,suspend=True)).classes(add="bg-harmony text-yellow-500 text-bold text-xl")
             
           else:
             ui.button(text="SAVE",color="",on_click=lambda e:self.save_staff(staff)).classes(add="bg-harmony text-yellow-500 text-bold text-xl")
-
+        else:
+          ui.button(text="ACTIVATE",color="",on_click=lambda e:self.update_staff(staff_data=staff,activate=True)).classes(add="bg-harmony text-yellow-500 text-bold text-xl")
+          
   def StaffLogs(self,staff:dict):
     """Displays details of logins of staff"""
     #DATA
@@ -7315,85 +7044,111 @@ class ServicesManager():
         
   #FUNCTIONALITIES
   def initial_data(self):
-    self.services = get_services()
-    self.template_services = get_template_services()
+    self.services = [self.format_service(service) for service in admin_processor.get_services()]
+    self.template_services = admin_processor.get_template_services()
+
+    self.service = {}
+  
+  def format_service(self,service):
+    service = service._asdict()
+    service["schemes"] = [scheme._asdict() for scheme in service["schemes"]]
+    for scheme in service["schemes"]:
+      scheme["prices"] = [pricing._asdict() for pricing in scheme["prices"]]
+    
+    return service
 
   def retrieve_service(self,service:str):
     """A method that retrieves service details and populate details in ServiceDetailsForm"""
     if not service:
       return
     
-    service = get_template_service(service.lower())
-    service["payment"] = self.pricings(service)
+    service_str = service
     
-    self.ServiceDetailsForm(service)
+    service = admin_processor.get_template_service(service_str.lower())
+    
+    if service["service_id"] in [service["service_id"] for service in self.services]:
+      ui.notify(message="Service already available!",position="top",type="warning")
+      return
+    
+    #Formatting medicine
+    service["active"] = True
+    
+    self.new_service_panel.clear()
+    with self.service_panel.classes(remove="justify-center gap-5",add="gap-1"):
+      self.ServiceDetailsForm(service=service,new=True)
 
-  def save_service(self,service:dict,update:bool=False):
-    """"""
+  async def retrieve_payment_scheme(self,scheme:str,service):
+    if not scheme:
+      return
+    
+    scheme = await admin_processor.retrieve_payment_scheme(name=scheme.lower(),service=service)
 
-    for key,value in service.items():
-      if type(value) == str:
-        service[key] == value.lower()
-    
-    payment = service["payment"]
-    payment.pop("insured")
-    payment.pop("logger")
-    payment.pop("service_id")
-    
-    for scheme in service["schemes"]:
-      for price in scheme["prices"]:
-        for pay_scheme,pay_details in payment.items():
-          if scheme["scheme_name"].lower() == pay_scheme.lower():
-            scheme["scheme_id"] = pay_details["scheme_id"]
-            price["logger"] = self.user.username
-            price["copayment"] = pay_details["copayment"]
-            price["price_range"] = pay_details["price_range"]
-            price["min"] = pay_details["min"]
-            price["max"] = pay_details["max"]
-            price["standard"] = pay_details["standard"]
-            price["priority"] = pay_details["priority"]
-            price["topup"] = pay_details["topup"]
-    service.pop("payment")
-    
-    if update:
-      status = update_service(service)
+    if not scheme:
+      ui.notify(message=f"No details found for {scheme.upper()}",position="top",type="warning")
     else:
-      status = register_service(service)
+      self.NewPaymentSchemePanel(service=service,scheme=scheme)
+
+  def register_payment_scheme_and_pricing(self,scheme,service):
+    scheme["prices"] = [scheme["prices"]]
+
+    status = admin_db.register_scheme(scheme=scheme,default=True)
 
     ui.notify(message=status["message"],type=status["type"],position=status["position"])
 
-    self.initial_data()
-        
-    self.ServicesDisplay(services=self.services)
-    
-  def pricings(self,service:dict):
-    """Returns a namedtuple object with prices of a 'service'"""
-
-    for scheme in service["schemes"]:
-      for pricing in scheme["prices"]:
-        pricing["scheme_item_code"] = scheme["scheme_item_code"]
-        pricing["restricted"] = scheme["restricted"]
-    
-    output = {scheme["scheme_name"]:[pricing for pricing in scheme["prices"] if pricing["active"]][0] for scheme in service["schemes"] if scheme.get("active")}
-    output["logger"] = self.user.username
-    output["service_id"] = service["service_id"]
-    if "nhif" in output:
-      output["insured"] = True
+    if "schemes" in service:
+      service["schemes"].append(scheme)
     else:
-      output["insured"] = False
-      output["nhif"] = {
-        "scheme_id":f"cash-{service['service_id'].lower()}",
-        "scheme_item_code":"",
-        "copayment":False,
-        "price_range":False,
-        "min":0,
-        "max":0,
-        "standard":0,
-        "priority":0,
-        "topup":0
-      }
+      service["schemes"] = [scheme]
+    
+    self.initial_data()
+    self.PaymentSchemes(service["schemes"])
 
-    return output
+  def update_pricing(self,pricing):
+    """updates the database if they arent similar"""
+    
+    #Scheme
+    scheme = {"scheme_id":pricing["scheme_id"],"active":pricing["active"],"restricted":pricing["restricted"]}
+
+    #Pricing
+    pricing.pop("active")
+    pricing.pop("restricted")
+
+    if not pricing["price_range"]:
+      pricing["min"],pricing["max"] = 0.0,0.0
+
+    if not pricing["copayment"]:
+      pricing["topup"] = 0.0
+    
+    #Updating database
+    pricing_status = admin_db.register_pricing(pricing)
+    scheme_status = admin_db.update_scheme(scheme)
+
+    if pricing_status["status"]:
+      ui.notify(message=pricing_status["message"],position=pricing_status["position"],type=pricing_status["type"])
+    else:
+      ui.notify(message=scheme_status["message"],position=scheme_status["position"],type=scheme_status["type"])
+
+  async def update_service(self,raw_data,edit:bool=False,delete:bool=False):
+    """"""
+
+    data = {key:value.lower() for key,value in raw_data.items() if type(value) == str}
+
+    if edit:
+      status = update_service(service=data)
+    else:
+      status = register_service(data)
+      await self.retrieve_payment_scheme(scheme="cash",service=data)
+      
+
+    ui.notify(message=status["message"],type=status["type"],position=status["position"])
+    
+    self.initial_data()
+    
+    if edit or delete:
+      self.ServicesDisplay()
+      self.service_dialog.close()
+    else:
+      pass
 
   #DISPLAYS
   def ServicesDisplay(self,services:list):
@@ -7415,31 +7170,21 @@ class ServicesManager():
       
       return status
 
-    def MiniPayment(service):
-      pricings = self.pricings(service)
-      pricings.pop("logger")
-      pricings.pop("service_id")
-      pricings.pop("insured")
-      return f"<div class='grid grid-cols-2 gap-2 text-bold uppercase'>{''.join([f'<div class="w-full text-center {'col-start-1 text-harmony' if scheme == 'cash' else 'col-start-2 text-yellow-700'}">{scheme}</div>' for scheme,pricing in pricings.items() if pricing['standard'] or pricing["price_range"]])}</div"
-    
-    def Payment(service,cash:bool=False,nhif:bool=False):
-      def _format_price(price):
-        return f"{price:,.2f}"
+    def CashPrice(service):
+      scheme = [scheme for scheme in service["schemes"] if scheme["scheme_name"] == "cash"][0]
+      price = [price for price in scheme["prices"] if price["active"]][0]["standard"]
 
-      pricings = self.pricings(service)
-      if cash:
-        price = pricings.get("cash")
-        if price["price_range"]:
-          return f"<div class='text-harmony font-semibold'>{price['min']:,.2f} - {price['max']:,.2f}</div>"
-        else:
-          return f"<div class='text-harmony font-semibold'>{price['standard']:,.2f}</div>"
-      
-      if nhif:
-        if "nhif" in pricings:
-          price = pricings.get("nhif")
-          return f"<div class='grid grid-cols-2 gap-5 font-semibold'><div class='grid grid-cols-2 gap-1' ><span class='text-yellow-800' >STANDARD</span><span class='justify-self-end' >{_format_price(price['standard']) if price['standard'] else '---'}</span></div><div class='grid grid-cols-2 gap-1' ><span class='text-yellow-800' >PRIORITY</span><span class='justify-self-end' >{_format_price(price['priority']) if price['priority'] else '---'}</span></div></div>"
-        else:
-          return f"<div class='grid grid-cols-2 gap-3 font-semibold'><div class='grid grid-cols-2 gap-1' ><span class='text-yellow-800' >STANDARD</span><span class='justify-self-end' >---</span></div><div class='grid grid-cols-2 gap-1' ><span class='text-yellow-800' >PRIORITY</span><span class='justify-self-end' >---</span></div></div>"
+      return price
+  
+    def InsuranceSchemes(service):
+      schemes = [scheme["scheme_name"] for scheme in service["schemes"] if scheme["active"] and scheme["scheme_name"] != "cash"]
+      nhif = "<span class='text-yellow-800 text-lg'>NHIF</span>" if "nhif" in schemes else ""
+      assemble = "<span class='text-teal-800'>Assemble</span>" if "assemble" in schemes else ""
+      jubilee = "<span class='text-red-800 text-lg'>Jubilee</span>" if "jubilee" in schemes else ""
+      strategis = "<span class='text-green-700 text-lg'>Strategis</span>" if "strategis" in schemes else ""
+      britam = "<span class='text-sky-700 text-lg'>Britam</span>" if "britam" in schemes else ""
+
+      return f"<span class='text-bold' >{nhif} {assemble} {jubilee} {strategis} {britam}</span>"
 
     #UI
     self.services_panel.clear()
@@ -7450,9 +7195,9 @@ class ServicesManager():
             {"headerName":"","field":"sno","width":50},
             {"headerName":"NAME","field":"name","sortable":True,"filter":True,"floatingFilter":True},
             {"headerName":"TYPE","field":"type","width":100},
-            {"headerName":"STATUS","field":"status","width":75},
-            {"headerName":"CASH PRICES (TZS)","field":"price_cash","sortable":True,"width":150},
-            {"headerName":"NHIF PRICES (TZS)","field":"price_nhif","sortable":True,"width":300},
+            {"headerName":"STATUS","field":"status","width":75,"type":"rightAligned"},
+            {"headerName":"CASH PRICES (TZS)","field":"cash","sortable":True,"width":150,"type":"rightAligned"},
+            {"headerName":"INSURANCES","field":"insurances","sortable":True,"width":300},
           ],
           "rowData":[
             {
@@ -7460,8 +7205,8 @@ class ServicesManager():
               "name":service["name"].title(),
               "type":service["type"].capitalize(),
               "status":Status(service,lg=True),
-              "price_cash":Payment(service,cash=True),
-              "price_nhif":Payment(service,nhif=True),
+              "cash":CashPrice(service),
+              "insurances":InsuranceSchemes(service),
               "service_id":service["service_id"]
             } for service in services
           ]
@@ -7477,14 +7222,14 @@ class ServicesManager():
             {"headerName":"","field":"status","width":50},
             {"headerName":"NAME","field":"name","sortable":True,"filter":True,"floatingFilter":True,"width":300},
             {"headerName":"TYPE","field":"type","width":200},
-            {"headerName":"PAYMENT","field":"payment","sortable":True,"width":150},
+            {"headerName":"CASH","field":"cash","sortable":True,"width":150},
           ],
           "rowData":[
             {
               "status":Status(service),
               "name":service["name"].title(),
               "type":service["type"].capitalize(),
-              "payment":MiniPayment(service),
+              "cash":CashPrice(service),
               "service_id":service["service_id"]
             } for service in services
           ]
@@ -7495,123 +7240,207 @@ class ServicesManager():
   
   def ServiceDialog(self,service:dict|None=None):
     """A method to display dialog for service registration and editing"""
+    #DATA
+    self.service = service
+
     #FXS
     def close_dialog():
       self.ServicesDisplay(services=self.services)
       self.service_dialog.close()
 
     # UI
-    with ui.dialog().props(add=f"transition-show='jump-up' transition-hide='jump-down' transition-duration='300'") as self.service_dialog,html.div().style(add="min-width:60%;min-height:60%;").classes(add="p-0.5 bg-sky-50 flex flex-col"):
+    with ui.dialog().props(add=f"transition-show='jump-up' transition-hide='jump-down' transition-duration='300'") as self.service_dialog,html.div().style(add="min-width:60%;min-height:100%;").classes(add="p-0.5 bg-sky-50 flex flex-col"):
       #Header
       with html.section().classes(add="bg-harmony flex flex-row justify-between"):
         ui.label(service["name"].upper() if service else "SERVICE PANEL").classes(add="bg-inherit p-2 grow text-yellow-600 text-xl lg:text-3xl text-bold text-center")
         ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=close_dialog).classes(add="bg-inherit text-rose-500 text-bold text-base")
       
-      #Search Bar
-      with html.section().classes(add="w-full p-3 flex flex-row justify-center"):
-        ui.select(label="SERVICE NAME",options=self.template_services,with_input=True,on_change=lambda e:self.retrieve_service(service=e.value)).props(add=f"popup-content-class='capitalize'").classes(add="col-span-3 px-1 bg-white shadow-md shadow-[#07004d] rounded text-lg")
-
       #Service details
-      with html.section().classes(add="grow w-full flex flex-col") as self.service_panel:
-        self.ServiceDetailsForm(service=service,edit=True if service else False)
+      with html.section().classes(add="grow w-full flex flex-col items-center") as self.service_panel:
+        if service:
+          self.ServiceDetailsForm(service=service,edit=True if service else False)
+        else:
+          ui.select(label="SERVICE NAME",options=self.template_services,with_input=True,on_change=lambda e:self.retrieve_service(service=e.value)).props(add=f"input-class='px-2' popup-content-class='uppercase'").classes(add="w-40 px-1 bg-white shadow-md shadow-[#07004d] rounded text-lg")
+          ui.separator().classes(add="w-full")
+          with html.div().classes(add="w-full grow flex flex-row justify-center items-center") as self.new_service_panel:
+            with html.div().classes(add="flex flex-col items-center gap-3 bg-red"):
+              pass
         
     self.service_dialog.open()
   
-  def ServiceDetailsForm(self,service:dict,edit:bool=False):
+  def ServiceDetailsForm(self,service:dict,new:bool=False,edit:bool=False):
     #DATA
-    if service:
-      if edit:
-        data = service
-        data["payment"] = self.pricings(service)
-      else:
-        data = service
+    data = service
     
-    else:
-      data = {
-        "service_id":"",
-        "name":self.template_services[0],
-        "alternative_name":"",
-        "type":"",
-        "payment":{
-          "logger":self.user.username,
-          "service_id":"",
-          "insured":False,
-          "cash":{
-            "scheme_id":f"",
-            "logger":self.user.username,
-            "copayment":False,
-            "price_range":False,
-            "min":0,
-            "max":0,
-            "standard":0,
-            "priority":0,
-            "topup":0
-          },
-          "nhif":{
-            "scheme_id":"",
-            "logger":self.user.username,
-            "copayment":False,
-            "price_range":False,
-            "min":0,
-            "max":0,
-            "standard":0,
-            "priority":0,
-            "topup":0
-          }
-        }
-      }
-
+    
     #FXS
-    def update_service_prices(nhif:bool=False):
-      data["payment"] = retrieve_updated_prices(data=data["payment"],nhif=nhif)
-      display_nhif_prices()
-      
-    def display_nhif_prices():
-      nhif_prices_display.clear()
-      with nhif_prices_display:
-        ui.button(text="update",color="",on_click=lambda e:update_service_prices(nhif=True)).props(add="glossy").classes(add="bg-harmony text-xl text-yellow-500 font-medium").bind_visibility_from(data["payment"],"insured")
-        nhif_standard_display = ui.number(label="STANDARD").props(add="readonly stack-label label-color='#07004d'").classes(add="w-full px-1 bg-white shadow-sm shadow-[#07004d] rounded-sm text-lg").bind_value(data["payment"]["nhif"],"standard").bind_visibility_from(data["payment"],"insured")
-        nhif_priority_display = ui.number(label="PRIORITY").props(add="readonly required stack-label label-color='#07004d'").classes(add="w-full px-1 bg-white shadow-sm shadow-[#07004d] rounded-sm text-lg").bind_value(data["payment"]["nhif"],"priority").bind_visibility_from(data["payment"],"insured")
-        #Message if its not insured
-        ui.label("Not Insured by NHIF").classes(add="col-span-3 text-lg text-gray-500 font-semibold italic text-center fa-fade").bind_visibility_from(data["payment"],"insured",backward=lambda insured:not insured)
-      
+    async def template_payment_schemes():
+      scheme_names = await admin_processor.get_template_payment_schemes()
+      if "schemes" in service:
+        scheme_names = [name for name in scheme_names if name not in [i["scheme_name"] for i in service["schemes"]]]
+      add_scheme_select.options = [name.upper() for name in scheme_names]
+      add_scheme_select.update()
+
     #UI
     self.service_panel.clear()
     with self.service_panel:
-      with html.form().classes(add="w-full py-1 px-0 grid grid-cols-1 lg:grid-cols-5 gap-2"):
+      with html.form().classes(add="grow w-full py-1 px-0 flex flex-col lg:grid lg:grid-cols-5 gap-0.5"):
         #General Details
-        with html.section().classes(add="lg:col-span-2 w-full flex flex-col gap-2"):
-          ui.label('GENERAL DETAILS').classes(add="grow w-full px-1 shadow-md shadow-[#07004d] text-bold text-xl text-harmony")
+        with html.section().classes(add="lg:col-span-2 w-full lg:h-full flex flex-col gap-2"):
+          ui.label('GENERAL DETAILS').classes(add="w-full px-1 shadow-md shadow-[#07004d] text-bold text-xl text-harmony")
           with html.div().classes(add="w-full p-1 grid grid-cols-3 gap-2"):
             ui.input(label="NAME").props(add="readonly stack-label type='text'").classes(add="col-span-3 px-1 bg-white shadow-sm shadow-[#07004d] rounded text-lg").bind_value(data,"name",backward=lambda service_name:service_name.title() if service_name else service_name)
             ui.input(label="OTHER NAME (Optional)").props(add="readonly stack-label type='text'").classes(add="col-span-2 lg:col-span-3 bg-white shadow-sm shadow-[#07004d] rounded px-1 text-lg").bind_value_from(data,"alternative_name",backward=lambda service_alt_name:service_alt_name.title() if service_alt_name else service_alt_name)
             ui.input(label="SERVICE TYPE").props(add="readonly required stack-label").classes(add="col-span-1 lg:col-span-3 bg-white shadow-sm shadow-[#07004d] rounded px-1 text-lg").bind_value(data,"type",backward=lambda service_type:service_type.title() if service_type else service_type)
-        
-        #Prices
+          
+          ui.space().classes(add="lg-show")
+
+          #Buttons
+          with html.div().classes(add="lg:col-span-5 w-full py-2 flex flex-row justify-center"):
+            ui.button(text="SAVE SERVICE",color="",on_click=lambda e:self.update_service(raw_data=data)).props(add="glossy").classes(add="bg-harmony text-yellow-500 text-bold text-xl")
+          
+        #Pricings
         with html.section().classes(add="lg:col-span-3 grow w-full flex flex-col gap-2"):
           ui.label('PRICING DETAILS').classes(add="w-full px-1 shadow-md shadow-[#07004d] text-bold text-xl text-harmony")
-          #CASH Pricing
-          with html.div().classes(add="grow w-full p-1 flex flex-col gap-2"):
-            ui.label("CASH PRICES").classes(add="col-span-3 w-full px-1 shadow-sm shadow-[#07004d] text-bold text-xl text-harmony")
-            with html.div().classes(add="grid grid-cols-3 gap-2") as cash_prices_display:
-              ui.switch("PRICE RANGE").props(add="left-label size='lg' unchecked-icon='fa-regular fa-circle-xmark' checked-icon='fa-solid fa-check-double' color='green-8'").classes(add="px-1 bg-sky-50 shadow-sm shadow-[#07004d] text-harmony font-medium").bind_value(data["payment"]["cash"],"price_range")
-            
-              ui.number(label="STANDARD").props(add="stack-label label-color='#07004d'").classes(add="w-full px-1 bg-white shadow-sm shadow-[#07004d] rounded-sm text-lg").bind_value(data["payment"]["cash"],"standard").bind_visibility_from(data["payment"]["cash"],"price_range",backward=lambda price_range:not price_range)
-              ui.number(label="PRIORITY").props(add="required").classes(add="w-full px-1 bg-white shadow-sm shadow-[#07004d] rounded-sm text-lg").bind_value(data["payment"]["cash"],"priority").bind_visibility_from(data["payment"]["cash"],"price_range",backward=lambda price_range:not price_range)
-
-              ui.number(label="CASH MIN").props(add="stack-label label-color='#07004d'").style(add="caret-color:#daa520;").classes(add="w-full px-1 bg-white shadow-sm shadow-[#07004d] rounded text-lg").bind_value(data["payment"]["cash"],"min").bind_visibility_from(data["payment"]["cash"],"price_range")
-              ui.number(label="CASH MAX").props(add="stack-label label-color='#07004d'").style(add="caret-color:#daa520;").classes(add="w-full px-1 bg-white shadow-sm shadow-[#07004d] rounded text-lg").bind_value(data["payment"]["cash"],"max").bind_visibility_from(data["payment"]["cash"],"price_range")
           
-          #NHIF Pricing
-          with html.div().classes(add="grow w-full p-1 flex flex-col gap-2"):
-            ui.label("NHIF PRICES").classes(add="col-span-3 w-full px-1 shadow-sm shadow-[#07004d] text-bold text-xl text-harmony")
-            with html.div().classes(add="grid grid-cols-3 gap-2") as nhif_prices_display:
-              display_nhif_prices()
+          #Add new button
+          with html.div().classes(add="w-full px-3 py-1 flex flex-row justify-center"):
+            with ui.select(label="SELECT SCHEME",options=[],on_change=lambda e:self.retrieve_payment_scheme(scheme=e.value,service=self.service)).props(add=f"input-class='px-2' popup-content-class='uppercase'").classes(add="w-60 p-0 px-1 bg-white shadow-md shadow-[#07004d] rounded text-lg") as add_scheme_select:
+              with add_scheme_select.add_slot("prepend"):
+                html.span().classes(add="fa-solid fa-circle-plus text-harmony")
+                
+          #Payment scheme
+          with html.div().classes(add="grow w-full bg-white flex flex-col") as self.payment_schemes_panel:
+            self.PaymentSchemes(data["schemes"] if "schemes" in data else None)
+    
+    #Async
+    ui.timer(0.1,lambda:template_payment_schemes(),once=True)
         
-        #Buttons
-        with html.div().classes(add="lg:col-span-5 w-full py-2 flex flex-row justify-center"):
-          ui.button(text="SAVE SERVICE",color="",on_click=lambda e:self.save_service(service=data,update=True if edit else False)).props(add="glossy").classes(add="bg-harmony text-yellow-500 text-bold text-xl")
-          
+  def NewPaymentSchemePanel(self,scheme,service):
+    """"""
+    #DATA
+    service = service
+    scheme = scheme
+    scheme["prices"]["logger"] = self.user.username
+
+    #UI
+    self.payment_schemes_panel.clear()
+    with self.payment_schemes_panel:
+      with html.div().classes(add="grow w-full flex flex-col gap-1 bg-sky-100 rounded shadow-sm shadow-[#07004d]"):
+        #Header
+        with html.section().classes(add="w-full p-1 rounded-t bg-harmony grid grid-cols-3 lg:grid-cols-2"):
+          ui.label(scheme["scheme_name"].upper()).classes(add=" px-1 text-xl text-sky-300 text-bold")
+          with html.div().classes(add="col-span-2 lg:col-span-1 flex flex-row justify-between items-center gap-1"):
+            ui.switch(text="ACTIVE",value=scheme["active"]).props(add="dense left-label color='green' icon='fa-solid fa-power-off' size='lg'").classes(add="bg-inherit text-bold text-lg text-sky-200").bind_value(scheme,"active")
+            ui.switch(text="RESTRICTED",value=scheme["restricted"]).props(add="dense left-label color='green' icon='fa-solid fa-power-off' size='lg'").classes(add="bg-inherit text-bold text-lg text-sky-200").bind_value(scheme,"restricted")
+        #Prices
+        with html.section().classes(add="w-full p-1 flex flex-col lg:grid grid-cols-6  gap-3"):
+          #Cash pricing
+          if scheme["scheme_name"].lower() == "cash":
+            #Price Range Switch
+            price_range_switch = ui.switch(text="PRICE RANGE").props(add="color='green' icon='fa-solid fa-power-off' size='lg'").classes(add="col-span-6 lg:col-span-2 w-full bg-sky-50 shadow-sm shadow-[#07004d] text-bold text-lg text-harmony").bind_value(scheme["prices"],"price_range")
+            #Min
+            ui.number(label="MIN").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value").bind_value(scheme["prices"],"min",backward=lambda val:float(val))
+            #Max
+            ui.number(label="MAX").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value").bind_value(scheme["prices"],"max",backward=lambda val:float(val))
+            #Standard
+            ui.number(label="STANDARD").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value",backward=lambda e:not e).bind_value(scheme["prices"],"standard",backward=lambda val:float(val))
+            #Priority
+            ui.number(label="PRIORITY").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value",backward=lambda e:not e).bind_value(scheme["prices"],"priority",backward=lambda val:float(val))
+            
+          #Insurance pricing(s)
+          else:
+            with html.div().classes(add="col-span-6 grid grid-cols-2 gap-3"):
+              #Copayment switch
+              copayment_switch = ui.switch(text="COPAYMENT").props(add="color='green' icon='fa-solid fa-power-off' size='lg'").classes(add="col-span-2 lg:col-span-1 bg-sky-50 shadow-sm shadow-[#07004d] text-bold text-lg text-harmony").bind_value(scheme["prices"],"copayment")
+              #Topup
+              ui.number(label="TOPUP").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-2 lg:col-span-1 shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(copayment_switch,"value").bind_value(scheme["prices"],"topup",backward=lambda val:float(val))
+            
+            with html.div().classes(add="col-span-6 grid grid-cols-2 gap-3"):
+              #Standard
+              ui.number(label="STANDARD").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-2 lg:col-span-1 shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_value(scheme["prices"],"standard",backward=lambda val:float(val))
+              #Priority
+              ui.number(label="PRIORITY").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-2 lg:col-span-1 h-auto shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_value(scheme["prices"],"priority",backward=lambda val:float(val))
+        
+        #Amna kitu kabisa
+        with html.div().classes(add="grow w-full "):
+          ui.space()
+
+        #Save button
+        with html.div().classes(add="w-full flex flex-row justify-center items-center gap-5"):
+          if scheme["scheme_name"] != "cash":
+            ui.button(text="GET PRICES",color="").props(add=f"glossy").classes(add="hidden bg-harmony text-sky-300 text-bold text-xl")
+          ui.button(text="SAVE CHANGES",color="",on_click=lambda e:self.register_payment_scheme_and_pricing(scheme=scheme,service=service)).props(add=f"glossy").classes(add="bg-harmony text-sky-300 text-bold text-xl")
+
+  def PaymentSchemes(self,schemes=None):
+    """Displays for editing payment schemes for medicines"""
+    #DATA
+    if schemes:
+      for scheme in schemes:
+        scheme["current_pricing"] = [pricing for pricing in scheme["prices"] if pricing["active"]][0]
+
+    #UI
+    self.payment_schemes_panel.clear()
+    with self.payment_schemes_panel:
+      #Schemes
+      with html.div().classes(add="grow w-full flex flex-col gap-1"):
+        #Scheme zenyewe
+        with ui.scroll_area().classes(add="w-full grow p-0 q-pa-none bg-white rounded-none shadow-md shadow-[307004d] animate__animated animate__fadeIn animate__slow"):
+          if schemes:
+            for scheme in schemes:
+              pricing = scheme["current_pricing"]
+              #Scheme Proper
+              with html.div().props(add=f"scheme_id='{scheme["scheme_id"]}'").classes(add="w-full flex flex-col gap-1 bg-sky-100 rounded shadow-sm shadow-[#07004d]"):
+                #Header
+                with html.section().classes(add="w-full p-0.5 rounded-t bg-harmony grid grid-cols-3 lg:grid-cols-2"):
+                  ui.label(scheme["scheme_name"].upper()).classes(add=" px-1 text-xl text-sky-300 text-bold")
+                  with html.div().classes(add="col-span-2 lg:col-span-1 flex flex-row justify-between items-center"):
+                    ui.switch(text="ACTIVE",value=scheme["active"]).props(add="dense left-label color='green' icon='fa-solid fa-power-off'").classes(add="bg-inherit text-bold text-sky-200")
+                    ui.switch(text="RESTRICTED",value=scheme["restricted"]).props(add="dense left-label color='green' icon='fa-solid fa-power-off'").classes(add="bg-inherit text-bold text-sky-200")
+                #Prices
+                with html.section().classes(add="grow w-full p-1 grid grid-cols-6 gap-2"):
+                  #Cash pricing
+                  if scheme["scheme_name"].lower() == "cash":
+                    #Price Range Switch
+                    price_range_switch = ui.switch(text="PRICE RANGE",value=pricing["price_range"]).props(add="color='green' icon='fa-solid fa-power-off' size='lg'").classes(add="col-span-6 lg:col-span-2 w-full bg-sky-50 shadow-sm shadow-[#07004d] text-bold text-lg text-harmony")
+                    #Min
+                    min_cash_price = ui.number(label="MIN",value=pricing["min"]).props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value")
+                    #Max
+                    max_cash_price = ui.number(label="MAX",value=pricing["max"]).props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value")
+                    #Standard
+                    standard_cash_price = ui.number(label="STANDARD",value=pricing["standard"]).props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value",backward=lambda e:not e)
+                    #Priority
+                    priority_cash_price = ui.number(label="PRIORITY",value=pricing["priority"]).props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value",backward=lambda e:not e)
+                    
+                  #Insurance pricing(s)
+                  else:
+                    #Copayment
+                    with html.div().classes(add="col-span-6 lg:col-span-3 w-full grid grid-cols-1 gap-2"):
+                      #Copayment switch
+                      copayment_switch = ui.switch(text="COPAYMENT",value=pricing["copayment"]).props(add="color='green' icon='fa-solid fa-power-off' size='lg'").classes(add="w-full bg-sky-50 shadow-sm shadow-[#07004d] text-bold text-lg text-harmony")
+                      #Topup
+                      ui.number(label="TOPUP",value=pricing["topup"]).props(add="bordered stack-label label-color='#07004d'").classes(add="w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(copayment_switch,"value")
+                    #Prices Inputs
+                    with html.div().classes(add="col-span-6 lg:col-span-3 grid grid-cols-1 gap-2"):
+                      #Standard
+                      ui.number(label="STANDARD",value=pricing["standard"]).props(add="bordered stack-label label-color='#07004d'").classes(add="w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl")
+                      #Priority
+                      ui.number(label="PRIORITY",value=pricing["priority"]).props(add="bordered stack-label label-color='#07004d'").classes(add="w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl")
+                      
+                  #Save button
+                  ui.button(text="SAVE CHANGES",color="",on_click=lambda e:self.update_pricing({
+                    "scheme_id":e.sender.parent_slot.parent.parent_slot.parent.props["scheme_id"],
+                    "active":e.sender.parent_slot.parent.parent_slot.parent.slots["default"].children[0].slots["default"].children[1].slots["default"].children[0].props["model-value"],
+                    "restricted":e.sender.parent_slot.parent.parent_slot.parent.slots["default"].children[0].slots["default"].children[1].slots["default"].children[1].props["model-value"],
+                    "copayment":e.sender.parent_slot.parent.slots["default"].children[0].slots["default"].children[0].props["model-value"] if e.sender.props["scheme"].lower() != "cash" else False,
+                    "topup":float(e.sender.parent_slot.parent.slots["default"].children[0].slots["default"].children[1].props["model-value"]) if e.sender.props["scheme"].lower() != "cash" else 0.0,
+                    "price_range":e.sender.parent_slot.parent.slots["default"].children[0].props["model-value"] if e.sender.props["scheme"].lower() == "cash" else False,
+                    "min":float(e.sender.parent_slot.parent.slots["default"].children[1].props["model-value"]) if e.sender.props["scheme"].lower() == "cash" else 0.0,
+                    "max":float(e.sender.parent_slot.parent.slots["default"].children[2].props["model-value"]) if e.sender.props["scheme"].lower() == "cash" else 0.0,
+                    "standard":float(e.sender.parent_slot.parent.slots["default"].children[3].props["model-value"]) if e.sender.props["scheme"].lower() == "cash" else float(e.sender.parent_slot.parent.slots["default"].children[1].slots["default"].children[0].props["model-value"]),
+                    "priority":float(e.sender.parent_slot.parent.slots["default"].children[4].props["model-value"]) if e.sender.props["scheme"].lower() == "cash" else float(e.sender.parent_slot.parent.slots["default"].children[1].slots["default"].children[1].props["model-value"]),
+                    "logger":self.user.username
+                  })).props(add=f"glossy scheme='{scheme["scheme_name"]}'").classes(add="col-span-6 justify-self-center bg-harmony text-sky-300 text-bold text-xl")
 
 
 

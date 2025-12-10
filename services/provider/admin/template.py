@@ -62,6 +62,21 @@ default_subscription = {
   "cost":0,"paid_amount":0,"pending_amount":0,"end_time":datetime.now() + timedelta(days=30)
 }
 
+other_services = [
+  {
+    "service_id":"consult-mds",
+    "name":"specialist consultation",
+    "alternative_name":None,
+    "type":"consultation"
+  },
+  {
+    "service_id":"dental-flossing",
+    "name":"dental-flossing",
+    "alternative_name":None,
+    "type":"procedure"
+  }
+]
+
 services = [
   {
     "service_id":"consult-dds",

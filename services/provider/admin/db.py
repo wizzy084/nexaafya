@@ -157,7 +157,7 @@ def register_service(service:dict,default:bool=False):
   db_service = Service(
     service_id = service["service_id"],
     name = service["name"],
-    alternative_name = service["alternative_name"],
+    alternative_name = service["alternative_name"] if "alternative_name" in service else None,
     type = service["type"],
     active = True
   )
@@ -171,9 +171,10 @@ def register_service(service:dict,default:bool=False):
         session.commit()
     
         #REGISTER PAYMENT SCHEMES
-        schemes = service["schemes"]
-        for scheme in schemes:
-          register_scheme(scheme,default=default)
+        if "schemes" in service:
+          schemes = service["schemes"]
+          for scheme in schemes:
+            register_scheme(scheme,default=default)
           
     return {"status":True,"message":"Service successfully added!","type":"positive","position":"top"}
   except:
