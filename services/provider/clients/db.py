@@ -74,6 +74,7 @@ def feed_visit(visit:dict,db_client:Client):
     start_time = datetime.now(),
     payment_mode = visit["payment_mode"],
     package = visit["package"].lower(),
+    prescription_no = f"{visit['client_id']}{str(uuid4()).split('-')[1]}",
     attendee_id = visit["attendee_id"]
   )
   
@@ -1326,12 +1327,7 @@ def update_medicine(medicine:dict):
         db_medical_item.dispensing_time = datetime.now()
 
       session.commit()
-    #Admin Client
-    with Session(database_engine) as session:
-      db_medicine:Medicine = list(session.exec(select(Medicine).where(Medicine.requisition_medicine_id == medicine["requisition_medicine_id"])))[0]
-      
-      db_medicine.dispensing_balance -= medicine["dispensed_items_no"]
-      session.commit()
+
     #Return
     return {"message":"Medicine dispensed successfully!","type":"positive","position":"top"}
   

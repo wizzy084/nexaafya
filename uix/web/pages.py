@@ -1,6 +1,7 @@
 """A module for constructing main page and page layouts"""
 #GENERAL IMPORTS
-import asyncio,uuid
+from collections import namedtuple
+import asyncio,uuid,time as t
 
 #NiceGUI IMPORTS
 from fastapi import Request
@@ -12,13 +13,14 @@ from services.provider.admin.db import register_login,update_login
 
 #UIX IMPORTS
 from .configs import HEAD_LINKS,META_TAGS,BODY_LINKS
-from .consultation.widgets import *
-from .imaging.widgets import *
-from .nursing.widgets import *
-from .management.widgets import AdministrationManagementDisplay
-from .tools.animations import *
 from .tools.widgets import *
 
+
+#HELPER FUNCTIONS
+async def db_login_update(credentials):
+  if credentials.user and credentials.user.active and not [log for log in credentials.user.logins if log.logged]:
+    _login_id = f"{credentials.username}-log-{str(uuid.uuid4()).split('-')[0]}"
+    register_login({"login_id":_login_id,"username":credentials.user.username})
 
 #PAGE ROUTES
 router = APIRouter(prefix="")
@@ -26,35 +28,48 @@ router = APIRouter(prefix="")
 @ui.page("/",title="NexaClinic",api_router=router)
 async def main_page():
   """A route to display login page by default"""
+ 
+  #Primers
+  Credentials = namedtuple("Credentials",["user","username","exists","password_match","logged"],defaults=[None,None,False,False,False])
 
-  login_credentials = {"new_login":True,"username":"","user_exists":False,"user":None,"password_match":False,"active":False}
-  
   await ui.context.client.connected()
   
-  if app.storage.user:
-    login_credentials["new_login"] = False
-    stored_credentials = {"username":app.storage.user["username"],"password":app.storage.user["password"]}
-    login_credentials.update(authenticate_user(stored_credentials))
+  #Same tab
+  if app.storage.tab:
+    if "credentials" in app.storage.tab:
+      credentials =app.storage.tab["credentials"]
+    else:
+      credentials = authenticate_user(app.storage.tab)
+      app.storage.tab["credentials"] = credentials
+      app.storage.user["credentials"] = credentials #update({"username":credentials.username})
+  #Same browser
+  elif app.storage.user:
+    '''ui.notify(app.storage.user)
+    if "credentials" in app.storage.user:
+      credentials = app.storage.user["credentials"]
+    else:'''
+    credentials = authenticate_user(app.storage.user)
+  
+  #Nyet
+  else:
+    credentials = Credentials()
+  
+  Page(credentials=credentials)
 
-  #REGISTER LOGIN
-  if login_credentials["user"]:
-    user = login_credentials["user"]
-    if user.active and not [log for log in user.logins if log.logged]:
-      _login_id = f"{user.username}-log-{str(uuid.uuid4()).split('-')[0]}"
-      register_login({"login_id":_login_id,"username":user.username})
+  ui.timer(0.1,lambda:db_login_update(credentials),once=True)
 
-  Page(login_credentials=login_credentials)
+  
 
 
 #MAIN PAGE
 class Page():
   """A class to construct a page layout for the admin panel"""
 
-  def __init__(self,login_credentials:dict):
+  def __init__(self,credentials:dict):
     
     #PAGE SETUP
-    self.login_credentials = login_credentials
-    self.user = self.login_credentials["user"]
+    self.credentials = credentials
+    self.user = self.credentials.user
     self.initial_data()
     self.Metadata()
     self.Notifications()
@@ -71,7 +86,7 @@ class Page():
       with html.div().style(add="width:100%;height:100%;").classes(add=""):
         #Content
         with html.div().style(add="width:100%;height:100%;overflow-y:hidden;").classes(add="relative flex flex-row justify-center content-center"):
-          Login(login_credentials=self.login_credentials)
+          Login(credentials=self.credentials)
     
   #PAGE SETUP
   def initial_data(self):
@@ -80,7 +95,7 @@ class Page():
       if "director" in self.user.roles:
         self.sections = {"services":["fa-solid fa-stethoscope",ServicesManagementDisplay],"management":["fa-solid fa-briefcase",AdministrationManagementDisplay]}
       elif "receptionist" in self.user.roles:
-        self.sections = {"clients":["fa-solid fa-users-rectangle",ReceptionManager],"triage & dispensing":["fa-solid fa-heart-pulse",NursingManager]}
+        self.sections = {"clients":["fa-solid fa-users-rectangle",ReceptionManager],"services":["fa-solid fa-heart-pulse",NursingManager],"inventory":["fa-solid fa-house-medical",InventoryManager]}
       elif "doctor" in self.user.roles:
         self.sections = {"services":["fa-solid fa-stethoscope",ClinicianServicesManager]}
       elif "nurse" in self.user.roles:
@@ -106,17 +121,19 @@ class Page():
   def Notifications(self):
     """Displays popup notification with name of user and contextual message"""
 
-    if self.login_credentials["user_exists"]:
-      if self.login_credentials["password_match"]:
-        if self.user.active:
-          ui.notify(message=f"Welcome back {self.user.title.capitalize()} {self.user.first_name.capitalize()} {self.user.last_name.capitalize()}",caption="Have a nice experience!",timeout=5000,icon="fas fa-check-double fa-lg",color="light-blue-7",textColor="white",type="positive",position="top")
+    if self.credentials.user:
+      if self.user.active:
+        if self.credentials.password_match:
+          if self.credentials.logged:
+            pass
+            #ui.notify(message=f"Welcome back {self.user.title.capitalize()} {self.user.first_name.capitalize()} {self.user.last_name.capitalize()}",caption="Have a nice experience!",timeout=5000,icon="fas fa-check-double fa-lg",color="light-blue-7",textColor="white",type="positive",position="top")
         else:
-          ui.notify(message="Inactive Account!",caption="Contact Clinic Administration",progress=True,timeout=5000,icon="fas fa-circle-exclamation fa-beat-fade",textColor="white",type="secondary",position="top")
+          ui.notify(message="Invalid password!",caption="Try Again or Contact System Admin",progress=True,timeout=3000,icon="fas fa-circle-exclamation fa-beat-fade",textColor="black",type="warning",position="top")
       else:
-        ui.notify(message="Invalid password!",caption="Try Again or Contact System Admin",progress=True,timeout=3000,icon="fas fa-circle-exclamation fa-beat-fade",textColor="black",type="warning",position="top")
+        ui.notify(message="Inactive Account!",caption="Contact Clinic Administration",progress=True,timeout=5000,icon="fas fa-circle-exclamation fa-beat-fade",textColor="white",type="secondary",position="top")
   
     else:
-      if not self.login_credentials["new_login"]:
+      if self.credentials.username and not self.credentials.exists:
         ui.notify(message=f"No User Found!",caption="Check your username!",timeout=3000,icon="fas fa-circle-exclamation fa-beat-fade",textColor="white",type="negative",position="top")
 
   #FUNCTIONALITITES
@@ -125,6 +142,7 @@ class Page():
 
     #UPDATE STORAGE
     app.storage.user.clear()
+    app.storage.tab.clear()
 
     #UPDATE DATABASE
     for login in self.user.logins:
@@ -177,7 +195,7 @@ class Page():
       ui.separator().classes(add="w-full bg-[#09026f]")
 
       #Page Tab Panels
-      with ui.tab_panels(tabs=self.page_tabs,value=list(self.sections.keys())[0]).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='300'").classes(add="grow w-full bg-inherit grid grid-cols-1"):
+      with ui.tab_panels(tabs=self.page_tabs,value=list(self.sections.keys())[-1]).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='300'").classes(add="grow w-full bg-inherit grid grid-cols-1"):
         #Director
         
         for title,content in self.sections.items():
@@ -288,7 +306,6 @@ class ReceptionManager():
       with html.div().classes(add="lg:hidden w-full"):
         ui.toggle(options=["clients","appointments"]).props(add="glossy spread size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="w-full bg-[#07004d] rounded-none text-bold").bind_value(carousel)
 
-
 class NursingManager():
   """Displays UI for nursing utilities"""
 
@@ -313,7 +330,6 @@ class NursingManager():
       ##Small Screen
       with html.div().classes(add="lg:hidden w-full"):
         ui.toggle(options=["triage","dispensing"]).props(add="glossy spread size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="w-full bg-[#07004d] rounded-none text-bold").bind_value(carousel)
-
 
 class ClinicianServicesManager():
   """A class of UI for managing consultations"""
@@ -345,6 +361,38 @@ class ClinicianServicesManager():
       ##Small Screen
       with html.div().classes(add="lg:hidden w-full"):
         ui.toggle(options=["consults","procedures","appointments"]).props(add="glossy spread size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="w-full bg-[#07004d] rounded-none text-bold").bind_value(carousel)
+
+class InventoryManager():
+  """A class of UI for managing consultations"""
+
+  def __init__(self,user):
+    #DATA
+    self.user = user
+    
+    #UI
+    with html.div().classes(add="w-full h-full flex flex-col p-0 gap-1 bg-inherit animate__animated animate__fadeIn"):
+      with ui.carousel(value="orders").style(add="overflow-y:hidden;").props(add="animated transition-prev='jump-right' transition-next='jump-left' transition-duration='100'").classes(add="grow flex flex-col q-pa-none w-full bg-inherit rounded-none shadow-sm shadow-blue-500 animate__animated animate__fadeIn") as carousel:
+        with carousel.add_slot("default"):
+          #Consults
+          with ui.carousel_slide(name="formulary").classes(add="q-pa-none gap-0 w-full h-full p-0 rounded-none bg-sky-100 flex flex-col"):
+            FacilityFormulary(user=self.user)
+              
+          with ui.carousel_slide(name="orders").classes(add="q-pa-none gap-0 w-full h-full p-0 rounded-b bg-sky-100 flex flex-col"):
+            Requisitions(user=self.user)
+          
+          with ui.carousel_slide(name="stocks").classes(add="q-pa-none p-0.5"):
+            with html.div().classes(add="w-full h-full"):
+              AppointmentsManager(user=self.user)
+
+      #Controls
+      ##Large Screen
+      with html.div().classes(add="lg-show w-full py-1 text-center"):
+        ui.toggle(options=["orders","formulary"]).props(add="glossy size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="bg-[#07004d] rounded-full ring-1 ring-blue-500 shadow-md shadow-sky-600 text-bold").bind_value(carousel)
+      ##Small Screen
+      with html.div().classes(add="lg:hidden w-full"):
+        ui.toggle(options=["orders","formulary"]).props(add="glossy spread size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="w-full bg-[#07004d] rounded-none text-bold").bind_value(carousel)
+
+
 
 
 

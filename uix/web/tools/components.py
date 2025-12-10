@@ -67,6 +67,12 @@ def StatusDot(active:bool=True):
 
   return f"<span class='fa-solid fa-circle { 'text-green-600' if active  else 'text-red-600'}'></span>"
 
+def PageLoading():
+  """Just a loading display, nothing much"""
+
+  with html.div().classes(add="flex flex-col items-center gap-3"):
+    ui.spinner(type="puff",size="xl")
+    html.span("Please wait...").classes(add="text-sky-500 italic font-medium text-lg")
 
 ###
 

@@ -512,7 +512,7 @@ def unmodel_consultation(db_consultation:Consultation):
 
 def unmodel_visit(db_visit:Visit):
   """Converts a row(s) in visit table into a dictionary 'visit'"""
-  _Visit = namedtuple("_Visit",["client_id","client_name","client_created_on","client_birthdate","client_gender","client_address","visit_id","start_time","end_time","active","cancelled","payment_mode","package","payments","consultations","anthropometrics","vital_signs","labs","imagings","procedures","surgeries","medications","medical_items","nonpharmacologicals"])
+  _Visit = namedtuple("_Visit",["client_id","client_name","client_created_on","client_birthdate","client_gender","client_address","visit_id","start_time","end_time","active","cancelled","payment_mode","package","prescription_no","payments","consultations","anthropometrics","vital_signs","labs","imagings","procedures","surgeries","medications","medical_items","nonpharmacologicals"])
 
   return _Visit(
     client_id = db_visit.client_id,
@@ -528,6 +528,7 @@ def unmodel_visit(db_visit:Visit):
     cancelled = db_visit.cancelled,
     payment_mode = db_visit.payment_mode.lower(),
     package = db_visit.package,
+    prescription_no = db_visit.prescription_no,
     payments = [unmodel_payment(db_payment) for db_payment in db_visit.payments],
     consultations = [unmodel_consultation(db_consultation) for db_consultation in db_visit.consultations],
     anthropometrics = [unmodel_anthropometrics(db_anthropometrics) for db_anthropometrics in db_visit.anthropometrics],

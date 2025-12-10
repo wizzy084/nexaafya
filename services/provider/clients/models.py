@@ -77,6 +77,7 @@ class Visit(SQLModel,table=True,extend_existing=True):
     cancelled:bool = False
     payment_mode:str|None = None
     package:str = "standard"
+    prescription_no:str|None = None
 
     client:Client|None = Relationship(back_populates="visits")
     

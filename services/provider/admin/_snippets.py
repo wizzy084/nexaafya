@@ -32,11 +32,12 @@ def unmodel_facility_subscription(db_facility_subscription:FacilitySubscription)
 def unmodel_facility(db_facility:Facility):
   """A function to convert Facility model details into a namedtuple"""
 
-  Facility = namedtuple("Facility",["facility_id","name","postcode","registration_time","category","level","certifications","designations","primary_roles","secondary_roles","services","medicine_types","vendors","mos","titles","marital_statuses","occupations","relationships","id_number_types","years_of_existence","active_payment_modes","payment_packages","subscriptions"])
+  Facility = namedtuple("Facility",["facility_id","name","tag","postcode","registration_time","category","level","certifications","designations","primary_roles","secondary_roles","services","medicine_types","vendors","mos","titles","marital_statuses","occupations","relationships","id_number_types","years_of_existence","active_payment_modes","payment_packages","subscriptions"])
 
   return Facility(
     facility_id = db_facility.facility_id,
     name = db_facility.name,
+    tag = db_facility.tag,
     postcode = db_facility.postcode,
     registration_time = db_facility.registration_time,
     category = db_facility.category,
@@ -99,7 +100,7 @@ def unmodel_user(db_user:User):
     registered_on = db_user.registered_on,
     roles = json.loads(db_user.roles) if db_user.roles else [],
     active = db_user.active,
-    logins = [unmodel_login(db_login) for db_login in db_user.logins]
+    logins = sorted([unmodel_login(db_login) for db_login in db_user.logins],key=lambda login:login.login_time,reverse=True) if db_user.logins else []
   )
 
 def unmodel_service(db_service:Service):
@@ -141,12 +142,20 @@ def unmodel_formulary(db_formulary:Formulary):
 def unmodel_requisition(db_requisition:Requisition):
   """Unmodels a requisition object"""
 
-  _Requisition = namedtuple("Requisition",["requisition_id","medicine_id","medicine_requisition_id","delivery_note","invoice","vendor","brand_name","mfg_date","manufacturer","batch_no","expire_date","balance","active","paid","billed","paid_amount","billed_amount","ordered","ordered_on","ordered_by","order_unit","order_unit_size","ordered_amount","unit_price","ordered_price","received","received_amount","received_price","received_by","received_on","rejected","rejected_amount","rejection_reasons","rejected_price"])
+  _Requisition = namedtuple("Requisition",[
+    "requisition_id","medicine_id","medicine_requisition_id","medicine_name",
+    "delivery_note","invoice","vendor","brand_name","mfg_date","manufacturer","batch_no","expire_date",
+    "balance","active","paid","billed","paid_amount","billed_amount","ordered","ordered_on","ordered_by",
+    "order_unit","order_unit_size","ordered_amount","unit_price","ordered_price","received","received_amount",
+    "received_price","received_by","received_on","rejected","rejected_amount","rejection_reasons","rejected_price",
+    "requisition_ordered","requisition_received","requisition_rejected"
+  ])
 
   return _Requisition(
     requisition_id = db_requisition.requisition_id,
     medicine_id = db_requisition.medicine_id,
     medicine_requisition_id = db_requisition.medicine_requisition_id,
+    medicine_name = db_requisition.medicine_name,
     delivery_note = db_requisition.delivery_note,
     invoice = db_requisition.invoice,
     vendor = db_requisition.vendor,
@@ -177,12 +186,15 @@ def unmodel_requisition(db_requisition:Requisition):
     rejected = db_requisition.rejected,
     rejection_reasons = json.loads(db_requisition.rejection_reasons) if db_requisition.rejection_reasons else [],
     rejected_amount = db_requisition.rejected_amount,
-    rejected_price = db_requisition.rejected_price
+    rejected_price = db_requisition.rejected_price,
+    requisition_ordered = db_requisition.requisition_ordered,
+    requisition_received = db_requisition.requisition_received,
+    requisition_rejected = db_requisition.requisition_rejected
   )
 
 def unmodel_inventory(db_inventory:Inventory):
   """"""
-  InventoryEntry = namedtuple("InventoryEntry",["medicine_id","invoice","issuer","receiver","issuer_previous_amount","issuer_current_amount","receiver_previous_amount","receiver_current_amount","received","transfer","dispensed","count","default","date"])
+  InventoryEntry = namedtuple("InventoryEntry",["medicine_id","invoice","issuer","receiver","issuer_previous_amount","issuer_current_amount","receiver_previous_amount","receiver_current_amount","received","transfer","dispensed","count","default","date","logger"])
   
   return InventoryEntry(
     medicine_id = db_inventory.medicine_id,
@@ -198,21 +210,23 @@ def unmodel_inventory(db_inventory:Inventory):
     count = db_inventory.count,
     default = db_inventory.default,
     dispensed = db_inventory.dispensed,
-    date = db_inventory.date
+    date = db_inventory.date,
+    logger = db_inventory.logger
   )
 
 def unmodel_scheme(db_scheme:Scheme):
   """"""
-  _Scheme = namedtuple("_Scheme",["medicine_id","service_id","scheme_name","scheme_item_code","active","restricted","prices"])
+  _Scheme = namedtuple("_Scheme",["scheme_id","medicine_id","service_id","scheme_name","scheme_item_code","active","restricted","prices"])
 
   return _Scheme(
+    scheme_id = db_scheme.scheme_id,
     medicine_id = db_scheme.medicine_id,
     service_id = db_scheme.service_id,
     scheme_name = db_scheme.scheme_name,
     scheme_item_code = db_scheme.scheme_item_code,
     active = db_scheme.active,
     restricted = db_scheme.restricted,
-    prices = [unmodel_pricing(db_pricing) for db_pricing in db_scheme.prices]
+    prices = sorted([unmodel_pricing(db_pricing) for db_pricing in db_scheme.prices],key=lambda pricing:pricing.log_date,reverse=True)
   )
 
 def unmodel_pricing(db_pricing:Pricing):

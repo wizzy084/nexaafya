@@ -2,10 +2,44 @@
 #IMPORTS
 from datetime import datetime,date,timedelta
 
+payment_schemes = [
+  {
+    "name":"cash",
+    "apis":[],
+    "pricing":{"price_range":False,"copayment":False,"min":0,"max":0,"topup":0,"standard":200,"priority":500}
+  },
+  {
+    "name":"nhif",
+    "apis":[],
+    "pricing":{"price_range":False,"copayment":False,"min":0,"max":0,"topup":0,"standard":200,"priority":500}
+  },
+  {
+    "name":"jubilee",
+    "apis":[],
+    "pricing":{"price_range":False,"copayment":False,"min":0,"max":0,"topup":0,"standard":200,"priority":500}
+  },
+  {
+    "name":"assemble",
+    "apis":[],
+    "pricing":{"price_range":False,"copayment":False,"min":0,"max":0,"topup":0,"standard":200,"priority":500}
+  },
+  {
+    "name":"britam",
+    "apis":[],
+    "pricing":{"price_range":False,"copayment":False,"min":0,"max":0,"topup":0,"standard":200,"priority":500}
+  },
+  {
+    "name":"strategis",
+    "apis":[],
+    "pricing":{"price_range":False,"copayment":False,"min":0,"max":0,"topup":0,"standard":200,"priority":500}
+  }
+]
+
 ###
 facility = {
   "facility_id":f"dental-futuresmile",          #
   "name":"future smile specialized dental clinic",
+  "tag":"ftr",
   "postcode":67102,
   "category":"dental",
   "level":"clinic",
@@ -976,6 +1010,7 @@ medicines = [
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"ibf200tab",
+      "medicine_name":"ibuprofen 200mg tab",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1040,6 +1075,7 @@ medicines = [
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"ampclx500cap",
+      "medicine_name":"ampicillin + cloxacillin 500mg cap",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1104,6 +1140,7 @@ medicines = [
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"mtz200tab",
+      "medicine_name":"metronidazole 200mg tab",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1168,6 +1205,7 @@ medicines = [
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"amx250cap",
+      "medicine_name":"amoxicillin 250mg cap",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1232,6 +1270,7 @@ medicines = [
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"cipro500tab",
+      "medicine_name":"ciprofloxacin 500mg tab",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1296,6 +1335,7 @@ medicines = [
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"pcm500tab",
+      "medicine_name":"paracetamol 500mg tab",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1360,6 +1400,7 @@ medicines = [
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"mlx10tab",
+      "medicine_name":"meloxicam 10mg tab",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1412,6 +1453,7 @@ medicines = [
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"povi2sol",
+      "medicine_name":"povidone-iodine 2% 100ml sol",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1464,6 +1506,7 @@ medicines = [
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"chx2sol",
+      "medicine_name":"chlorhexidine 2% 100ml sol",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1516,6 +1559,7 @@ medicines = [
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"diclo25amp",
+      "medicine_name":"diclofenac 25mg/ml 3ml ampoule",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1580,6 +1624,7 @@ medicines = [
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"mtz500sol",
+      "medicine_name":"metronidazole 5mg/ml 100ml sol",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1619,8 +1664,8 @@ medicines = [
     ]
   },
   {
-    "medicine_id":f"nystsusp",
-    "name":"nystatin suspension",
+    "medicine_id":f"nystsusp100k",
+    "name":"nystatin 100000units/ml suspension",
     "type":"antifungal",
     "category":"medicine",
     "drug_class":"polyene",
@@ -1630,7 +1675,7 @@ medicines = [
     "prescribable":True,
     "prescription_level":"a",
     "inventory":{
-      "medicine_id":"nystsusp",
+      "medicine_id":"nystsusp100k",
       "invoice":"inv001",
       "issuer":"nexasoft",
       "receiver":"main store",
@@ -1643,7 +1688,8 @@ medicines = [
     },
     "requisition":{
       "requisition_id":f"default",
-      "medicine_id":"nystsusp",
+      "medicine_id":"nystsusp100k",
+      "medicine_name":"nystatin 100000units/ml suspension",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1657,7 +1703,7 @@ medicines = [
     },
     "schemes":[
       {
-        "medicine_id":"nystsusp",
+        "medicine_id":"nystsusp100k",
         "scheme_name":"cash",
         "scheme_item_code":"nystsusp",
         "restricted":False,
@@ -1669,7 +1715,7 @@ medicines = [
         ]
       },
       {
-        "medicine_id":"nystsusp",
+        "medicine_id":"nystsusp100k",
         "scheme_name":"nhif",
         "scheme_item_code":"11183",
         "restricted":False,
@@ -1708,6 +1754,7 @@ medicines = [
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"diclo20gel",
+      "medicine_name":"diclofenac 20g gel",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1772,6 +1819,7 @@ medicines = [
     "requisition":{
       "requisition_id":f"default",
       "medicine_id":"diclosod500tab",
+      "medicine_name":"diclofenac 50mg tab",
       "vendor":"nexasoft",
       "billed_amount":0,
       "ordered_by":"admin",
@@ -1823,58 +1871,6 @@ xx = [
     "fda_pregnancy_category_3":None,
     "prescribable":True,
     "prescription_level":"a",
-    "inventory":{
-      "medicine_id":"hpx3sol",
-      "invoice":"inv001",
-      "issuer":"nexasoft",
-      "receiver":"main store",
-      "issuer_previous_amount":0,
-      "issuer_amount":0,
-      "receiver_previous_amount":0,
-      "receiver_amount":0,
-      "logger":"nexasoft",
-      "count":True
-    },
-    "requisition":{
-      "requisition_id":f"default",
-      "medicine_id":"hpx3sol",
-      "vendor":"nexasoft",
-      "billed_amount":0,
-      "ordered_by":"admin",
-      "order_unit":"1bt",
-      "order_unit_size":1,
-      "ordered_amount":0,
-      "unit_price":0,
-      "received_amount":0,
-      "received_by":"admin",
-      "received_price":0
-    },
-    "schemes":[
-      {
-        "medicine_id":"hpx3sol",
-        "scheme_name":"cash",
-        "scheme_item_code":"hpx3sol",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"cash",
-            "standard":2000
-          }
-        ]
-      },
-      {
-        "medicine_id":"hpx3sol",
-        "scheme_name":"nhif",
-        "scheme_item_code":"11512",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"nhif",
-            "standard":620
-          }
-        ]
-      }
-    ]
   },
   {
     "medicine_id":f"dental-floss",
@@ -1887,46 +1883,6 @@ xx = [
     "fda_pregnancy_category_3":None,
     "prescribable":True,
     "prescription_level":None,
-    "inventory":{
-      "medicine_id":"dental-floss",
-      "invoice":"inv001",
-      "issuer":"nexasoft",
-      "receiver":"main store",
-      "issuer_previous_amount":0,
-      "issuer_amount":0,
-      "receiver_previous_amount":0,
-      "receiver_amount":0,
-      "logger":"nexasoft",
-      "count":True
-    },
-    "requisition":{
-      "requisition_id":f"default",
-      "medicine_id":"dental-floss",
-      "vendor":"nexasoft",
-      "billed_amount":0,
-      "ordered_by":"admin",
-      "order_unit":"1pk",
-      "order_unit_size":1,
-      "ordered_amount":0,
-      "unit_price":0,
-      "received_amount":0,
-      "received_by":"admin",
-      "received_price":0
-    },
-    "schemes":[
-      {
-        "medicine_id":"dental-floss",
-        "scheme_name":"cash",
-        "scheme_item_code":"dental-floss",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"cash",
-            "standard":5000
-          }
-        ]
-      }
-    ]
   },
   {
     "medicine_id":f"senso-tpaste",
@@ -1939,46 +1895,7 @@ xx = [
     "fda_pregnancy_category_3":None,
     "prescribable":True,
     "prescription_level":None,
-    "inventory":{
-      "medicine_id":"senso-tpaste",
-      "invoice":"inv001",
-      "issuer":"nexasoft",
-      "receiver":"main store",
-      "issuer_previous_amount":0,
-      "issuer_amount":0,
-      "receiver_previous_amount":0,
-      "receiver_amount":0,
-      "logger":"nexasoft",
-      "count":True
-    },
-    "requisition":{
-      "requisition_id":f"default",
-      "medicine_id":"senso-tpaste",
-      "vendor":"nexasoft",
-      "billed_amount":0,
-      "ordered_by":"admin",
-      "order_unit":"1tu",
-      "order_unit_size":1,
-      "ordered_amount":0,
-      "unit_price":0,
-      "received_amount":0,
-      "received_by":"admin",
-      "received_price":0
-    },
-    "schemes":[
-      {
-        "medicine_id":"senso-tpaste",
-        "scheme_name":"cash",
-        "scheme_item_code":"senso-tpaste",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"cash",
-            "standard":9000
-          }
-        ]
-      }
-    ]
+    
   },
   {
     "medicine_id":f"tbrush-softs",
@@ -1991,46 +1908,6 @@ xx = [
     "fda_pregnancy_category_3":None,
     "prescribable":True,
     "prescription_level":None,
-    "inventory":{
-      "medicine_id":"tbrush-softs",
-      "invoice":"inv001",
-      "issuer":"nexasoft",
-      "receiver":"main store",
-      "issuer_previous_amount":0,
-      "issuer_amount":0,
-      "receiver_previous_amount":0,
-      "receiver_amount":0,
-      "logger":"nexasoft",
-      "count":True
-    },
-    "requisition":{
-      "requisition_id":f"default",
-      "medicine_id":"tbrush-softs",
-      "vendor":"nexasoft",
-      "billed_amount":0,
-      "ordered_by":"admin",
-      "order_unit":"1tu",
-      "order_unit_size":1,
-      "ordered_amount":0,
-      "unit_price":0,
-      "received_amount":0,
-      "received_by":"admin",
-      "received_price":0
-    },
-    "schemes":[
-      {
-        "medicine_id":"tbrush-softs",
-        "scheme_name":"cash",
-        "scheme_item_code":"tbrush-softs",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"cash",
-            "standard":2000
-          }
-        ]
-      }
-    ]
   },
   {
     "medicine_id":f"floride-tpaste",
@@ -2043,46 +1920,6 @@ xx = [
     "fda_pregnancy_category_3":None,
     "prescribable":True,
     "prescription_level":None,
-    "inventory":{
-      "medicine_id":"floride-tpaste",
-      "invoice":"inv001",
-      "issuer":"nexasoft",
-      "receiver":"main store",
-      "issuer_previous_amount":0,
-      "issuer_amount":0,
-      "receiver_previous_amount":0,
-      "receiver_amount":0,
-      "logger":"nexasoft",
-      "count":True
-    },
-    "requisition":{
-      "requisition_id":f"default",
-      "medicine_id":"floride-tpaste",
-      "vendor":"nexasoft",
-      "billed_amount":0,
-      "ordered_by":"admin",
-      "order_unit":"1tu",
-      "order_unit_size":1,
-      "ordered_amount":0,
-      "unit_price":0,
-      "received_amount":0,
-      "received_by":"admin",
-      "received_price":0
-    },
-    "schemes":[
-      {
-        "medicine_id":"floride-tpaste",
-        "scheme_name":"cash",
-        "scheme_item_code":"floride-tpaste",
-        "restricted":False,
-        "prices":[
-          {
-            "scheme_name":"cash",
-            "standard":4500
-          }
-        ]
-      },
-    ]
   },
 ]
 

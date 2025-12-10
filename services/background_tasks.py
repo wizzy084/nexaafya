@@ -88,7 +88,7 @@ def expire_sessions():
 
   while True:
     #visits
-    to_be_expired_visits = [visit for visit in get_active_visits() if (datetime.now() - visit.start_time).days >= 10]
+    to_be_expired_visits = [visit for visit in get_active_visits() if (datetime.now() - visit.start_time).days >= 30]
 
     for visit in to_be_expired_visits:
       update_visit({"visit_id":visit.visit_id,"is_active":False})

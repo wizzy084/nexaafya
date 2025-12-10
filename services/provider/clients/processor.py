@@ -210,22 +210,9 @@ def get_pharmacy_visits():
   pharmacy_visits:list[tuple[str,dict,dict]] = []
 
   with Session(database_engine) as session:
-    db_visits:list[Visit] = list(session.exec(select(Visit)).all())
-
-    medications_visits:list[dict] = [unmodel_visit(db_visit) for db_visit in db_visits if db_visit.medications]
-    medical_items_visits:list[dict] = [unmodel_visit(db_visit) for db_visit in db_visits if db_visit.medical_items]
-    pharmacy_visits = medications_visits
-
-    for medical_items_visit in medical_items_visits:
-      if medical_items_visit not in pharmacy_visits:
-        pharmacy_visits.append(medical_items_visit)
-    for pharmacy_visit in pharmacy_visits:
-      if not (pharmacy_visit["consultations"] and pharmacy_visit["consultations"][0]["consultant_id"] in [prescriber_id for prescriber_id in pharmacy_visit["medications"]+pharmacy_visit["medical_items"]]):
-        pharmacy_visit["prescription_mode"] = "Consulted"
-      else:
-        pharmacy_visit["prescription_mode"] = "Direct"
+    db_visits = session.exec(select(Visit).where(Visit.active)).all()
     
-    return pharmacy_visits
+    return [unmodel_visit(db_visit) for db_visit in db_visits if db_visit.medications or db_visit.medical_items]
 
 def get_consultation_diagnoses(consultation_id:str):
   """Retrieves diagnoses associated with consultation"""
@@ -246,14 +233,12 @@ def counted_services(payments:list[dict]):
   
   return services
 
-def get_active_procedures():
+def get_active_visits_with_procedures():
   """Retrieves data from visit table in the database if its linked to non-empty procedure table and returns a list of dictionaries correspondng to the row data"""
   
   with Session(database_engine) as session:
-    db_visits:list[Visit] = list(session.exec(select(Visit).where(not Visit.cancelled)))
-    procedure_visits = [unmodel_visit(db_visit) for db_visit in db_visits if db_visit.procedures]    
-    
-    return procedure_visits
+    db_visits = session.exec(select(Visit).where(Visit.active)).all()
+    return [unmodel_visit(db_visit) for db_visit in db_visits if db_visit.procedures]    
     
 def get_procedures():
   """Retrieved data from rows in procedure table and returns a list of dictionaries"""

@@ -186,4 +186,21 @@ def is_in_range(start_date:str,end_date:str,target_date:date|datetime):
 
 
 
-#CONSTATNS FOR ADMIN
+#FROM DB
+def uom(medicine_name:str,compact:bool=False):
+  """Returns a string for name of unit of measure of medicine with medicine_name"""
+
+  suffix = medicine_name.split(" ")[-1].strip()
+
+  if compact:
+    data= {"tab":"tb","cap":"cp","sol":"bt","ampoule":"amp","suspension":"bt","gel":"tu"}
+    if suffix in data:
+      return data[suffix]
+    else:
+      return "pk"
+  else:
+    data = {"tab":"tablet","cap":"capsule","sol":"bottle","ampoule":"ampoule","suspension":"bottle","gel":"tube"}
+    if suffix in data:
+      return data[suffix]
+    else:
+      return "item"

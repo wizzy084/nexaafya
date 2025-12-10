@@ -14,6 +14,7 @@ class Facility(SQLModel,table=True,extend_existing=True):
   
   #General
   name:str|None = None
+  tag:str|None = None
   postcode:int|None = None
   registration_time:datetime = datetime.now()
   category:str|None = None
@@ -170,6 +171,7 @@ class Requisition(SQLModel,table=True,extend_existing=True):
   requisition_id:str|None = Field(default=None)
   medicine_requisition_id:str|None = Field(default=None,unique=True)
   medicine_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("formulary.medicine_id",ondelete="CASCADE")))
+  medicine_name:str|None = None
 
   delivery_note:str|None = None
   invoice:str|None = None
@@ -208,6 +210,10 @@ class Requisition(SQLModel,table=True,extend_existing=True):
   rejected_amount:float = 0
   rejection_reasons:str|None = None
   rejected_price:float = 0
+
+  requisition_ordered:bool = False
+  requisition_received:bool = False
+  requisition_rejected:bool = False
 
   medicine:Formulary = Relationship(back_populates="requisitions")
 

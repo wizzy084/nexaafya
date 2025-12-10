@@ -15,7 +15,7 @@ from services.provider.clients import db as clients_db
 from services.provider.admin import db as admin_db
 from services.provider.admin import processor as admin_processor
 from services.provider.clients import processor as clients_processor
-from services.provider.clients.processor import get_appointments,get_clients,get_active_procedures,get_active_visits,get_consultation_diagnoses
+from services.provider.clients.processor import get_appointments,get_clients,get_active_visits,get_consultation_diagnoses
 
 #UIX IMPORTS
 from .components import *
@@ -27,22 +27,21 @@ from ._snippets import *
 class Login():
   """"""
 
-  def __init__(self,login_credentials:dict|None=None):
+  def __init__(self,credentials=None):
     #DATA
-    self.login_credentials = login_credentials
-    self.user = self.login_credentials["user"]
+    self.credentials = credentials
     self.data()
 
 
     #UI
-    if self.login_credentials:
+    if self.credentials:
       with html.div().classes(add="login-blur w-[75%] lg:w-[60%] ring-1 ring-green-900 rounded shadow-md shadow-green-600 animate__animated animate__fadeIn animate__slow flex flex-col") as self.master_panel:
         #Large Screen
         with html.div().classes(add="rounded grow w-full lg-flex flex-col"):
           with ui.splitter(value=50).props(add="before-class='rounded-l' after-class='rounded-r' separator-class='bg-gradient-to-b from-sky-600 to-green-600'").classes(add="grow w-full rounded") as splitter:
             #Posters
             with splitter.before:
-              with html.div().classes(add="w-full h-full rounded-l") as self.noticeboard:
+              with html.div().classes(add="w-full h-full rounded-l bg-black") as self.noticeboard:
                 self.LoginPosters()
             
             #Login
@@ -63,7 +62,7 @@ class Login():
   def data(self):
     #POSTERS
     login_posters_path = Path("./uix/web/assets/images/login")
-    self.login_posters = [poster for poster in login_posters_path.iterdir() if login_posters_path.exists() and login_posters_path.is_dir()]
+    self.login_posters =[img_poster for img_poster in [poster for poster in login_posters_path.iterdir() if login_posters_path.exists() and login_posters_path.is_dir()] if img_poster.suffix.lower() in [".png",".jpg"]]
 
   def login(self,credentials:dict):
     """"""
@@ -89,14 +88,11 @@ class Login():
   def LoginForm(self):
     """"""
     #DATA
-    credentials = {"username":self.login_credentials["username"],"password":""}
+    credentials = {"username":self.credentials.username,"password":""}
 
     #FXS
-    def username_input_autofocus():
-      return "" if self.login_credentials["user_exists"] and self.login_credentials["active"] else "autofocus"
-    
     def password_input_autofocus():
-      return "autofocus" if self.login_credentials["user_exists"] and not self.login_credentials["password_match"] else "" 
+      return "autofocus" if self.credentials.exists and not self.credentials.password_match else "" 
 
     #UI
     self.login_display.clear()
@@ -114,13 +110,13 @@ class Login():
       #Login Form
       with html.form().props(add="onsubmit='event.preventDefault();'").classes(add="w-full rounded-sm flex flex-col items-center content-center gap-5 py-5"):
         #Username Input
-        with ui.input(label="USERNAME").props(add=f"{username_input_autofocus()} hide-bottom-space required stack-label standout outlined label-color='#07004d' bg-color='light-blue-1' input-class='text-base text-blue-10 font-medium italic' type='text' id='username' name='username'").classes(add="w-52").bind_value(credentials,"username") as username_input:
+        with ui.input(label="USERNAME").props(add="hide-bottom-space required stack-label standout outlined label-color='#07004d' bg-color='light-blue-1' input-class='text-base text-blue-10 font-medium italic' type='text' id='username' name='username'").classes(add="w-52").bind_value(credentials,"username",forward=lambda username:username.strip() if username else "") as username_input:
           with username_input.add_slot("prepend"):
             ui.icon(name="fa-solid fa-user fa-sm").classes(add="m-0 mr-2 text-harmony")
             ui.separator().props(add="vertical")
 
         #Password Input
-        with ui.input(label="PASSWORD",password_toggle_button=True).props(add=f"{ password_input_autofocus()} hide-bottom-space required stack-label standout outlined label-color='#07004d' color='light-blue-9' bg-color='light-blue-1' input-class='text-base text-blue-10 font-medium italic' type='password' id='password' name='password'").classes(add="w-52").bind_value(credentials,"password") as password_input:
+        with ui.input(label="PASSWORD",password_toggle_button=True).props(add=f"{ password_input_autofocus()} hide-bottom-space required stack-label standout outlined label-color='#07004d' color='light-blue-9' bg-color='light-blue-1' input-class='text-base text-blue-10 font-medium italic' type='password' id='password' name='password'").classes(add="w-52").bind_value(credentials,"password",forward=lambda password:password.strip() if password else "") as password_input:
           with password_input.add_slot("prepend"):
             ui.icon(name="fa-solid fa-user-lock fa-sm").classes(add="m-0 mr-2 text-harmony")
             ui.separator().props(add="vertical")
@@ -596,7 +592,7 @@ class ClientsManager():
   def ClientDialog(self,client:dict|None=None):
     """"""
     #UI
-    with ui.dialog().props(add=f"transition-show='jump-up' transition-hide='jump-down' transition-duration='100'") as self.client_dialog,html.div().style(add="min-width:55%;min-height:50%;").classes(add="bg-sky-50 flex flex-col"):
+    with ui.dialog().props(add=f"transition-show='jump-up' transition-hide='jump-down' transition-duration='100'") as self.client_dialog,html.div().style(add="min-width:75%;min-height:50%;").classes(add="bg-sky-50 flex flex-col"):
       with html.div().classes(add="grow w-full flex flex-col") as self.client_panel:
         self.ClientPanel(client=client)
       
@@ -1204,7 +1200,6 @@ class ClientsManager():
           ui.select(label="CONSULTANT",options=list(consultants.keys()),value=list(consultants.keys())[0]).props(add="popup-content-class='uppercase'").bind_value_to(appointment_data,"consultant",forward=lambda e:consultant_username(e)).classes(add="col-span-2 shadow-md shadow-[#07004d] bg-white rounded px-2 text-lg uppercase")
           ui.button(text="plan",color="#07004d",on_click=lambda e:self.register_appointment(appointment=appointment_data)).props(add="dense glossy").classes(add="ring-1 ring-blue-400 shadow-sm shadow-blue-400 text-sky-300 text-bold text-lg")
 
-
 class AppointmentsManager():
   """A class for display and amangemet of appoitments"""
   
@@ -1715,8 +1710,6 @@ class AppointmentsManager():
           #Initiate visit
           ui.button(text="start visit",color="#07004d",on_click=lambda e:self.initiate_visit(visit_data=visit_data)).props(add="bordered dense glossy").classes(add="w-auto shadow-md shadow-[#07004d] text-sky-300 text-xl lg:text-2xl text-bold")
 
-
-
 #NURSING
 class TriageManager():
   """A class to display UI for triage management"""
@@ -2215,13 +2208,36 @@ class DispensingManager():
 
   #FUNCTIONALITIES
   def initial_data(self):
-    self._pharmacy_visits = [visit for visit in clients_processor.get_pharmacy_visits() if visit.is_active]
-    self.pharmacy_visits = [visit._asdict() for visit in self._pharmacy_visits]
-    self.dispensed_visits = [visit for visit in self.pharmacy_visits if self.dispense_status(visit) == "dispensed"]
-    self.not_dispensed_visits = [visit for visit in self.pharmacy_visits if self.dispense_status(visit) == "not dispensed"]
-    self.incomplete_visits = [visit for visit in self.pharmacy_visits if self.dispense_status(visit) == "incomplete"]
+    self.formulary_medicines = [self.format_formulary_medicine(formulary_medicine) for formulary_medicine in admin_processor.get_formulary()]
+    _pharmacy_visits = [self.format_pharmacy_visit(visit) for visit in clients_processor.get_pharmacy_visits()]
+    self.dispensed_visits = [visit for visit in _pharmacy_visits if self.dispense_status(visit) == "dispensed"]
+    self.not_dispensed_visits = [visit for visit in _pharmacy_visits if self.dispense_status(visit) == "not dispensed"]
+    self.incomplete_visits = [visit for visit in _pharmacy_visits if self.dispense_status(visit) == "incomplete"]
     self.visits = self.not_dispensed_visits + self.incomplete_visits + self.dispensed_visits
   
+  def format_pharmacy_visit(self,visit):
+
+    _formmated_medications_visit = visit._replace(medications=[medication._asdict() for medication in visit.medications])
+
+    _formatted_medical_items_visit = _formmated_medications_visit._replace(medical_items=[medical_item._asdict() for medical_item in visit.medical_items])
+
+    new_visit = _formatted_medical_items_visit._asdict()
+
+    #Prescription mode
+    if new_visit["consultations"]:
+      new_visit["prescription_mode"] = "consulted"
+    else:
+      new_visit["prescription_mode"] = "direct"
+    
+    return new_visit
+  
+  def format_formulary_medicine(self,formulary_medicine):
+    _new_medicine = formulary_medicine._replace(requisitions=[requisition._asdict() for requisition in formulary_medicine.requisitions])
+    _new_medicine = _new_medicine._asdict()
+    _new_medicine.pop('schemes')
+
+    return _new_medicine
+
   def dispense_status(self,visit:dict):
     """Returns a string representing payment status of imagings"""
 
@@ -2240,21 +2256,69 @@ class DispensingManager():
     else:
       return "incomplete"
   
-  def formatted_medicines(self,visit:dict=None):
-    #Integrate with requisition database
-    requisition_medicines = get_requisitions()[0]["medicines"]
-    visit_medicines = visit["medications"] + visit["medical_items"]
-    for requisition_medicine in requisition_medicines:
-      for medicine in visit_medicines:
-        if medicine["name"] == requisition_medicine["name"]:
-          medicine["medicine_id"] = requisition_medicine["medicine_id"]
-          medicine["dispensing_balance"] = requisition_medicine["dispensing_balance"]
-          medicine["requisition_medicine_id"] = requisition_medicine["requisition_medicine_id"]
-    #Format for UI view
-    dispensed_medicines = sorted([medicine for medicine in visit_medicines if medicine["dispensed"]],key=lambda e:e["dispensing_time"],reverse=True)
-    pending_medicines = sorted([medicine for medicine in visit_medicines if not (medicine["dispensed"] or medicine["cancelled"])],key=lambda e:e["prescribed_on"],reverse=True)
-    cancelled_medicines = sorted([medicine for medicine in visit_medicines if medicine["cancelled"]],key=lambda e:e["prescribed_on"],reverse=True)
-    medicines = pending_medicines + dispensed_medicines + cancelled_medicines
+  def format_medicines(self,visit:dict=None):
+
+    def dispensing_balance(inventory):
+      dispensing_inventory = sorted([inv for inv in inventory if inv.receiver == "dispensing" or inv.issuer == "dispensing"],key=lambda inv:inv.date,reverse=True)
+
+      if dispensing_inventory:
+        latest_inventory = dispensing_inventory[0]
+        return latest_inventory.issuer_current_amount if latest_inventory.issuer == "dispensing" else latest_inventory.receiver_current_amount
+
+      else:
+        return 0
+    
+    def client_balance(inventory):
+      client_inventory = sorted([inv for inv in inventory if inv.receiver == str(visit["client_id"]) or inv.issuer == str(visit["client_id"])],key=lambda inv:inv.date,reverse=True)
+
+      if client_inventory:
+        latest_inventory = client_inventory[0]
+        return latest_inventory.issuer_current_amount if latest_inventory.issuer == str(visit["client_id"]) else latest_inventory.receiver_current_amount
+
+      else:
+        return 0
+
+    medicines = []
+
+    for visit_medicine in visit["medications"] + visit["medical_items"]:
+      medicine = {}
+      for formulary_medicine in self.formulary_medicines:
+        if visit_medicine["name"].lower() == formulary_medicine["name"].lower():
+          medicine["visit_id"] = visit_medicine["visit_id"]
+          medicine["name"] = formulary_medicine["name"].lower()
+          medicine["type"] = 'tablet' if visit_medicine['name'].lower().split()[-1].startswith("tab") else "capsule" if visit_medicine['name'].lower().split()[-1].startswith('cap') else 'bottle' if (visit_medicine['name'].lower().split()[-1].startswith('syrup') or visit_medicine['name'].lower().split()[-1].startswith('susp')) else 'vial' if visit_medicine['name'].lower().split()[-1].startswith('vial') else 'ampoule' if visit_medicine['name'].lower().split()[-1].startswith('ampoule') else 'item'
+          medicine["medication_id"] = visit_medicine["medication_id"] if "medication_id" in visit_medicine else None
+          medicine["medical_item_id"] = visit_medicine["medical_item_id"] if "medical_item_id" in visit_medicine else None
+          medicine["dosage"] = visit_medicine["dosage"] if "dosage" in visit_medicine else None
+          medicine["prescribed_items_no"] = visit_medicine["prescribed_items_no"]
+          medicine["dispensed_items_no"] = visit_medicine["prescribed_items_no"]
+          medicine["prescribed_on"] = visit_medicine["prescribed_on"]
+          medicine["prescriber_id"] = visit_medicine["prescriber_id"]
+          medicine["dispensed"] = visit_medicine["dispensed"]
+          medicine["dispensing_time"] = visit_medicine["dispensing_time"]
+          medicine["dispenser_id"] = self.user.username
+          medicine["cancelled"] = visit_medicine["cancelled"]
+          medicine["cancelled_on"] = visit_medicine["cancelled_on"]
+          medicine["cancelled_by"] = visit_medicine["cancelled_by"]
+          medicine["prescription_no"] = visit["prescription_no"]
+          medicine["dispensing_balance"] = dispensing_balance(formulary_medicine["inventory"])
+          medicine["client_balance"] = client_balance(formulary_medicine["inventory"])
+          medicine["requisitions"] = [requisition for requisition in formulary_medicine["requisitions"] if requisition["active"]]
+          medicine["payment"] = visit_medicine["payment"]
+          #Inventory
+          medicine["medicine_id"] = formulary_medicine["medicine_id"].lower()
+          medicine["invoice"] = visit["prescription_no"]
+          medicine["logger"] = self.user.username
+          medicine["issuer"] = "dispensing"
+          medicine["receiver"] = visit["visit_id"].split("v")[0]
+          medicine["amount"] = visit_medicine["prescribed_items_no"]
+
+          if formulary_medicine["requisitions"]:
+            medicine["dispensable"] = True if sum([requisition["balance"] for requisition in formulary_medicine["requisitions"] if requisition["active"]]) else False
+          else:
+            medicine["dispensable"] = False
+
+          medicines.append(medicine)
     
     return medicines
 
@@ -2263,37 +2327,34 @@ class DispensingManager():
 
     medicines = visit["medications"] + visit["medical_items"]
     _dispensed = [medicine for medicine in medicines if medicine["dispensed"]]
-    _pending = [medicine for medicine in medicines if (medicine["payment"]["paid"] or medicine["payment"]["billed"]) and not (medicine["dispensed"] or medicine["cancelled"])]
-    _not_dispensed = [medicine for medicine in medicines if not (medicine["payment"]["paid"] or medicine["payment"]["billed"]) and not (medicine["dispensed"] or medicine["cancelled"])]
+    _pending = [medicine for medicine in medicines if (medicine["payment"].paid or medicine["payment"].billed) and not (medicine["dispensed"] or medicine["cancelled"])]
+    _not_dispensed = [medicine for medicine in medicines if not (medicine["payment"].paid or medicine["payment"].billed) and not (medicine["dispensed"] or medicine["cancelled"])]
     _cancelled = [medicine for medicine in medicines if medicine["cancelled"]]
 
     return f"<span><span class='{'' if _dispensed else 'hidden'} mr-2'><i class='fas fa-check text-green-500'></i><i class='ml-0.5 '>{len(_dispensed)}</i></span><span class='{'' if _pending else 'hidden'} mr-2'><i class='fas fa-spinner text-yellow-500 fa-spin'></i><i class='ml-0.5 '>{len(_pending)}</i></span><span class='{'' if _not_dispensed else 'hidden'} mr-2'><i class='fas fa-xmark text-red-500'></i><i class='ml-0.5'>{len(_not_dispensed)}</i></span><span class='{'' if _cancelled else 'hidden'} mr-2'><i class='fas fa-ban text-gray-500'></i><i class='ml-0.5 '>{len(_cancelled)}</i></span></span>"
     
-  def dispense_medicine(self,medicine:dict,count:int):
+  def dispense_medicines(self,medicines):
     """Saves the findings in the database"""
-    
-    medicine = {
-      "visit_id":medicine["visit_id"],
-      "medicine_id":medicine["medicine_id"],
-      "requisition_medicine_id":medicine["requisition_medicine_id"],
-      "medication_id":medicine["medication_id"] if "medication_id" in medicine else None,
-      "medical_item_id":medicine["medical_item_id"] if "medical_item_id" in medicine else None,
-      "dispensed_items_no":count,
-      "dispenser_id":self.user.username
-    }
-    
+
+    #
     #Update database
-    status = update_client_medicine(medicine)
-    register_inventory(
-      inventory={
-        "medicine_id":medicine["medicine_id"],
-        "invoice":None,
-        "logger":self.user.username,
-        "issuer":"dispensing store",
-        "receiver":medicine["visit_id"].split("v")[0],
-        "amount":count
-      },dispensed=True
-    )
+    for medicine in medicines:
+      #Modifying requisitions
+      dispensable_medicines = medicine["dispensed_items_no"]
+      for requisition in medicine["requisitions"]:
+        if dispensable_medicines:
+          if dispensable_medicines < requisition["balance"]:
+            requisition["balance"] -= dispensable_medicines
+            dispensable_medicines = 0
+          else:
+            requisition["balance"] = 0
+            requisition["active"] = False
+            dispensable_medicines -= requisition["balance"]
+    
+      status = clients_db.update_medicine(medicine)
+      register_inventory(inventory=medicine,dispensed=True)
+      for requisition in medicine["requisitions"]:
+        admin_db.update_requisition(requisition=requisition,dispense=True)
     
     #Failure notification
     ui.notify(message=status["message"],type=status["type"],position=status["position"])
@@ -2301,7 +2362,7 @@ class DispensingManager():
     #UI Update
     self.initial_data()
     self.DispensingStats()
-    self.MedicinesPanel(visit=[visit for visit in self.visits if visit["visit_id"] == medicine["visit_id"]][0])
+    self.MedicinesPanel(visit=[visit for visit in self.visits if visit["visit_id"] == medicines[0]["visit_id"]][0])
   
   def client_mini(self,visit):
     """Returns a string of html elements for display in small screens"""
@@ -2344,7 +2405,6 @@ class DispensingManager():
     else:
       return "---"
 
-  
   #DISPLAYS
   def DispensingStats(self):
     """"""
@@ -2387,7 +2447,7 @@ class DispensingManager():
               "age":format_age(birthdate=visit["client_birthdate"]),
               "gender":visit["client_gender"].capitalize(),
               "prescription_mode":visit["prescription_mode"].capitalize(),
-              "payment_mode":" ".join({mode.upper() for mode in [medicine["payment"]["payment_mode"] for medicine in visit["medications"] + visit["medical_items"]]}),
+              "payment_mode":" ".join({mode.upper() for mode in [medicine["payment"].payment_mode for medicine in visit["medications"] + visit["medical_items"]]}),
               "medicines":self._medicines(visit)
             }
           for visit in self.visits
@@ -2425,7 +2485,7 @@ class DispensingManager():
     #DATA
     details = {
       "name":visit["client_name"],
-      "short_name":f"{visit['client_name'].split()[0]} {visit['client_name'].split()[1][0]} {visit['client_name'].split()[2]}".title(),
+      "short_name":f"{visit['client_name'].split(' ')[0]} {visit['client_name'].split(' ')[-1]}".title(),
       "age":format_age(visit["client_birthdate"]),
       "gender":visit["client_gender"],
       "address":visit["client_address"]}
@@ -2452,31 +2512,34 @@ class DispensingManager():
   def MedicinesPanel(self,visit:dict):
     """"""
     #DATA
-    medicines = self.formatted_medicines(visit=visit)
-    for medicine in medicines:
-      medicine["type"] = 'tablet' if medicine['name'].lower().split()[-1].startswith("tab") else "capsule" if medicine['name'].lower().split()[-1].startswith('cap') else 'bottle' if (medicine['name'].lower().split()[-1].startswith('syrup') or medicine['name'].lower().split()[-1].startswith('susp')) else 'vial' if medicine['name'].lower().split()[-1].startswith('vial') else 'ampoule' if medicine['name'].lower().split()[-1].startswith('ampoule') else 'item'
+    medicines = self.format_medicines(visit=visit)
     dispensed_medicines = [medicine for medicine in medicines if medicine["dispensed"]]
     dispensable_medicines = [medicine for medicine in medicines if not (medicine["dispensed"] or medicine["cancelled"])]
     ticked_medicines = []
 
     #FXS
+    def attendee(username):
+      attendee = admin_processor.get_staff(username)
+      return f"{attendee.first_name} {attendee.last_name}"
+      
     def pick_ticked_medicine(ticked_medicine:str,ticked_medicine_count:int,ticked:bool):
       """Returns a list of ticked medicines"""
       if ticked:
         for medicine in dispensable_medicines:
-          if medicine["id"] == ticked_medicine:
+          if medicine["medicine_id"] == ticked_medicine:
             medicine["dispensed_items_no"] = ticked_medicine_count
             ticked_medicines.append(medicine)
       else:
         for medicine in ticked_medicines:
-          if medicine["id"] == ticked_medicine:
+          if medicine["medicine_id"] == ticked_medicine:
             ticked_medicines.remove(medicine)
 
     def dispense_all(medicines:list):
       """Dispenses all medicines in the ticked_medicines list"""
+      
       if medicines:
-        for medicine in medicines:
-          self.dispense_medicine(medicine=medicine,count=medicine["dispensed_items_no"])
+        self.dispense_medicines(medicines=medicines)
+          
       else:
         ui.notify(message="No medicine selected",type="warning",position="center")
       
@@ -2485,10 +2548,6 @@ class DispensingManager():
     with self.medicines_dialog_panel.classes(add="p-2"):
       with ui.scroll_area().classes(add="w-full h-[400px] pb-2 bg-white rounded shadow-md shadow-[307004d] animate__animated animate__fadeIn animate__slow"):
         for medicine in medicines:
-          attendee = f"{staff(medicine['prescriber_id'])['first_name']} {staff(medicine['prescriber_id'])['last_name']}".title()
-          dispenser = f"{self.user.last_name}"
-          medicine["id"] = medicine["medication_id"] if "medication_id" in medicine else medicine["medical_item_id"]
-
           with html.div().classes(add="w-full p-1 rounded bg-sky-50 grid grid-cols-3 gap-1 content-center shadow-md shadow-[#07004d]"):
             #Medicine name
             with html.div().classes(add="col-span-3 lg:col-span-1 flex flex-row"):
@@ -2497,26 +2556,25 @@ class DispensingManager():
                 ticked_medicine=e.sender.parent_slot.parent.slots["default"].children[1].slots["default"].children[0].props["id"],
                 ticked_medicine_count=e.sender.parent_slot.parent.parent_slot.parent.slots["default"].children[1].slots["default"].children[6].props["model-value"]["label"],
                 ticked=e.value
-              )).props(add=f"{'' if medicine['payment']['paid'] or medicine['payment']['billed'] else 'disable'}").classes(add=f"{'hidden' if medicine['dispensed'] or medicine['cancelled'] else ''} bg-white tiki")
+              )).props(add=f"{'' if medicine['payment'].paid or medicine['payment'].billed else 'disable'}").classes(add=f"{'hidden' if medicine['dispensed'] or medicine['cancelled'] else ''} bg-white tiki")
               #Name
               with html.div().classes(add="grow flex flex-col justify-center"):
-                html.div(f"{medicines.index(medicine) + 1}. {medicine['name'].upper()}").props(add=f"id={medicine['medication_id'] if 'medication_id' in medicine else 'medical_item_id'}").classes(add="w-full rounded-sm m-0 p-0 bg-inherit text-sky-700 text-lg text-bold")
-                if "dosage" in medicine:
-                  html.div(medicine["dosage"] if medicine["dosage"] else "---").classes(add="w-full bg-inherit text-base font-medium italic")
+                html.div(f"{medicines.index(medicine) + 1}. {medicine['name'].upper()}").props(add=f"id={medicine['medicine_id']}").classes(add="w-full rounded-sm m-0 p-0 bg-inherit text-sky-700 text-lg text-bold")
+                html.div(medicine["dosage"] if medicine["dosage"] else "---").classes(add="w-full bg-inherit text-base font-medium italic")
             
             #Details
-            with html.div().classes(add=f"col-span-3 lg:col-span-2 grid {'grid-cols-12' if medicine['payment']['paid'] or medicine['payment']['billed'] else 'grid-cols-13'} gap-1 content-center"):
+            with html.div().classes(add=f"col-span-3 lg:col-span-2 grid {'grid-cols-12' if medicine['payment'].paid or medicine['payment'].billed else 'grid-cols-13'} gap-1 content-center"):
               #Timeframe
               ui.chip(text=f"{format_age(datetime.fromisoformat(medicine['prescribed_on'])) if isinstance(medicine['prescribed_on'],str) else format_age(medicine['prescribed_on']) } ago",icon="fa-regular fa-clock fa-lg",text_color="sky-900",color="").classes(add="col-span-4 lg:col-span-2 rounded-sm ml-5 px-0 bg-inherit text-base font-semibold")
               #Odered by
-              ui.chip(text=attendee,icon="fa-solid fa-user-doctor fa-lg",text_color="sky-900",color="").classes(add="col-span-5 lg:col-span-2 rounded-sm mx-0 px-0 bg-inherit text-base text-bold")
+              ui.chip(text=attendee(medicine["prescriber_id"]),icon="fa-solid fa-user-doctor fa-lg",text_color="sky-900",color="").classes(add="col-span-5 lg:col-span-2 rounded-sm mx-0 px-0 bg-inherit text-base text-bold")
               #Payment status
-              ui.chip(text="Paid" if medicine["payment"]["paid"] else "Billed" if medicine["payment"]["billed"] else "Not Paid",icon=f"{'fa-regular fa-circle-check' if medicine['payment']['paid'] else 'fa-solid fa-file-invoice' if medicine['payment']['billed'] else 'fa-regular fa-circle-xmark'} fa-lg",text_color="green" if medicine["payment"]["paid"] else "purple" if medicine["payment"]["billed"] else "red",color="").classes(add=f"col-span-3 {'lg:col-span-1' if medicine['payment']['paid'] or medicine['payment']['billed'] else 'lg:col-span-2'} rounded-sm mx-0 px-0 bg-inherit text-base text-bold")
+              ui.chip(text="Paid" if medicine["payment"].paid else "Billed" if medicine["payment"].billed else "Not Paid",icon=f"{'fa-regular fa-circle-check' if medicine['payment'].paid else 'fa-solid fa-file-invoice' if medicine['payment'].billed else 'fa-regular fa-circle-xmark'} fa-lg",text_color="green" if medicine["payment"].paid else "purple" if medicine["payment"].billed else "red",color="").classes(add=f"col-span-3 {'lg:col-span-1' if medicine['payment'].paid or medicine['payment'].billed else 'lg:col-span-2'} rounded-sm mx-0 px-0 bg-inherit text-base text-bold")
               #Dispensing status
               ui.chip(
-                text="Cancelled" if medicine["cancelled"] else "Dispensed" if ((medicine["payment"]["paid"] or medicine["payment"]["billed"]) and medicine["dispensed"]) else "Pending" if ((medicine["payment"]["billed"] or medicine["payment"]["paid"]) and not medicine["dispensed"]) else "Not dispensed",
-                icon=f"{'fas fa-ban' if medicine['cancelled'] else 'fa-regular fa-circle-check' if ((medicine['payment']['paid'] or medicine['payment']['billed']) and medicine['dispensed']) else 'fa-solid fa-spinner fa-spin' if ((medicine['payment']['billed'] or medicine['payment']['paid']) and not medicine['dispensed']) else 'fa-regular fa-circle-xmark fa-flip'} fa-lg",
-                text_color="gray" if medicine["cancelled"] else "green" if ((medicine["payment"]["paid"] or medicine["payment"]["billed"]) and medicine["dispensed"]) else "orange" if ((medicine["payment"]["billed"] or medicine["payment"]["paid"]) and not medicine["dispensed"]) else "red",
+                text="Cancelled" if medicine["cancelled"] else "Dispensed" if ((medicine["payment"].paid or medicine["payment"].billed) and medicine["dispensed"]) else "Pending" if ((medicine["payment"].billed or medicine["payment"].paid) and not medicine["dispensed"]) else "Not dispensed",
+                icon=f"{'fas fa-ban' if medicine['cancelled'] else 'fa-regular fa-circle-check' if ((medicine['payment'].paid or medicine['payment'].billed) and medicine['dispensed']) else 'fa-solid fa-spinner fa-spin' if ((medicine['payment'].billed or medicine['payment'].paid) and not medicine['dispensed']) else 'fa-regular fa-circle-xmark fa-flip'} fa-lg",
+                text_color="gray" if medicine["cancelled"] else "green" if ((medicine["payment"].paid or medicine["payment"].billed) and medicine["dispensed"]) else "orange" if ((medicine["payment"].billed or medicine["payment"].paid) and not medicine["dispensed"]) else "red",
                 color=""
               ).classes(add=f"col-span-4 justify-self-center lg:col-span-2 lg:justify-self-start rounded-sm mx-0 p-0 bg-inherit text-base text-bold text-wrap")
               #Store status
@@ -2524,18 +2582,15 @@ class DispensingManager():
               #Prescribed no
               ui.chip(text=f"{medicine['dispensed_items_no'] if medicine['dispensed_items_no'] else medicine['prescribed_items_no']}",icon=f"fas fa-{'tablets' if medicine['type'] == 'tablet' else 'capsules' if medicine['type'] == 'capsule' else 'prescription-bottle' if medicine['type'] == 'bottle' else 'vial' if medicine['type'] == 'vial' or medicine['type'] == 'ampoule' else 'thermometer'} fa-lg",color="",text_color=f"{'green-600' if medicine['dispensed'] else 'sky-600'}").classes(add=f"{'hidden' if medicine['cancelled'] or not medicine["dispensed"] else ''} col-span-2 lg:col-span-1 mx-0 px-0 bg-inherit text-lg text-bold")
               #Dispensed no
-              ui.select(options=[i for i in range(1,medicine["prescribed_items_no"]+1)],value=medicine["prescribed_items_no"],with_input=True).props(add=f"type='number' dense min=1 max={medicine['prescribed_items_no']} {'' if medicine['payment']['paid'] or medicine['payment']['billed'] else 'readonly'}").classes(add=f"{'hidden' if medicine['dispensed'] or medicine['cancelled'] else ''} col-span-2 lg:col-span-1 w-[100%] my-2 px-2 bg-white shadow-md shadow-[#07004d] rounded text-lg")
+              ui.select(options=[i for i in range(1,medicine["prescribed_items_no"]+1)],value=medicine["prescribed_items_no"],with_input=True).props(add=f"type='number' dense min=1 max={medicine['prescribed_items_no']} {'' if medicine['payment'].paid or medicine['payment'].billed else 'readonly'}").classes(add=f"{'hidden' if medicine['dispensed'] or medicine['cancelled'] else ''} col-span-2 lg:col-span-1 w-[100%] my-2 px-2 bg-white shadow-md shadow-[#07004d] rounded text-lg")
               #Medication_id holder
-              html.small(medicine["id"]).classes("hidden") #Medication_id not for purpose of display
+              html.small(medicine["medicine_id"]).classes("hidden") #Medication_id not for purpose of display
               #Dispense button
-              ui.button(text="Dispense",color="",on_click=lambda e:self.dispense_medicine(
-                medicine=[medicine for medicine in medicines if medicine["id"].lower() == e.sender.parent_slot.parent.slots["default"].children[7]._text.lower()][0],
-                count=int(e.sender.parent_slot.parent.slots["default"].children[6].props["model-value"]["label"])
-              )).classes(add=f"{'hidden' if medicine['dispensed'] or medicine['cancelled'] else ''} col-span-4 lg:col-span-2 px-2 bg-harmony text-yellow-500 text-lg text-bold")
+              ui.button(text="Dispense",color="",on_click=lambda e:self.dispense_medicines(medicines=[medicine for medicine in medicines if medicine["medicine_id"].lower() == e.sender.parent_slot.parent.slots["default"].children[7]._text.lower()])).classes(add=f"{'hidden' if medicine['dispensed'] or medicine['cancelled'] else ''} col-span-4 lg:col-span-2 px-2 bg-harmony text-yellow-500 text-lg text-bold")
               #Dispensing information
               if medicine["dispensed"]:
                 #Dispenser
-                ui.chip(text=dispenser,icon="fa-solid fa-hospital-user fa-lg",text_color="green-600",color="").classes(add="col-span-2 justify-self-end rounded mx-0 px-2 bg-inherit capitalize text-base text-bold")
+                ui.chip(text=attendee(medicine["dispenser_id"]),icon="fa-solid fa-hospital-user fa-lg",text_color="green-600",color="").classes(add="col-span-2 justify-self-end rounded mx-0 px-2 bg-inherit capitalize text-base text-bold")
                 #Timeframe
                 ui.chip(text=f"{format_age(datetime.fromisoformat(medicine['dispensing_time'])) if isinstance(medicine['dispensing_time'],str) else format_age(medicine['dispensing_time'])} ago",icon="fa-regular fa-clock",text_color="green-600",color="").classes(add="col-span-2 justify-self-end rounded-sm mx-0  bg-inherit text-base text-bold")
                 
@@ -2545,7 +2600,7 @@ class DispensingManager():
         with html.div().classes(add="grow flex flex-row justify-end gap-10"):
           #Dispense all button
           if dispensable_medicines:
-            ui.button(text="DISPENSED TICKED MEDICINES",color="",on_click=lambda e:dispense_all(medicines=ticked_medicines)).classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-yellow-500 text-lg text-bold")
+            ui.button(text="DISPENSE TICKED MEDICINES",color="",on_click=lambda e:dispense_all(medicines=ticked_medicines)).classes(add="rounded bg-harmony shadow-md shadow-[#07004d] text-yellow-500 text-lg text-bold")
           #Prin Button
           if dispensed_medicines:
             ui.button(text="PRINT RECEIPT",icon="fas fa-receipt",color="",on_click=lambda e:self.print_receipt(medicines=medicines)).classes(add="hidden rounded bg-harmony shadow-md shadow-[#07004d] text-yellow-300 text-lg text-bold")
@@ -3001,78 +3056,6 @@ class ConsultationsManager():
               with html.div().classes(add="grow w-full flex flex-col justify-center items-center"):
                 section_func[0](consultation=visit.consultations[0],visit=visit,attendee_id=self.user.username,parent=self)
                 
-  async def xxxConsultationsDialog(self,client):
-    """Displays from consultations in the previous visits"""
-
-    #DATA
-    details = {
-      "name":f"{client.first_name} {client.middle_name if client.middle_name else ''} {client.last_name}".title(),
-      "short_name":f"{client.first_name} {client.middle_name[0] if client.middle_name else ''} {client.last_name}".title(),
-      "age":format_age(birthdate=client.birthdate,short=True),
-      "gender":client.gender,
-      "address":client.address,
-      "last_visit":f"{format_age(client.visits[-2].start_time)} ago" if len(client.visits) > 1 else "---"
-    }
-    
-    visits = sorted(client.visits,key=lambda e:e.start_time,reverse=True)
-    
-    #FXS
-    def close_dialog():
-      self.ConsultationsAggrid(visits=self.consulted_visits)
-
-    #UI
-    with ui.dialog().props(add="transition-show='jump-up' transition-hide='jump-down' transition-duration='500'") as self.consultations_dialog,html.div().style(add="min-width:100%;min-height:90%;").classes(add="bg-sky-50 p-0.5 overflowhidden flex flex-col gap-0.5"):
-      #Dialog Header
-      with html.div().classes(add="w-full pr-2 rounded-t flex flex-row justify-between items-center bg-harmony"):
-        with html.div().classes(add="grow"):
-          ClientCard(details=details,short=True)
-        ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=close_dialog).classes(add="bg-inherit size-8 rounded-full text-red-500 text-bold")
-      
-      #Dialog Body
-      with html.div().classes(add="grow w-full flex flex-col items-center justify-center") as self.visit_panel:
-        #Small screen
-        with html.div().classes(add="lg:hidden w-full grow flex flex-col gap-1"):
-          #Tabs
-          ui.label('NANGAAAA').classes(add="bg-red text-orange-800")
-          with html.div().classes(add="w-full px-1 grid grid-cols-10 items-center gap-1 shadow-sm shadow-[#07004d]"):
-            ui.label(len(visits)).classes(add="col-span-1 size-8 rounded-full flex justify-center items-center bg-harmony ring-1 ring-offset-1 ring-[#07004d] text-bold text-lg lg:text-xl text-yellow-500 italic")
-            with ui.tabs(value=visits[0].visit_id).props(add="inline-label mobile-arrows outside-arrows active-class='text-sky-700 font-bold'").classes(add="col-span-9 py-1") as visits_mini_tabs:
-              for visit in visits:
-                ui.tab(name=visit.visit_id,label=f"{visits.index(visit) + 1}.  {visit.start_time.strftime('%d %b %Y')}",icon="fas fa-user-doctor" if visit.consultations else "fas fa-x-ray").props(add="dense")
-          
-          #Panels
-          with html.div().classes(add="grow w-full rounded-br flex flex-col"):
-            with ui.tab_panels(tabs=visits_mini_tabs,value=visits[0].visit_id).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='700'").classes(add="bg-inherit grow w-full grid grid-cols-1"):
-              for visit in visits:
-                with ui.tab_panel(name=visit.visit_id).classes(add="w-full h-full p-0.5 rounded") as self.visit_tab:
-                  #For active/current visit
-                  if visit.active:
-                    self.ActiveConsultationPanel(visit)
-                  else:
-                    self.PreviousVisitPanel(visit)
-        
-        #Large screen
-        with html.div().classes(add="lg-flex grow h-full flex-row gap-1 bg-sky-100"):
-          #Tabs
-          with html.div().classes(add=""):
-            ui.label(f"{len(visits)} VISITS").classes(add="text-center bg-harmony mb-1 font-semibold text-xl text-yellow-500 italic")
-            with ui.tabs(value=visits[0].visit_id).props(add="vertical inline-label outside-arrows active-class='shadow-sm shadow-[#07004d] text-sky-700 font-bold'").classes(add="h-[450px]") as visits_tabs:
-              for visit in visits:
-                ui.tab(name=visit.visit_id,label=f"{visits.index(visit) + 1}.  {visit.start_time.strftime('%d %b %Y')}",icon="fas fa-user-doctor" if visit.consultations else "fas fa-x-ray").props(add="dense").classes(add="rounded")
-
-          #Panels
-          with html.div().classes(add="grow rounded-br flex flex-col"):
-            with ui.tab_panels(tabs=visits_tabs,value=visits[0].visit_id).props(add="animated infinite transition-prev='jump-up' transition-next='jump-down' transition-duration='700'").classes(add="bg-inherit grow w-full h-full grid grid-cols-1"):
-              for visit in visits:
-                with ui.tab_panel(name=visit.visit_id).classes(add="w-full h-full p-0 rounded") as self.visit_tab:
-                  #For active/current visit
-                  if visit.active:
-                    self.ActiveConsultationPanel(visit)
-                  else:
-                    self.PreviousVisitPanel(visit)
-            
-    self.consultations_dialog.open()
-  
   def xxxPreviousVisitPanel(self,visit:dict):
     """A display for previous visits"""
     #DATA
@@ -3481,8 +3464,6 @@ class ConsultationsManager():
       "intraoral":orodental_exam["intraoral"],
       "extraoral":orodental_exam["extraoral"]
     }
-    ui.notify(orodental_exam)
-    ui.notify(orodental)
 
     #FXS
     def save_examination():
@@ -3697,8 +3678,6 @@ class ConsultationsManager():
       else:
         with html.div().classes(add="grow w-full flex flex-col justify-center items-center"):
           ui.label("No diagnosis saved!").classes(add="text-red-400 text-bold text-base italic fa-fade")
-
-  
 
 class ImagingsForm():
   """A class to display form inputs fo requesting imagings"""
@@ -4084,6 +4063,7 @@ class ManagementPlanForm():
       "medication_id":medication_id if medicine["category"] == "medicine" else None,
       "medical_item_id":medication_id if medicine["category"] == "medical supply" else None,
       "prescriber_id":self.attendee_id,
+      "prescription_no":self.visit.prescription_no,
       "dosage":"---",
       "prescribed_items_no":0,
       "dispensed_items_no":0,
@@ -4511,8 +4491,6 @@ class ManagementPlanForm():
       with self.procedures_display.classes(add="justify-center items-center"):
         ui.label("No procedure planned!").classes(add="text-bold italic text-red-500 text-xl fa-fade")
 
-
-
 class ProceduresManager():
   """A class of UI for managing consultations"""
   
@@ -4533,17 +4511,18 @@ class ProceduresManager():
 
   #FUNCTIONALITIES
   def initial_data(self):
-    _procedure_visits = get_active_procedures()
-    done_procedure_visits = sorted([procedure_visit for procedure_visit in _procedure_visits if self.procedures_status(procedure_visit["procedures"]) == "done"],key=lambda e:e["procedures"][-1]["done_on"],reverse=True)
-    pending_procedure_visits = [procedure_visit for procedure_visit in _procedure_visits if self.procedures_status(procedure_visit["procedures"]) == "pending" or self.procedures_status(procedure_visit["procedures"]) == "partial"]
-    undone_procedure_visits = sorted([procedure_visit for procedure_visit in _procedure_visits if self.procedures_status(procedure_visit["procedures"]) == "not done"],key=lambda e:e["procedures"][-1]["ordered_on"])
+    _procedure_visits = clients_processor.get_active_visits_with_procedures()
+    done_procedure_visits = sorted([self.format_procedure_visit(procedure_visit) for procedure_visit in _procedure_visits if self.procedure_visit_status(procedure_visit) == "done"],key=lambda e:e.procedures[-1].done_on,reverse=True)
+    pending_procedure_visits = [self.format_procedure_visit(procedure_visit) for procedure_visit in _procedure_visits if self.procedure_visit_status(procedure_visit) == "pending" or self.procedure_visit_status(procedure_visit) == "partial"]
+    undone_procedure_visits = sorted([self.format_procedure_visit(procedure_visit) for procedure_visit in _procedure_visits if self.procedure_visit_status(procedure_visit) == "not done"],key=lambda e:e.procedures[-1].ordered_on)
     self.procedure_visits = pending_procedure_visits + undone_procedure_visits + done_procedure_visits
+    
     #Activee Procedures
     self.active_procedures = []
     for visit in _procedure_visits:
       for procedure in visit.procedures:
         if not (procedure.done or procedure.cancelled):
-          self.active_procedures.append(procedure)
+          self.active_procedures.append(procedure._asdict())
     
     self.staffs = [staff.name.title() for staff in admin_processor.get_staffs(short=True)]
 
@@ -4551,19 +4530,23 @@ class ProceduresManager():
     """Returns True if 'target_date' is between 'start_date' and 'end_date'"""
     
     start_date,end_date,target_date = datetime.fromisoformat(start_date).date(),datetime.fromisoformat(end_date),datetime.fromisoformat(target_date)
+  
+  def format_procedure_visit(self,visit):
 
-  def procedures_status(self,procedures:list[dict]):
+    return visit._replace(procedures=[procedure._asdict() for procedure in visit.procedures])
+
+  def procedure_visit_status(self,visit):
     """Returns value depending on whether the procedure has been done"""
     
-    procedures = [procedure for procedure in procedures if not procedure["cancelled"]]
+    procedures = visit.procedures
     statuses = set()
 
     for procedure in procedures:
-      if (procedure["payment"]["paid"] or procedure["payment"]["billed"]) and not procedure["done"]:
+      if (procedure.payment.paid or procedure.payment.billed) and not procedure.done:
         statuses.add("pending")
-      if (procedure["payment"]["paid"] or procedure["payment"]["billed"]) and procedure["done"]:
+      if (procedure.payment.paid or procedure.payment.billed) and procedure.done:
         statuses.add("done")
-      if not (procedure["payment"]["paid"] or procedure["payment"]["billed"]) and not procedure["done"]:
+      if not (procedure.payment.paid or procedure.payment.billed) and not procedure.done:
         statuses.add("not done")
     
     if len(statuses) == 1:
@@ -4574,14 +4557,15 @@ class ProceduresManager():
   
   def procedures(self,procedures:list[dict]):
     """Returns a list of procedures"""
+    _done = len([procedure for procedure in procedures if procedure["done"]])
+    _cancelled = len([procedure for procedure in procedures if procedure["cancelled"]])
+    _pending = len([procedure for procedure in procedures if (procedure["payment"].paid or procedure["payment"].billed) and not procedure["done"]])
     
-    procedures_string = ""
-    for procedure in procedures:
-      if not procedure["cancelled"]:
-        _substring = f"<span class='px-1'><i class='fas {'fa-check text-green-500' if procedure['done'] else 'fa-ban text-gray-400' if procedure['cancelled'] else 'fa-xmark text-red-500' if ((procedure['payment']['billed'] or procedure['payment']['paid']) and not procedure['done']) else 'fa-spinner fa-spin text-yellow-500'} fa-lg'></i><i class='ml-1 '>{procedure['name'].title()}</i></span><br>"
-        procedures_string += _substring
+    _done_str = f"<span class='mx-2 text-green-600' ><i class='fa-solid fa-circle-check'></i><i class='ml-1'>{_done}</i></span>" if _done else ""
+    _pending_str = f"<span class='mx-2 text-yellow-600' ><i class='fa-solid fa-spinner fa-spin'></i><i class='ml-1'>{_pending}</i></span>" if _pending else ""
+    _cancelled_str = f"<span class='mx-2 text-gray-600' ><i class='fa-solid fa-ban'></i><i class='ml-1'>{_cancelled}</i></span>" if _cancelled else ""
     
-    return procedures_string
+    return f"{_done_str} {_pending_str} {_cancelled_str}"
 
   def save_procedure(self,procedure:dict):
     """Saves the findings in the database"""
@@ -4591,7 +4575,7 @@ class ProceduresManager():
     ui.notify(message=status["message"],type=status["type"],position=status["position"])
     
     self.initial_data()
-    self.ProceduresPanel(visit=[visit for visit in self.procedure_visits if visit["visit_id"] == visit_id][0])
+    self.ProceduresPanel(visit=[visit for visit in self.procedure_visits if visit.visit_id == visit_id][0])
 
   def client_mini(self,visit):
     """Returns a string of html elements for display in small screens"""
@@ -4602,17 +4586,17 @@ class ProceduresManager():
       genders = {"male":"mars","female":"venus"}
       colors = {"male":"sky-600","female":"pink-600"}
 
-      return f"<span class='fa-solid fa-{genders[visit['client_gender'].lower()]} text-{colors[visit['client_gender'].lower()]}'></span>"
+      return f"<span class='fa-solid fa-{genders[visit.client_gender.lower()]} text-{colors[visit.client_gender.lower()]}'></span>"
     
-    age = f"<span class='ml-1'>{format_age(visit['client_birthdate']).split(' ')[0]} {format_age(visit['client_birthdate']).split(' ')[1][0].upper()}</span>"
+    age = f"<span class='ml-1'>{format_age(visit.client_birthdate).split(' ')[0]} {format_age(visit.client_birthdate).split(' ')[1][0].upper()}</span>"
     gender = GenderIcon(visit)
-    payment_mode = f"<span class=''>{visit['payment_mode'].upper()}</span>"
+    payment_mode = f"<span class=''>{visit.payment_mode.upper()}</span>"
 
     return f"<span class='h-full'>{gender}{age}</span>"
 
   def procedures_mini(self,visit):
     """Returns a string of html elements for display of services in small screens"""
-    procedures = visit["procedures"]
+    procedures = visit.procedures
     _done = len([procedure for procedure in procedures if procedure["done"]])
     _cancelled = len([procedure for procedure in procedures if procedure["cancelled"]])
     _pending = len([procedure for procedure in procedures if not (procedure["cancelled"] or procedure["done"])])
@@ -4647,27 +4631,27 @@ class ProceduresManager():
             "columnDefs":[
               {"headerName":"S/N","field":"sno","width":50},
               {"headerName":"CLIENT ID","field":"client_id","filter":"agTextColumnFilter","width":100},
-              {"headerName":"NAME","field":"name","filter":"agTextColumnFilter"},
-              {"headerName":"AGE","field":"age","width":100},
+              {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","width":300},
+              {"headerName":"AGE","field":"age","width":150},
               {"headerName":"GENDER","field":"gender","width":100},
               {"headerName":"ADDRESS","field":"address","width":120},
-              {"headerName":"PROCEDURES","field":"procedures","filter":"agTextColumnFilter","floatingFilter":True}
+              {"headerName":"PROCEDURES","field":"procedures","filter":"agTextColumnFilter","floatingFilter":True,"width":200}
             ],
             "rowData":[
               {
                 "sno":visits.index(visit) + 1,
-                "client_id":visit["client_id"],
-                "name":visit["client_name"].title(),
-                "age":format_age(visit["client_birthdate"]),
-                "gender":visit["client_gender"].capitalize(),
-                "address":visit["client_address"].title(),
-                "procedures":self.procedures(visit["procedures"]),
+                "client_id":visit.client_id,
+                "name":visit.client_name.title(),
+                "age":format_age(visit.client_birthdate),
+                "gender":visit.client_gender.capitalize(),
+                "address":visit.client_address.title(),
+                "procedures":self.procedures(visit.procedures),
               } for visit in visits
             ]
           },
           theme="quartz",
           html_columns=[6]
-        ).style(add="overflow-x:hidden;").classes(add="lg-show grow w-full animate__animated animate__fadeIn").on("cellClicked",lambda e:self.ProceduresDialog(visit=[visit for visit in self.procedure_visits if visit["client_id"] == e.args["data"]["client_id"]][0]))
+        ).style(add="overflow-x:hidden;").classes(add="lg-show grow w-full animate__animated animate__fadeIn").on("cellClicked",lambda e:self.ProceduresDialog(visit=[visit for visit in self.procedure_visits if visit.client_id == e.args["data"]["client_id"]][0]))
 
         #Small Screen
         ui.aggrid(
@@ -4680,8 +4664,8 @@ class ProceduresManager():
             ],
             "rowData":[
               {
-                "client_id":visit["client_id"],
-                "name":f"{visit['client_name'].split(' ')[0]} {visit['client_name'].split(' ')[1][0]}. {visit['client_name'].split(' ')[2]}".title(),
+                "client_id":visit.client_id,
+                "name":f"{visit.client_name.split(' ')[0]} {visit.client_name.split(' ')[-1]}".title(),
                 "specs":self.client_mini(visit),
                 "services":self.procedures_mini(visit)
               } for visit in visits
@@ -4689,7 +4673,7 @@ class ProceduresManager():
           },
           theme="quartz",
           html_columns=[2,3]
-        ).props(add="").classes(add="lg:hidden grow w-full animate__animated animate__fadeIn").on("cellClicked",lambda e:self.ProceduresDialog(visit=[visit for visit in self.procedure_visits if visit["client_id"] == e.args["data"]["client_id"]][0]))
+        ).props(add="").classes(add="lg:hidden grow w-full animate__animated animate__fadeIn").on("cellClicked",lambda e:self.ProceduresDialog(visit=[visit for visit in self.procedure_visits if visit.client_id == e.args["data"]["client_id"]][0]))
 
     else:
       with self.procedures_panel.classes(add="justify-center items-center"):
@@ -4700,11 +4684,11 @@ class ProceduresManager():
     
     #DATA
     self.details = {
-      "name":visit["client_name"],
-      "short_name":f"{visit['client_name'].split()[0]} {visit['client_name'].split()[1][0] if len(visit['client_name'].split(' ')) > 2 else ''} {visit['client_name'].split()[2]}".title(),
-      "age":format_age(visit["client_birthdate"],short=True),
-      "gender":visit["client_gender"],
-      "address":visit["client_address"]
+      "name":visit.client_name,
+      "short_name":f"{visit.client_name.split(' ')[0]} {visit.client_name.split(' ')[-1]}".title(),
+      "age":format_age(visit.client_birthdate,short=True),
+      "gender":visit.client_gender,
+      "address":visit.client_address
     }
     #FXS
     def close_dialog():
@@ -4728,7 +4712,7 @@ class ProceduresManager():
   def ProceduresPanel(self,visit):
     """Panel for procedures listing and processing"""
     #DATA
-    _procedures = [procedure for procedure in visit["procedures"]]
+    _procedures = [procedure for procedure in visit.procedures]
     cancelled_procedures = [procedure for procedure in _procedures if procedure["cancelled"]]
     done_procedures = [procedure for procedure in _procedures if procedure["done"]]
     not_done_procedures = [procedure for procedure in _procedures if not (procedure["cancelled"] or procedure["done"])]
@@ -4742,8 +4726,8 @@ class ProceduresManager():
           procedure_data = {
             "procedure_id":procedure["procedure_id"],
             "procedure_notes":procedure["procedure_notes"] if procedure["procedure_notes"] else None,
-            "performer":f"{get_staff(procedure['performer'])['first_name']} {get_staff(procedure['performer'])['last_name']}".title() if procedure['performer'] else f"{self.user.first_name} {self.user.last_name}".title(),
-            "assistant":f"{get_staff(procedure['assistant'])['first_name']} {get_staff(procedure['assistant'])['last_name']}".title() if procedure["assistant"] else None,
+            "performer":f"{get_staff(procedure['performer']).first_name} {get_staff(procedure['performer']).last_name}".title() if procedure['performer'] else f"{self.user.first_name} {self.user.last_name}".title(),
+            "assistant":f"{get_staff(procedure['assistant']).first_name} {get_staff(procedure['assistant']).last_name}".title() if procedure["assistant"] else None,
           }
           #miniUI
           with ui.expansion(value=True if procedures.index(procedure) == 0 and not (procedure["done"] or procedure["cancelled"]) else False,group="procedures_group").props(add=f"{'disable' if procedure['cancelled'] else ''} duration=500 expand-icon='fas fa-angles-down fa-lg' expand-icon-class='text-harmony text-bold' header-class='q-pa-none {'bg-gray-300' if procedure['cancelled'] else 'bg-sky-100'}'").classes(add="w-full rounded bg-sky-50 shadow-md shadow-[#07004d]") as expansion:
@@ -4754,44 +4738,42 @@ class ProceduresManager():
                 #Timeframe
                 ui.chip(text=f"{format_age(procedure['ordered_on'])} ago",icon="fa-regular fa-clock fa-lg",text_color="sky-900",color="").classes(add="col-span-2 lg:col-span-1 rounded-sm px-2 bg-inherit text-base text-bold")
                 #Payment status
-                ui.chip(text="Paid" if procedure["payment"]["paid"] else "Billed" if procedure["payment"]["billed"] else "Not Paid",icon=f"{'fa-regular fa-circle-check' if procedure['payment']['paid'] else 'fa-solid fa-file-invoice' if procedure['payment']['billed'] else 'fa-regular fa-circle-xmark'} fa-lg",text_color="teal" if procedure["payment"]["paid"] else "purple" if procedure["payment"]["billed"] else "red",color="").classes(add="col-span-2 lg:col-span-1 rounded-sm px-2 bg-inherit text-base text-bold")
+                ui.chip(text="Paid" if procedure["payment"].paid else "Billed" if procedure["payment"].billed else "Not Paid",icon=f"{'fa-regular fa-circle-check' if procedure['payment'].paid else 'fa-solid fa-file-invoice' if procedure['payment'].billed else 'fa-regular fa-circle-xmark'} fa-lg",text_color="teal" if procedure["payment"].paid else "purple" if procedure["payment"].billed else "red",color="").classes(add="col-span-2 lg:col-span-1 rounded-sm px-2 bg-inherit text-base text-bold")
                 #Imaging status
                 ui.chip(
-                  text="Done" if ((procedure["payment"]["paid"] or procedure["payment"]["billed"]) and procedure["done"]) else "Pending" if ((procedure["payment"]["billed"] or procedure["payment"]["paid"]) and not procedure["done"]) else "Not done",
-                  icon=f"{'fa-regular fa-circle-check' if ((procedure['payment']['paid'] or procedure['payment']['billed']) and procedure['done']) else 'fa-solid fa-spinner fa-spin' if ((procedure['payment']['billed'] or procedure['payment']['paid']) and not procedure['done']) else 'fa-regular fa-circle-xmark fa-flip'} fa-lg",
-                  text_color="teal" if ((procedure["payment"]["paid"] or procedure["payment"]["billed"]) and procedure["done"]) else "orange" if ((procedure["payment"]["billed"] or procedure["payment"]["paid"]) and not procedure["done"]) else "red",
+                  text="Done" if ((procedure["payment"].paid or procedure["payment"].billed) and procedure["done"]) else "Pending" if ((procedure["payment"].billed or procedure["payment"].paid) and not procedure["done"]) else "Not done",
+                  icon=f"{'fa-regular fa-circle-check' if ((procedure['payment'].paid or procedure['payment'].billed) and procedure['done']) else 'fa-solid fa-spinner fa-spin' if ((procedure['payment'].billed or procedure['payment'].paid) and not procedure['done']) else 'fa-regular fa-circle-xmark fa-flip'} fa-lg",
+                  text_color="teal" if ((procedure["payment"].paid or procedure["payment"].billed) and procedure["done"]) else "orange" if ((procedure["payment"].billed or procedure["payment"].paid) and not procedure["done"]) else "red",
                   color=""
-                  ).classes(add="col-span-2 lg:col-span-1 rounded-sm px-2 bg-inherit text-base text-bold")
+                  ).classes(add="col-span-2 lg:col-span-1 lg:justify-self-end rounded-sm px-2 bg-inherit text-base text-bold")
             
             if not procedure["cancelled"]:
               with expansion.add_slot("default"):
                 with html.div().classes(add="w-full p-1 flex flex-col gap-5"):
                   with html.div().classes(add="w-full grid grid-cols-3 gap-3"):
                     with html.div().classes(add="col-span-3 lg:col-span-1 w-full p-1 flex flex-col gap-2 justify-around"):
-                      performer = ui.select(options=self.staffs,value=procedure_data['performer'],label="PERFORMED BY").props(add=f"{'' if procedure['payment']['paid'] or procedure['payment']['billed'] else 'readonly'} stack-label label-color='#07004d'").classes(add="w-full rounded bg-white shadow-md shadow-[#07004d] px-2 text-lg").bind_value(procedure_data,"performer")
-                      assistant = ui.select(options=self.staffs,label="ASSISTED BY").props(add=f"{'' if procedure['payment']['paid'] or procedure['payment']['billed'] else 'readonly'} stack-label label-color='#07004d'").classes(add="w-full rounded bg-white shadow-md shadow-[#07004d] px-2 text-lg").bind_value(procedure_data,"assistant")
+                      performer = ui.select(options=self.staffs,value=procedure_data['performer'],label="PERFORMED BY").props(add=f"{'' if procedure['payment'].paid or procedure['payment'].billed else 'readonly'} stack-label label-color='#07004d'").classes(add="w-full rounded bg-white shadow-md shadow-[#07004d] px-2 text-lg").bind_value(procedure_data,"performer")
+                      assistant = ui.select(options=self.staffs,label="ASSISTED BY").props(add=f"{'' if procedure['payment'].paid or procedure['payment'].billed else 'readonly'} stack-label label-color='#07004d'").classes(add="w-full rounded bg-white shadow-md shadow-[#07004d] px-2 text-lg").bind_value(procedure_data,"assistant")
                     #Findings
-                    notes = ui.textarea(label="PROCEDURE NOTES",placeholder="Write your observations and interventions done...").props(add="" if (procedure["payment"]["paid"] or procedure["payment"]["billed"]) else "readonly").props(add="autogrow clearable stack-label input-style='min-height:200px;' label-color='#07004d' bg-color='white' clear-icon='fa-regular fa-circle-xmark'").classes(add="col-span-3 lg:col-span-2 w-full bg-white shadow-md shadow-[#07004d] px-3 text-lg").bind_value(procedure_data,"procedure_notes")
+                    notes = ui.textarea(label="PROCEDURE NOTES",placeholder="Write your observations and interventions done...").props(add="" if (procedure["payment"].paid or procedure["payment"].billed) else "readonly").props(add="autogrow clearable stack-label input-style='min-height:200px;' label-color='#07004d' bg-color='white' clear-icon='fa-regular fa-circle-xmark'").classes(add="col-span-3 lg:col-span-2 w-full bg-white shadow-md shadow-[#07004d] px-3 text-lg").bind_value(procedure_data,"procedure_notes")
                   
                   with html.div().classes(add="w-full flex flex-row justify-center"):
                     ider = ui.label(procedure['procedure_id']).classes(add="hidden") 
                     ui.button(text="submit results",color="",on_click=lambda e:self.save_procedure({
                       "procedure_id":e.sender.parent_slot.parent.slots["default"].children[0]._text,
-                      "visit_id":visit["visit_id"],
+                      "visit_id":visit.visit_id,
                       "procedure_notes":notes.value,
                       "performer":get_staff_username(name=performer.value),"assistant":get_staff_username(name=assistant.value)
-                      })).props(add="" if (procedure["payment"]["paid"] or procedure["payment"]["billed"]) else "disabled").classes(add="rounded bg-harmony text-lg text-bold text-yellow-500")
+                      })).props(add="" if (procedure["payment"].paid or procedure["payment"].billed) else "disabled").classes(add="rounded bg-harmony text-lg text-bold text-yellow-500")
   
 
 #Store
 class Requisitions():
   """A class to display and process requisitions"""
 
-  def __init__(self,user,formulary:list[dict],requisitions:list[dict]):
+  def __init__(self,user):
     #DATA
     self.user = user
-    self.formulary = formulary
-    self.raw_requisitions = requisitions
     self.initial_data()
 
     #UI
@@ -4803,960 +4785,931 @@ class Requisitions():
       with html.section().classes(add="w-full p-1 flex flex-row bg-harmony text-yellow-500"):
         with html.div().classes(add="lg:order-2 grow bg-inherit flex flex-row content-center"):
           ui.label("REQUISITIONS").classes(add="w-full rounded-t text-3xl text-bold")
-        ui.button(icon="fas fa-circle-plus",color="",on_click=self.ConfirmNewRequisitionDialog).classes(add="lg:order-1 size-8 bg-inherit")
+        ui.button(icon="fas fa-circle-plus",color="",on_click=self.RequisitionDialog).classes(add="lg:order-1 size-8 bg-inherit")
       #Body
       with html.section().classes(add="grow w-full p-0.5 flex flex-col rounded") as self.requisitions_panel:
         if self.requisitions:
-          self.RequisitionsPanel(self.requisitions)
+          self.RequisitionsPanel()
         else:
           with html.div().classes(add="w-full h-full content-center justify-center bg-sky-100 p-5"):
-            ui.label("No requisitions found").classes(add="text-center text-2xl text-red-400 font-semibold")
+            ui.label("No requisitions found").classes(add="text-center text-2xl text-red-400 font-semibold fa-fade")
             ui.label("Click the right upper '+' button to initiate new requisition").classes(add="text-center text-lg italic text-gray-500")
-  
+
   #Functionalities
   def initial_data(self):
-    self.base_requisition = self.raw_requisitions[0]
-    self.requisitions = self.raw_requisitions[:-1] if len(self.raw_requisitions) > 2 else self.raw_requisitions
-    
-  def last_medicine(self,medicine:dict):
-    """"""
+    base_requisitions = admin_processor.get_requisitions()
+    self.requisitions = base_requisitions[:-1] if len(base_requisitions) > 1 else base_requisitions
 
-    last_requisition = self.requisitions[-1] if len(self.requisitions) > 1 else self.base_requisition
+    ###
+    self.physical_count_id = str(uuid.uuid4()).split("-")[1]
 
-    return [_medicine for _medicine in last_requisition["medicines"] if _medicine["medicine_id"] == medicine["medicine_id"]][0]
-
-  def physical_count_was_done(self,requisition:dict):
-    container = set()
-
-    for medicine in requisition["medicines"]:
-      if not medicine["physical_count_date"]:
-        container.add(medicine["name"])
-    
-    return (False,len(container),requisition["requisition_id"]) if container else (True,0)
-  
-  def amc(self,medicine):
-    """A method that returns 'amc' based on the inputs"""
-    start_balance = medicine["initial_store_balance"]
-    closing_balance = medicine["physical_count"]
-
-    if self.last_medicine(medicine)["received_on"]:
-      duration = math.ceil((datetime.now() - self.last_medicine(medicine)["received_on"]).days/30)
-      return math.ceil(((start_balance - closing_balance)/duration)) if duration > 0 else 0
-    else:
-      return 0
-  
-  def mos(self,medicine):
+  def mos(self,medicine=None,balance=0,amc=0):
     """A method that returns value of mos based on the input values"""
-    balance = medicine["physical_count"]
-    amc = self.amc(medicine)
+    mos = 0
+    if medicine:
+      balance = self.closing_balance(medicine)
+      amc = self.amc(medicine)
     
     if amc > 0:
-      return round(balance/amc,1)
+      mos = round(balance/amc,1)
     else:
-      return 2 if balance > 0 else 0
+      mos = 2 if balance > 0 else 0
+    
+    return math.floor(mos)
   
-  def uom(self,medicine):
-    uom = ""
+  def dos(self,balance,adc):
+    dos = 0
 
-    if medicine["order_unit"] == "tablet":
-      uom = f"{int(medicine['order_unit_size'])}tb"
-    elif medicine["order_unit"] == "capsule":
-      uom = f"{int(medicine['order_unit_size'])}cp"
-    elif medicine["order_unit"] == "bottle":
-      uom = f"{int(medicine['order_unit_size'])}bt"
-    elif medicine["order_unit"] == "tube":
-      uom = f"{int(medicine['order_unit_size'])}tu"
-    elif medicine["order_unit"] == "ampoule":
-      uom = f"{int(medicine['order_unit_size'])}amp"
-    elif medicine["order_unit"] == "pack":
-      uom = f"{int(medicine['order_unit_size'])}pk"
-    elif medicine["order_unit"] == "piece":
-      uom = f"{int(medicine['order_unit_size'])}pc"
-    elif medicine["order_unit"] == "vial":
-      uom = f"{int(medicine['order_unit_size'])}vl"
-
-    return uom
-
-  def requisition_label(self):
-
-    lapse = (datetime.now() - self.requisitions[-1]["receive_date"]).days/30
-
-    if lapse < MOS[0]:
-      return "x"
+    if adc > 0:
+      dos = round(balance/amc,1)
     else:
-      return "r"
+      dos = 60 if balance > 0 else 0
+    
+    return math.floor(dos)
   
-  def stock_status_color(self,medicine:dict):
-    result = ""
-
-    if self.amc(medicine) > 0:
-      if self.mos(medicine) > 4:
-        result = "purple-600"
-      elif self.mos(medicine) < 2:
-        result = "yellow-500"
-      elif self.mos(medicine) == 0:
-        result = "rose-600"
-      else:
-        result = ""
-    else:
-      result = "gray-400"
-
-    return result
-
-  def requisition_amount(self,amc,mos):
-    """A method returns projected requisition amount based on mos value"""
-
-    if mos < 2:
-      return math.ceil((2-mos)*amc)
-    else:
-      return 0
-  
-  def rejected_medicines(self,requisition):
-
-    """A method to return rejected medicines"""
+  def update_inventory(self,data,transfer:bool=False,count:bool=False,receive:bool=False):
+    inventories = []
     
-    rejected_medicines = [medicine for medicine in requisition["medicines"] if medicine["rejected"]]
-    rejected_medicines_count = len(rejected_medicines)
-    rejected_medicines_cost = sum([medicine["rejected_price"] for medicine in requisition["medicines"] if medicine["rejected"]])
-
-    return [
-      rejected_medicines_count if rejected_medicines else 0,
-      rejected_medicines_cost if rejected_medicines else 0,
-      rejected_medicines if rejected_medicines else []
-    ]
-
-  def save_medicine(self,medicine:dict,requisition:dict):
-    """A method to save medicine data related to requisition"""
-   
-    medicine["ordered_by"] = self.user.username
-
-    #DB STORAGE
-    medicine["requisition_medicine_id"] = f"{medicine['medicine_id']}{medicine['requisition_id']}"
-    register_medicine(medicine)
-    
-
-    for self_medicine in self.medicines:
-      if self_medicine["medicine_id"] == medicine["medicine_id"]:
-        index = self.medicines.index(self_medicine)
-        self.medicines.remove(self_medicine)
-        self.medicines.insert(index,medicine)
-    
-    requisition["medicines"] = self.medicines
-
-    self.requisition_display_pad.clear()
-    with self.requisition_display_pad:
-      self.RequisitionAggrid(requisition=requisition)
-    
-    self.medicine_dialog.close()
-
-  def update_requisition(self,requisition:dict,initiate:bool|None=None,order:bool|None=None,receive:bool|None=None,cancel:bool|None=None):
-    """Removes requisition from database table and its corresponding medicines and stationeries in their corresponding tables"""
-    
-    if cancel:
-      requisition["cancelled"] = True
-      requisition["cancelled_by"] = self.user.username
-      status = update_requisition(requisition=requisition,cancel=True)
-
-    if initiate:
-      requisition["initiated"] = True
-      requisition["initiated_by"] = self.user.username
-      status = update_requisition(requisition=requisition,initiate=True)
-
-    if order:
-      requisition["placed"] = True
-      requisition["placed_by"] = self.user.username
-
-      status = update_requisition(requisition=requisition,order=True)
-
-    if receive:
-      unprocessed = len([i for i in requisition["medicines"] if i['ordered'] and not (i['received'] or i['rejected'])])
-      if unprocessed > 0:
-        ui.notify(message=f"{unprocessed} {'item' if unprocessed == 1 else 'items'} not processed! Review your requisition",type="warning",position="center")
-        return
-      else:
-        requisition["received"] = True
-        requisition["received_by"] = self.user.username
-        status = update_requisition(requisition=requisition,receive=True)
-      
-    ui.notify(message=status["message"],type=status["type"],position=status["position"])
-
-    self.requisition_dialog.close()
-    self.initial_data()
-    self.RequisitionsPanel(requisitions=self.requisitions)
-
-  def update_medicine(self,medicine:dict,requisition:dict,cancel:bool|None=None,transfer:bool|None=None,count:bool|None=None,receive:bool|None=None,order:bool|None=None):
-    """A method to update medicine"""
-
-    #Transfer
     if transfer:
-      medicine["store_balance"] -= medicine["transfer_balance"]
-      medicine["dispensing_balance"] += medicine["transfer_balance"]
-      medicine["transferred_by"] = self.user.username
-      update_medicine(medicine=medicine,transfer=True)
+      if not (data["main_balance"] > 0 and data["main_balance"] >= data["transfer_balance"]):
+        ui.notify(message="Insufficient Main Store balance!",position="top",type="warning")
+        return
 
-      for self_medicine in self.medicines:
-        if self_medicine["medicine_id"] == medicine["medicine_id"]:
-          index = self.medicines.index(self_medicine)
-          self.medicines.remove(self_medicine)
-          self.medicines.insert(index,medicine)
+      inventory = {
+        "medicine_name":data["medicine_name"],
+        "medicine_id":data["medicine_id"],
+        "logger":self.user.username,
+        "invoice":data["invoice"],
+        "issuer":"main store",
+        "receiver":"dispensing",
+        "amount":data["transfer_balance"]
+      }
+      inventories.append(inventory)
     
     if count:
-      medicine["count_unit"] = self.last_medicine(medicine)["count_unit"]
-      medicine["physical_count"] = medicine["store_balance"] + medicine["dispensing_balance"]
-      medicine["counted_by"] = self.user.username
-      medicine["physical_count_date"] = datetime.now()
-
-      update_medicine(medicine=medicine,count=True)
-
-      for self_medicine in self.medicines:
-        if self_medicine["medicine_id"] == medicine["medicine_id"]:
-          index = self.medicines.index(self_medicine)
-          self.medicines.remove(self_medicine)
-          self.medicines.insert(index,medicine)
-
-    if cancel:
-      medicine["cancelled"] = True
-      medicine["cancelled_by"] = self.user.username
-
-      update_medicine(medicine=medicine,cancel=True)
-
-      for self_medicine in self.medicines:
-        if self_medicine["medicine_id"] == medicine["medicine_id"]:
-          index = self.medicines.index(self_medicine)
-          self.medicines.remove(self_medicine)
-          self.medicines.insert(index,medicine)
+      main_inventory = {
+        "medicine_name":data["medicine_name"],
+        "medicine_id":data["medicine_id"],
+        "logger":self.user.username,
+        "invoice":data["invoice"],
+        "issuer":"main store",
+        "issuer_amount":data["main_count"],
+        "receiver":"main store",
+        "receiver_amount":data["main_count"],
+        "amount":data["transfer_balance"]
+      }
+      disp_inventory = {
+        "medicine_name":data["medicine_name"],
+        "medicine_id":data["medicine_id"],
+        "logger":self.user.username,
+        "invoice":data["invoice"],
+        "issuer":"dispensing",
+        "issuer_amount":data["dispensing_count"],
+        "receiver":"dispensing",
+        "receiver_amount":data["dispensing_count"],
+        "amount":data["transfer_balance"]
+      }
       
+      inventories += [main_inventory,disp_inventory]
+    
     if receive:
-      medicine["mfg_date"] = datetime.fromisoformat(medicine["mfg_date"])
-      medicine["expire_date"] = datetime.fromisoformat(medicine["expire_date"])
-      for self_medicine in self.medicines:
-        if self_medicine["medicine_id"] == medicine["medicine_id"]:
-          index = self.medicines.index(self_medicine)
-          self.medicines.remove(medicine)
+      inventory = {
+        "medicine_name":data["medicine_name"],
+        "medicine_id":data["medicine_id"],
+        "logger":self.user.username,
+        "invoice":None,
+        "issuer":"vendor",
+        "receiver":"main store",
+        "amount":data["received_amount"]
+      }
+      inventories.append(inventory)
+
+    #DATABASE UPDATE
+    status = [admin_db.register_inventory(inventory,transfer=transfer,count=count,received=receive) for inventory in inventories][0]
+
+    #NOTIFICATION
+    if not receive:
+      ui.notify(message=status["message"],type=status["type"],position="top")
+
+      self.ReceivedMedicinesDisplay(self.current_medicines)
+  
+  def receive_medicine(self,data):
+    """Processes involve:update requisition rows,update inventory rows"""
+
+    #Requisition
+    data["expire_date"] = datetime.fromisoformat(data["expire_date"])
+    data["received_by"] = self.user.username if data["received_amount"] else None
+    data["rejected"] = True if data["rejected_amount"] else False
+    data["rejected_amount"] = data["rejected_amount"] if data["rejected_amount"] else 0
+    data["rejected_price"] = data["rejected_price"] if data["rejected_price"] else 0
+
+    status = admin_db.update_requisition(data,receive=True)
+
+    #Inventory
+    self.update_inventory(data,receive=True)
+    
+    ui.notify(message=status["message"],type=status["type"],position="top")
+
+    #Update display
+    for curr_medicine in self.current_medicines:
+      if curr_medicine["medicine_id"].lower() == data["medicine_id"].lower():
+        index = self.current_medicines.index(curr_medicine)
+        self.current_medicines.pop(index)
+        self.current_medicines.insert(index,data)
+    self.MedicinesReceivingDisplay(self.current_medicines)
+
+  def initiate_requisition(self):
+    available_requisitions = admin_processor.get_requisitions(skim=True)
+
+    if available_requisitions["initiated"]:
+      ui.notify(message="There is pending order",caption="Complete processing that order first",type="warning",position="top")
+      return
+
+    for medicine in self.current_medicines:
+      status = admin_db.register_requisition(medicine)
       
-      medicine["invoice"] = None
-      medicine["count_unit"] = self.last_medicine(medicine)["count_unit"]
-      medicine["received"] = True if medicine["received_amount"] else False
-      medicine["active"] = True if medicine["received_amount"] else False
-      medicine["received_by"] = self.user.username if medicine["received_amount"] else None
-      medicine["rejected"] = True if medicine["rejected_amount"] else False
-      medicine["rejected_amount"] = medicine["rejected_amount"] if medicine["rejected_amount"] else 0
-      medicine["rejected_price"] = medicine["rejected_price"] if medicine["rejected_price"] else 0
-      medicine["store_balance"] = medicine["initial_store_balance"] = medicine["physical_count"] = medicine["received_amount"]
+    ui.notify(message=status['message'],type=status["type"],position="top")
 
-      update_medicine(medicine=medicine,receive=True)
+    self.MedicinesOrderingDisplay(self.current_medicines)
 
-      self.medicines.insert(index,medicine)
+  def confirm_requisition_order(self):
+    for medicine in self.current_medicines:
+      status = admin_db.update_requisition(medicine,confirm_order=True)
+      
+    ui.notify(message=status['message'],type=status["type"],position="top")
+
+    self.initial_data()
+    self.RequisitionsPanel()
+
+  def confirm_requisition_received(self):
+    for medicine in self.current_medicines:
+      status = admin_db.update_requisition(medicine,confirm_received=True)
+      
+    ui.notify(message=status['message'],type=status["type"],position="top")
+
+    self.initial_data()
+    self.RequisitionsPanel()
+
+  def order_medicine(self,data):
+    """"""
+    status = admin_db.update_requisition(data,order=True)
+
+    ui.notify(message=status["message"],type=status["type"],position="top")
+
+    #Update display
+    for curr_medicine in self.current_medicines:
+      if curr_medicine["medicine_id"].lower() == data["medicine_id"].lower():
+        index = self.current_medicines.index(curr_medicine)
+        self.current_medicines.pop(index)
+        self.current_medicines.insert(index,data)
+    self.MedicinesOrderingDisplay(self.current_medicines)
+
+  #FORMATTING FETCHED DATA
+  async def fetch_medicine_data(self,medicine,index:int,new:bool=False,received:bool=False):
+    fetched_data = admin_processor.get_consumption_data(medicine["medicine_id"])
+    physical_count = admin_processor.get_physical_count(medicine_id=medicine["medicine_id"],time=datetime.now())
     
-    if order:
-      medicine["ordered_by"] = self.user.username
-      medicine["ordered"] = True if medicine["ordered_amount"] else False
-      medicine["ordered_price"] = medicine["unit_price"] * round(medicine["ordered_amount"]/medicine["order_unit_size"])
-
-      update_medicine(medicine=medicine,order=True)
-
-      for self_medicine in self.medicines:
-        if self_medicine["medicine_id"] == medicine["medicine_id"]:
-          index = self.medicines.index(self_medicine)
-          self.medicines.remove(self_medicine)
-          self.medicines.insert(index,medicine)
-
-    requisition["medicines"] = self.medicines
-
-    self.requisition_display_pad.clear()
-    with self.requisition_display_pad:
-      self.RequisitionAggrid(requisition=requisition)
+    formatted_data = {
+      "sno":index + 1,
+      "main_balance":fetched_data['balance'].main,
+      "dispensing_balance":fetched_data['balance'].dispensing,
+      "current_balance":fetched_data['balance'].total,
+      "amc":fetched_data['averages'].monthly,
+      "adc":fetched_data['averages'].daily,
+      "mos":self.mos(balance=fetched_data['balance'].total,amc=fetched_data['averages'].monthly),
+      "dos":self.dos(fetched_data['balance'].total,fetched_data['averages'].daily),
+      "last_count":physical_count.date.strftime("%d %b %Y") if physical_count else "---",
+      "medicine_id":medicine["medicine_id"]
+    }
     
-    self.medicine_dialog.close()
+    if new:
+      
+      formatted_data.update({
+        "name":medicine["name"],
+        "medicine_name":medicine["name"],
+        "requisition_id":medicine["requisition_id"],
+        "type":medicine["type"] if "type" in medicine else None,
+        "ordered":medicine["ordered"] if "ordered" in medicine else False,
+        "order_unit":medicine["order_unit"] if "order_unit" in medicine else "",
+        "order_unit_size":medicine["order_unit_size"] if "order_unit_size" in medicine else 1,
+        "ordered_amount":medicine["ordered_amount"] if "ordered_amount" in medicine else 0,
+        "ordered_units":0,
+        "unit_price":medicine["unit_price"] if "unit_price" in medicine else 0,
+        "ordered_price":medicine["ordered_price"] if "ordered_price" in medicine else 0,
+        "ordered_by":self.user.username
+      })
+
+    elif received:
+      formatted_data.update({
+        "name":medicine["medicine_name"],
+        "expiry_date":medicine["expire_date"].strftime("%b %Y") if medicine["expire_date"] else "---",
+        "ordered":medicine["ordered"],
+        "received":medicine["received"],
+        "expiry_date":medicine["expire_date"].strftime("%b %Y") if medicine["expire_date"] else "---"
+      })
+    
+    return formatted_data
+
+  async def fetch_inventory_data(self,medicine_id):
+    fetched_data = await admin_processor.get_inventory_data(medicine_id)
+    return {
+      "medicine_id":medicine_id,
+      "invoice":self.physical_count_id,
+      "issuer":None,
+      "receiver":None,
+      "previous_dispensing_balance":fetched_data["balance"].dispensing,
+      "previous_main_balance":fetched_data["balance"].main,
+      "main_balance":fetched_data["balance"].main,
+      "dispensing_balance":fetched_data["balance"].dispensing,
+      "last_count":fetched_data["last_count"].date,
+      "transferable":True if fetched_data["balance"].main else False
+    }
 
   #DISPLAYS
-  def RequisitionsPanel(self,requisitions:list[dict]):
+  def RequisitionsPanel(self):
     """A method to display list of requisitions"""
-    #DATA
     
     #UI
     self.requisitions_panel.clear()
     with self.requisitions_panel:
-      with ui.scroll_area().classes(add="grow w-full"):
-        with html.div().classes(add="w-full flex flex-col gap-3 animate__animated animate__fadeIn"):
-          for requisition in requisitions:
-            #Requisition
-            with ui.button(color="",on_click=lambda e:self.RequisitionDialog(requisition=[requisition for requisition in requisitions if requisition["requisition_id"] == e.sender.slots["default"].children[0].slots["default"].children[0].props["id"].lower()][0])).props(add="elevated").classes(add=f"{'bg-green-600 shadow-md shadow-green-600' if  requisition['received'] else 'bg-teal-500 shadow-md shadow-teal-500' if requisition['placed'] and not requisition['received'] else 'bg-violet-500 shadow-md shadow-violet-500' if requisition['initiated'] and not requisition['placed'] else 'bg-gray-500 shadow-md shadow-gray-500' if not requisition['initiated'] or requisition['cancelled'] else ''} h-fit rounded p-0.5 text-2xl text-bold"):
-              #Header
-              with html.header().classes(add="w-full rounded-t bg-harmony flex flex-row justify-between"):
-                ui.label(requisition["requisition_id"].split("-")[0].upper()).props(add=f"id='{requisition["requisition_id"]}'").classes(add=f"rounded-t px-1 text-{'green-500' if  requisition['received'] else 'teal-500' if requisition['placed'] and not requisition['received'] else 'purple-400' if requisition['initiated'] and not requisition['placed'] else 'gray-500' if not requisition['initiated'] or requisition['cancelled'] else ''} text-lg")
-                ui.chip(icon=f"{'fa-regular fa-circle-check' if requisition['received'] else 'fas fa-spinner fa-spin'}",text_color=f"{'green' if requisition['received'] else 'teal' if requisition['placed'] else 'purple' if requisition['initiated'] and not requisition['placed'] else 'red' }",color="").classes(add="m-0 p-0 bg-inherit text-violet-500")
-              ui.separator()
-              #Body
-              with html.main().classes(add=f"w-full rounded-b p-0.5 bg-harmony grid grid-cols-7 {'grid-rows-4' if requisition['cancelled'] and self.rejected_medicines(requisition)[0] else 'grid-rows-3' if requisition['cancelled'] or self.rejected_medicines(requisition)[0] else 'grid-rows-2'}"):
-                #Dates
-                with ui.label("ORDERED:").classes(add=f"col-span-4 row-start-1 text-start text-xs {'text-gray-400' if requisition['cancelled'] else 'text-sky-50'}"):
-                  ui.label(f"{requisition['placement_date'].strftime('%d %b %Y')} ({format_age(requisition['placement_date'])} ago)" if requisition["placed"] else " - - -").classes(add=f"inline ml-0.5 text-{'green-500' if  requisition['received'] else 'teal-500' if requisition['placed'] and not requisition['received'] else 'purple-400' if requisition['initiated'] and not requisition['placed'] else 'gray-500' if not requisition['initiated'] or requisition['cancelled'] else ''}")
-                with ui.label("RECEIVED:").classes(add=f"col-span-4 row-start-2 text-start text-xs {'text-gray-400' if requisition['cancelled'] else 'text-sky-50'}"):
-                  ui.label(f"{requisition['receive_date'].strftime('%d %b %Y')} ({format_age(requisition['receive_date'])} ago)" if requisition["received"] else " - - -").classes(add=f"inline ml-0.5 text-{'green-500' if  requisition['received'] else 'teal-500' if requisition['placed'] and not requisition['received'] else 'purple-400' if requisition['initiated'] and not requisition['placed'] else 'gray-500' if not requisition['initiated'] or requisition['cancelled'] else ''}")
-                with ui.label("REJECTED:").classes(add=f"{'' if self.rejected_medicines(requisition)[0] else 'hidden' } col-span-4 row-start-3 text-start text-xs text-sky-50"):
-                  ui.label(f"{requisition['receive_date'].strftime('%d %b %Y')} ({format_age(requisition['receive_date'])} ago)" if requisition["received"] else " - - -").classes(add=f"inline ml-0.5 text-{'green-500' if  requisition['received'] else 'teal-500' if requisition['placed'] and not requisition['received'] else 'purple-400' if requisition['initiated'] and not requisition['placed'] else 'gray-500' if not requisition['initiated'] or requisition['cancelled'] else ''}")
-                if requisition["cancelled"]:
-                  with ui.label("CANCELLED:").classes(add=f"col-span-4 row-start-4 text-start text-xs {'text-gray-400' if requisition['cancelled'] else 'text-sky-50'}"):
-                    ui.label(f"{requisition['cancel_date'].strftime('%d %b %Y')} ({format_age(requisition['cancel_date'])} ago)" if requisition['cancelled'] else " - - -").classes(add=f"inline ml-0.5 text-{'green-500' if  requisition['received'] else 'teal-500' if requisition['placed'] and not requisition['received'] else 'purple-400' if requisition['initiated'] and not requisition['placed'] else 'gray-500' if not requisition['initiated'] or requisition['cancelled'] else ''}")
-                      
-                #Items
-                #Ordered medicines
-                with ui.label(f"{len([medicine for medicine in requisition['medicines'] if medicine['ordered'] and not medicine['cancelled']]):,}" if requisition["placed"] else "").classes(add=f"col-start-5 row-start-1 w-full text-xs uppercase text-{'green-500' if  requisition['received'] else 'teal-500' if requisition['placed'] and not requisition['received'] else 'purple-400' if requisition['initiated'] and not requisition['placed'] else 'gray-500' if not requisition['initiated'] or requisition['cancelled'] else ''}"):
-                  ui.label("ITEMS" if requisition["placed"] else "").classes(add=f"inline ml-1 text-white text-xs")
-                #Received medicines count
-                with ui.label(f"{len([medicine for medicine in requisition['medicines'] if medicine['received']]):,}" if (requisition['received']) else "").classes(add=f"col-start-5 row-start-2 w-full text-xs uppercase text-{'green-500' if  requisition['received'] else 'teal-500' if requisition['placed'] and not requisition['received'] else 'purple-400' if requisition['initiated'] and not requisition['placed'] else 'gray-500' if not requisition['initiated'] or requisition['cancelled'] else ''}"):
-                  ui.label("ITEMS" if (requisition["received"]) else "").classes(add=f"inline ml-1 text-white text-xs")
-                #Rejected medicines count
-                with ui.label(f"{self.rejected_medicines(requisition)[0]:,}" if (requisition['received']) else "").classes(add=f"{'' if self.rejected_medicines(requisition)[0] else 'hidden'} col-start-5 row-start-3 w-full text-xs uppercase text-{'green-500' if  requisition['received'] else 'teal-500' if requisition['placed'] and not requisition['received'] else 'purple-400' if requisition['initiated'] and not requisition['placed'] else 'gray-500' if not requisition['initiated'] or requisition['cancelled'] else ''}"):
-                  ui.label("ITEMS" if (requisition["received"]) else "").classes(add=f"inline ml-1 text-white text-xs")
-                #Cancelled
-                if requisition["cancelled"]:
-                  with ui.label("By").classes(add=f"col-span-4 row-start-4 text-xs text-white"):
-                    ui.label(f"{get_staff(requisition['cancelled_by'])['title'].capitalize()} {get_staff(requisition['cancelled_by'])['first_name'].capitalize()} {get_staff(requisition['cancelled_by'])['last_name'].capitalize()}" if requisition["cancelled"] else " - - -").classes(add=f"inline ml-1 {'green-600' if  requisition['received'] else 'yellow-500' if requisition['placed'] and not requisition['received'] else 'purple-400' if requisition['initiated'] and not requisition['placed'] else 'gray-500' if not requisition['initiated'] or requisition['cancelled'] else ''}")
+      #Small screen
+      with ui.scroll_area().classes(add="lg:hidden bg-white rounded-none grow w-full"):
+        for requisition in self.requisitions:
+          with ui.button(color="",on_click=lambda e:self.RequisitionDialog(requisition=[requisition for requisition in self.requisitions if requisition.name.lower() == e.sender.props["id"].lower()][0])).props(add=f"glossy id='{requisition.name}'").classes(add="w-full bg-harmony"):
+            #Header
+            with html.div().classes(add="w-full flex flex-row justify-between"):
+              ui.label(requisition.name.upper()).classes(add="text-xl text-sky-500")
+              ui.icon(name="fa-solid fa-check-double" if requisition.requisition_received else "fa-solid fa-spinner fa-spin" if requisition.requisition_ordered else "fa-solid fa-dots",color="green" if requisition.requisition_received else "yellow" if requisition.requisition_ordered else "gray")
+            
+            #Separator
+            ui.separator().classes(add="w-full bg-sky-200")
 
-                #Cost
-                #Ordered medicines cost
-                with ui.label(f"{sum([medicine['ordered_price'] for medicine in requisition['medicines'] if medicine['ordered'] and not medicine['cancelled']]):,.2f}" if requisition["placed"] else "").classes(add=f"col-start-6 col-span-2 row-start-1 w-full text-end text-xs uppercase text-{'green-500' if  requisition['received'] else 'teal-500' if requisition['placed'] and not requisition['received'] else 'purple-400' if requisition['initiated'] and not requisition['placed'] else 'gray-500' if not requisition['initiated'] or requisition['cancelled'] else ''}"):
-                  ui.label("TZS" if requisition["placed"] else "").classes(add=f"inline ml-1 text-white text-xs")
-                #Received medicines cost
-                with ui.label(f"{sum([medicine['received_price'] for medicine in requisition['medicines'] if medicine['received']]):,.2f}" if requisition["received"] else "").classes(add=f"col-start-6 col-span-2 row-start-2 w-full text-end text-xs uppercase text-{'green-500' if  requisition['received'] else 'teal-500' if requisition['placed'] and not requisition['received'] else 'purple-400' if requisition['initiated'] and not requisition['placed'] else 'gray-500' if not requisition['initiated'] or requisition['cancelled'] else ''}"):
-                  ui.label("TZS" if (requisition["received"]) else "").classes(add=f"inline ml-1 text-white text-xs")
-                #Rejected medicines cost
-                with ui.label(f"{self.rejected_medicines(requisition)[1]:,.2f}" if requisition["received"] else "").classes(add=f"{'' if self.rejected_medicines(requisition)[0] else 'hidden'} col-start-6 col-span-2 row-start-3 w-full text-end text-xs uppercase text-{'green-500' if  requisition['received'] else 'teal-500' if requisition['placed'] and not requisition['received'] else 'purple-400' if requisition['initiated'] and not requisition['placed'] else 'gray-500' if not requisition['initiated'] or requisition['cancelled'] else ''}"):
-                  ui.label("TZS" if (requisition["received"]) else "").classes(add=f"inline ml-1 text-white text-xs")
+            #Details
+            with html.div().classes(add="w-full flex flex-col"):
+              #Ordered
+              with html.div().classes(add="w-full grid grid-cols-6 text-sky-100"):
+                #Label
+                ui.label("ORDERED").style(add="text-shadow:1px 1px #baebaebae;").classes(add="text-sky-300 justify-self-start")
+                #Date
+                ui.label(requisition.ordered_on.strftime("%d %b %Y") if requisition.requisition_ordered else "---").classes(add="col-span-2")
+                #Amount
+                ui.label(f"{requisition.ordered:,.0f} ITEM{'' if requisition.ordered == 1 else 'S'}" if requisition.requisition_ordered else "---").classes(add="justify-self-end")
+                #Price
+                ui.label(f"{requisition.ordered_price:,.2f} TZS" if requisition.requisition_ordered else "---").classes(add="col-span-2 justify-self-end")
 
-  def ConfirmNewRequisitionDialog(self):
+              #Received
+              with html.div().classes(add="w-full grid grid-cols-6 text-sky-100"):
+                #Label
+                ui.label("RECEIVED").style(add="text-shadow:1px 1px #baebaebae;").classes(add="text-sky-300 justify-self-start")
+                #Date
+                ui.label(requisition.received_on.strftime("%d %b %Y") if requisition.requisition_received else "---").classes(add="col-span-2")
+                #Amount
+                ui.label(f"{requisition.received:,.0f} ITEM{'' if requisition.received == 1 else 'S'}" if requisition.requisition_received else "---").classes(add="justify-self-end")
+                #Price
+                ui.label(f"{requisition.received_price:,.2f} TZS" if requisition.requisition_received else "---").classes(add="col-span-2 justify-self-end")
 
-    if not self.requisitions[0]["received"]:
-      ui.notify(message="There is an active requisition.Please visit Requisitions panel",type="warning",position="center")
-      return
+              #Rejected
+              if requisition.rejected:
+                with html.div().classes(add="w-full grid grid-cols-6 text-sky-100"):
+                  #Label
+                  ui.label("REJECTED").style(add="text-shadow:1px 1px #baebaebae;").classes(add="text-sky-300 justify-self-start")
+                  #Date
+                  ui.label().classes(add="col-span-2")
+                  #Amount
+                  ui.label(f"{requisition.rejected:,.0f} ITEM{'' if requisition.rejected == 1 else 'S'}" if requisition.rejected else "---").classes(add="justify-self-end")
+                  #Price
+                  ui.label(f"{requisition.rejected_price:,.2f} TZS" if requisition.rejected else "---").classes(add="col-span-2 justify-self-end")
+            
+            #Other Details
+            with html.div().classes(add="w-full"):
+              pass
 
-    #Confirm requisition instantiation
-    with ui.dialog().props(add="transition-show='jump-up' transition-hide='jump-down' transition-duration='500'") as self.confirm_new_requisition_dialog,html.div().style(add="min-width:30%;").classes(add="rounded-md bg-sky-100 p-0.5"):
-      with html.div().classes(add="w-full p-2 flex flex-col gap-5 rounded bg-sky-100"):
-        ui.label("Create New Requisition?").classes(add="w-full p-2 text-center text-3xl text-bold")
-        with html.div().classes(add="w-full py-1 flex flex-row justify-center gap-5"):
-          ui.button(text="YES",icon="fa-regular fa-circle-check",color="",on_click=self.RequisitionDialog).props(add="glossy").classes(add="rounded bg-harmony text-bold text-green-500 text-lg lg:text-xl")
-          ui.button(text="NO",icon="fa-regular fa-circle-xmark",color="",on_click=self.confirm_new_requisition_dialog.close).props(add="glossy").classes(add="rounded bg-harmony text-red-500 text-bold text-lg lg:text-xl")
-    
-    self.confirm_new_requisition_dialog.open()
-  
-  def RequisitionConfirmationDialog(self,requisition:dict,initiate:bool=False,order:bool=False,receive:bool=False,cancel:bool=False): 
-    """A generic dialog for confirmation of commands in requisitions"""
-    #DATA
-    requisition = requisition
-    requisition["vendor"] = VENDORS[2]
 
-    #UI
-    with ui.dialog().props(add="transition-show='jump-up' transition-hide='jump-down' transition-duration='500'") as self.requisition_confirmation_dialog,html.div().style(add="min-width:50%;").classes(add="rounded-md bg-sky-100 p-0.5"):
-      with html.div().classes(add="w-full p-0.5 flex flex-col gap-5 rounded bg-sky-100"):
-        if initiate:
-          ui.label("Do you want to initiate ?").classes(add="w-full p-2 text-center text-xl lg:text-3xl text-bold")
-          with html.div().classes(add="w-full py-1 flex flex-row justify-center gap-5"):
-            ui.button(text="YES",icon="fa-regular fa-circle-check",color="",on_click=lambda e:self.update_requisition(requisition=requisition,initiate=True)).props(add="glossy").classes(add="bg-harmony text-bold text-green-600 text-lg lg:text-xl")
-            ui.button(text="NO",icon="fa-regular fa-circle-xmark",color="",on_click=self.requisition_confirmation_dialog.close).props(add="glossy").classes(add="bg-harmony text-red-500 text-bold text-lg lg:text-xl")
+      #Large Screen
+      ui.aggrid(
+        options={
+          "columnDefs":[
+            {"headerName":"","field":"sno","width":75},
+            {"headerName":"NAME","field":"name","sortable":True},
+            {"headerName":"ORDERED","field":"ordered","type":"rightAligned"},
+            {"headerName":"ORDER PRICE","field":"order_cost","type":"rightAligned"},
+            {"headerName":"ORDER DATE","field":"order_date","type":"rightAligned"},
+            {"headerName":"RECEIVED","field":"received","type":"rightAligned"},
+            {"headerName":"RECEIVE PRICE","field":"receive_cost","type":"rightAligned"},
+            {"headerName":"RECEIVE DATE","field":"receive_date","type":"rightAligned"},
+            {"headerName":"REJECTED","field":"rejected","type":"rightAligned"},
+            {"headerName":"REJECTED PRICE","field":"rejected_cost","type":"rightAligned"},
+          ],
+          "rowData":[
+            {
+              "sno":self.requisitions.index(requisition) + 1,
+              "name":requisition.name.upper(),
+              "ordered":f"{requisition.ordered:,.0f}" if requisition.requisition_ordered else "---",
+              "order_cost":f"{requisition.ordered_price:,.2f}" if requisition.requisition_ordered else "---",
+              "order_date":requisition.ordered_on.strftime("%d %b %Y") if requisition.requisition_ordered else "---",
+              "received":f"{requisition.received:,.0f}" if requisition.requisition_received else "---",
+              "receive_cost":f"{requisition.received_price:,.2f}" if requisition.requisition_received else "---",
+              "receive_date":requisition.received_on.strftime("%d %b %Y") if requisition.requisition_received else "---",
+              "rejected":f"{requisition.rejected:,.0f}" if requisition.rejected else "---",
+              "rejected_cost":f"{requisition.rejected_price:,.2f}" if requisition.rejected else "---"
+            } for requisition in self.requisitions
+          ],
+          "pagination":True,
+          "paginationPageSize":10
+        },
+        theme="quartz",
+        html_columns=[4,5,6]
+      ).classes(add="lg-show grow w-full bg-inherit text-sm animate__animated animate__fadeIn").on("cellClicked",lambda e:self.RequisitionDialog(requisition=[requisition for requisition in self.requisitions if requisition.name.lower() == e.args["data"]["name"].lower()][0]))
 
-        if order:
-          ui.label("REQUISITION ORDER").classes(add="w-full p-2 bg-harmony rounded-t text-2xl lg:text-5xl font-bold text-yellow-500")
-          with html.div().classes(add="grow w-full p-3 flex flex-col justify-around items-center gap-3"):
-            #Vendor
-            ui.select(label="VENDOR",options=VENDORS).props(add="bordered input-class='px-1' label-color='#07004d' popup-content-class='capitalize' transition-show='jump-down' transition-hide='jump-up' transition-duration='500'").classes(add="w-full lg:w-72 shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-xl capitalize").bind_value(requisition,"vendor")
-
-            #Proceed
-            with html.div().classes(add="w-full py-1 flex flex-row justify-center gap-5"):
-              ui.button(text="YES",icon="fa-regular fa-circle-check",color="",on_click=lambda e:self.update_requisition(requisition=requisition,order=True)).props(add="glossy").classes(add="bg-harmony text-bold text-green-600 text-lg lg:text-xl")
-              ui.button(text="NO",icon="fa-regular fa-circle-xmark",color="",on_click=self.requisition_confirmation_dialog.close).props(add="glossy").classes(add="bg-harmony text-red-500 text-bold text-lg lg:text-xl")
-          
-        if receive:
-          with html.section().classes(add="w-full P-3 flex flex-col lg:flex-row justify-around gap-5"):
-            ui.input(label="INVOICE NUMBER").props(add="bordered").classes(add="w-full lg:w-52 shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(requisition,"invoice_id")
-            ui.input(label="DELIVERY NOTE NUMBER").props(add="bordered").classes(add="w-full lg:w-52 shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(requisition,"delivery_note_id")
-            ui.button(text="CONFIRM",icon="fa-regular fa-circle-check",color="",on_click=lambda e:self.update_requisition(requisition=requisition,receive=True)).props(add="glossy").classes(add="bg-harmony text-bold text-green-600 text-lg lg:text-xl")
-
-        if cancel:
-          ui.label("Do you want to cancel this requisition...?").classes(add="w-full p-2 text-center text-xl lg:text-3xl text-bold")
-          with html.div().classes(add="w-full py-1 flex flex-row justify-center gap-5"):
-            ui.button(text="YES",icon="fa-regular fa-circle-check",color="",on_click=lambda e:self.update_requisition(requisition=requisition,cancel=True)).props(add="glossy").classes(add="bg-harmony text-bold text-green-600 text-lg lg:text-xl")
-            ui.button(text="NO",icon="fa-regular fa-circle-xmark",color="",on_click=self.requisition_confirmation_dialog.close).props(add="glossy").classes(add="bg-harmony text-red-500 text-bold text-lg lg:text-xl")
-    
-    self.requisition_confirmation_dialog.open()
-
-  def RequisitionDialog(self,requisition:dict|None=None):
+  def RequisitionDialog(self,requisition=None):
     """A method for displaying requisistion form"""
 
     #DATA
     if requisition:
-      data = requisition
+      requisition = requisition._asdict()
+      requisition["medicines"]=[medicine._asdict() for medicine in requisition["medicines"]]
+      medicines = requisition["medicines"]
+
     else:
-      last_requisition = self.requisitions[-1]
-      if not last_requisition["received"]:
-        ui.notify(message=f"There is a pending requisition {last_requisition['requisition_id'].upper()}!",type="warning",position="center")
-        return
-      else:
-        #Warn if physical count not done
-        physical_count = self.physical_count_was_done(requisition=last_requisition)
-        if not physical_count[0]:
-          ui.notify(
-            message=f"Physical count wasn't completed for {physical_count[1]} items in requisition {physical_count[2].upper()}!",
-            type="warning",
-            position="center",
-            icon="fa-solid fa-exclamation-circle fa-fade"
-          )
-          self.confirm_new_requisition_dialog.close()
-          return
+      #new requisition
+      requisition = {
+        "name":f"req{str(uuid.uuid4()).split('-')[1]}".upper(),
+        "requisition_initiated":False,
+        "requisition_ordered":False,
+        "requisition_received":False
+      }
+      medicines = admin_processor.get_formulary()
+      medicines = [medicine._asdict() for medicine in medicines]
 
-        #Build new requisition
-        new_requisition_id = f"req{datetime.now().strftime('%y%m')}{self.requisition_label()}-{uuid.uuid4()}"
-        self.new_medicines = [
-          {
-            "name":medicine["name"],
-            "medicine_id":medicine["medicine_id"],
-            "requisition_medicine_id":medicine["medicine_id"] + new_requisition_id,
-            "type":medicine["type"],
-            "category":medicine["category"],
-            "drug_class":medicine["drug_class"],
-            "fda_pregnancy_category_1":medicine["fda_pregnancy_category_1"],
-            "fda_pregnancy_category_2":medicine["fda_pregnancy_category_2"],
-            "fda_pregnancy_category_3":medicine["fda_pregnancy_category_3"],
-            "prescription_level":medicine["prescription_level"],
-            "order_unit":self.last_medicine(medicine)["order_unit"],
-            "order_unit_size":self.last_medicine(medicine)["order_unit_size"],
-            "amc":self.amc(self.last_medicine(medicine)),
-            "mos":self.mos(self.last_medicine(medicine)),
-            "initial_store_balance":self.last_medicine(medicine)["physical_count"],
-            "store_balance":self.last_medicine(medicine)["physical_count"],
-            "physical_count":self.last_medicine(medicine)["physical_count"],
-            "ordered_amount":self.requisition_amount(amc=self.amc(self.last_medicine(medicine)),mos=self.mos(self.last_medicine(medicine))),
-            "unit_price":self.last_medicine(medicine)["unit_price"],
-            "ordered_price":(self.requisition_amount(amc=self.amc(self.last_medicine(medicine)),mos=self.mos(self.last_medicine(medicine)))/self.last_medicine(medicine)["order_unit_size"]) * self.last_medicine(medicine)["unit_price"],
-            "ordered_by":self.user.username,
-            "cancelled":False,
-            "ordered":False,
-            "received":False,
-            "prices":self.last_medicine(medicine)["prices"]
-          }
-          for medicine in self.formulary
-        ]
+    
+    #FXS
+    def close_dialog():
+      self.requisition_dialog.close()
 
-        data = {
-          "requisition_id":new_requisition_id,
-          "initiated":True,
-          "initiated_by":self.user.username,
-          "placed":False,
-          "received":False,
-          "medicines":self.new_medicines
-        }
-
-        #Register new requisition and initial medicines
-        register_requisition(data)
-        for new_medicine in self.new_medicines:
-          new_medicine["requisition_id"] = data["requisition_id"]
-          register_medicine(new_medicine)
-      
     #UI
     with ui.dialog().props(add="transition-show='jump-up' transition-hide='jump-down' transition-duration='500'") as self.requisition_dialog,html.div().style(add="min-width:100%;min-height:100%;").classes(add="bg-sky-100 p-0.5 flex flex-col"):
-      with html.div().classes(add="grow w-full flex flex-col") as self.requisition_display_pad:
-        self.RequisitionAggrid(requisition=data)
+      #Header
+      with html.header().classes(add="w-full rounded-t bg-harmony grid grid-cols-11 items-center"):
+        #Details
+        with html.div().classes(add="col-span-10 w-full p-1 flex flex-col"):
+          #Requisition ID
+          ui.label(requisition["name"].upper()).classes(add="w-full text-bold text-sky-500 text-xl")
+          
+          #Requisition Summary
+          with html.div().classes(add=f"w-fit grid {'grid-cols-2 lg:grid-cols-5' if requisition['requisition_received'] else 'grid-rows-3 grid-cols-1 lg:grid-cols-3 lg:grid-rows-1'} gap-1 text-bold text-sky-300"):
+            if requisition["requisition_received"]:
+              #Invoice
+              with html.div().classes(add="grid grid-cols-3 gap-1"):
+                html.span("INVOICE").classes(add="text-sky-300")
+                html.span(requisition["invoice"] if requisition["invoice"] else "---").classes(add="text-white col-span-2 justify-self-start")
+              
+              #Items
+              with html.div().classes(add="grid grid-cols-3 gap-1"):
+                html.span("ITEMS").classes(add="text-sky-300")
+                html.span(f"{requisition['received']:,.0f}").classes(add="text-white col-span-2 justify-self-start")
+              
+              #Delivery Note
+              with html.div().classes(add="lg:col-span-2 grid grid-cols-3 gap-1"):
+                html.span("DELIVERY NOTE").classes(add="text-sky-300")
+                html.span(requisition["delivery_note"] if requisition["delivery_note"] else "---").classes(add="text-white col-span-2 justify-self-start")
+              
+              #Price
+              with html.div().classes(add="grid grid-cols-3 gap-1"):
+                html.span("COST").classes(add="text-sky-300")
+                html.span(f"{requisition['received_price']:,.2f} TZS").classes(add="text-white col-span-2 justify-self-start")
+              
+            elif requisition["requisition_ordered"]:
+              #Ordered items
+              with html.div().classes(add="grid grid-cols-3"):
+                html.span("ORDERED ITEMS").classes(add="col-span-2 text-sky-300")
+                html.span(f"{requisition['ordered']:,.0f}").classes(add="text-white")
+              
+              #Ordered Price
+              with html.div().classes(add="grid grid-cols-3"):
+                html.span("ORDERED PRICE").classes(add="col-span-2 text-sky-300")
+                html.span(f"{requisition['ordered_price']:,.2f}").classes(add="text-white")
+              
+              #Order DAte
+              with html.div().classes(add="grid grid-cols-3"):
+                html.span("ORDER DATE").classes(add="col-span-2 text-sky-300")
+                html.span(requisition['ordered_on'].strftime("%d %b %Y")).classes(add="text-white")
+              
+        #Button
+        ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=close_dialog).classes(add="bg-inherit text-red-600 text-xl justify-self-end")
+      
+      #Body
+      with html.div().classes(add="grow w-full flex flex-col") as self.requisition_display_panel:
+        if requisition["requisition_received"]:
+          self.ReceivedMedicinesDisplay(medicines)
+        elif requisition["requisition_ordered"]:
+          self.MedicinesReceivingDisplay(medicines)
+        else:
+          self.MedicinesOrderingDisplay(medicines=medicines,requisition=requisition)
+      
+      #Buttons
+      with html.div().classes(add="p-1 flex flex-row justify-center gap-3"):
+        if requisition["requisition_received"]:
+          pass
+        elif requisition["requisition_ordered"]:
+          ui.button(text="RECEIVE ORDER",color="",on_click=self.confirm_requisition_received).classes(add="bg-harmony text-green-600 text-bold text-lg")
+          #ui.button(text="CANCEL ORDER",color="",on_click=lambda e:ui.notify('confirm')).classes(add="bg-harmony text-red-600 text-bold text-lg")
+        elif requisition["requisition_initiated"]:
+          ui.button(text="CONFIRM ORDER",color="",on_click=self.confirm_requisition_order).props(add="glossy").classes(add="bg-harmony text-teal-500 text-bold text-lg")
+        else:
+          ui.button(text="INITIATE ORDER",color="",on_click=self.initiate_requisition).props(add="glossy").classes(add="bg-harmony text-sky-300 text-bold text-lg").bind_visibility_from(requisition,"requisition_initiated",backward=lambda val:not val)
+
         
     self.requisition_dialog.open()
     
-  def RequisitionAggrid(self,requisition:dict):
+  def MedicinesOrderingDisplay(self,medicines,requisition=None):
     """"""
     #DATA
-    requisition = requisition
-    self.medicines = sorted(requisition["medicines"],key=lambda medicine:medicine["name"])
-    ordered_medicines = [medicine for medicine in self.medicines if medicine["ordered"]]
+    for medicine in medicines:
+      if requisition:
+        medicine["requisition_id"] = requisition["name"].lower()
+      if "medicine_name" in medicine:
+        medicine["name"] = medicine["medicine_name"]
+    self.current_medicines = medicines   #This is for refreshing the medicines panel after editing a given medicines
+
+    #FXS
+    async def show_main_display():
+      medicines = [await self.fetch_medicine_data(medicine=medicine,index=self.current_medicines.index(medicine),new=True) for medicine in self.current_medicines]
+      self.current_medicines = medicines
+
+      #Large screen
+      main_grid.options["rowData"] = medicines
+      main_grid.update()
+
+      #Small Screen
+      with scroll_panel:
+        for medicine in medicines:
+          self.SmallScreenMedicineDisplay(medicine,new=True)
+
+      spinner_display.visible = False
+      main_display.visible = True
 
     #UI
-    self.requisition_display_pad.clear()
-    with self.requisition_display_pad:
-      #Header
-      with html.header().classes(add="w-full rounded-t bg-harmony flex flex-row"):
-        with html.section().classes(add="grow px-1 flex flex-col content-start lg:flex-row lg:content-center lg:justify-between"):
-          #Requisition ID
-          with ui.label("REQUISITION ID:").classes(add="text-bold text-sky-300 text-lg"):
-            ui.label(requisition["requisition_id"].split("-")[0]).classes(add="inline ml-1 text-yellow-500 text-bold uppercase")
-          
-          if requisition["received"]:
-            #Invoice ID
-            with ui.label("INVOICE NO: ").classes(add="text-bold text-sky-300 text-lg"):
-              ui.label(f"{requisition['invoice_id']}").classes(add="inline ml-0.5 text-yellow-500 text-bold uppercase")
-            #Receive date
-            with ui.label("RECEIVED ON: ").classes(add="text-bold text-sky-300 text-bold text-lg"):
-              ui.label(f"{requisition['receive_date'].strftime('%d %b %Y')}").classes(add="inline ml-0.5 text-bold text-yellow-500 uppercase")
-            #Received items
-            with ui.label("RECEIVED ITEMS: ").classes(add="text-bold text-sky-300 text-bold text-lg"):
-              ui.label(str(len([item for item in requisition["medicines"] if item["received"]]))).classes(add="inline ml-0.5 text-bold text-yellow-500 uppercase")
-            #Cost
-            with ui.label("COST: ").classes(add="text-bold text-sky-300 text-lg"):
-              ui.label(f"{sum([item['received_price'] for item in requisition['medicines'] if not item['cancelled'] and item['ordered']]):,.2f} TZS").classes(add="inline ml-1 text-yellow-500 text-bold uppercase")
-          
-          elif requisition["placed"]:
-            #Order date
-            with ui.label("ORDERED ON: ").classes(add="text-bold text-sky-300 text-bold text-lg"):
-              ui.label(f"{requisition['placement_date'].strftime('%d %b %Y')}").classes(add="inline ml-0.5 text-bold text-yellow-500 uppercase")
-            #Ordered Items
-            with ui.label("ORDERED ITEMS: ").classes(add="text-bold text-sky-300 text-lg"):
-              ui.label(str(len([item for item in requisition["medicines"] if item["ordered"]]))).classes(add="inline ml-1 text-yellow-500 uppercase")
-            #Order cost
-            with ui.label("COST: ").classes(add="text-bold text-sky-300 text-lg"):
-              ui.label(f"{sum([item['ordered_price'] for item in requisition['medicines'] if not item['cancelled'] and item['ordered']]):,.2f} TZS").classes(add="inline ml-1 text-yellow-500 text-bold uppercase")
-          
-          elif requisition["initiated"]:
-            #Ordered Items
-            with ui.label("ITEMS: ").classes(add="text-bold text-sky-300 text-lg"):
-              ui.label(str(len([item for item in requisition["medicines"] if item["ordered"]]))).classes(add="inline ml-1 text-yellow-500 uppercase")
-            #Order cost
-            with ui.label("COST: ").classes(add="text-bold text-sky-300 text-lg"):
-              ui.label(f"{sum([item['ordered_price'] for item in requisition['medicines'] if not item['cancelled'] and item['ordered']]):,.2f} TZS").classes(add="inline ml-1 text-yellow-500 text-bold uppercase")
+    self.requisition_display_panel.clear()
+    with self.requisition_display_panel:
+      #Loading spinner
+      with html.div().classes(add="grow w-full flex flex-col justify-center items-center") as spinner_display:
+        PageLoading()
+      
+      #Main display
+      main_display = html.div().classes(add="grow w-full py-2 lg:p-0 flex flex-col bg-sky-50")
+      main_display.visible = False
+      
+      with main_display:
+        #Large screen
+        main_grid = ui.aggrid(
+          options={
+            "columnDefs":[
+              {"headerName":"","field":"sno","width":100},
+              {"headerName":"NAME","field":"name","sortable":True,"filter":True,"floatingFilter":True,"width":500},
+              {"headerName":"LAST COUNT","field":"last_count","type":"rightAligned"},
+              {"headerName":"CLOSING BALANCE","field":"current_balance","type":"rightAligned","width":300},
+              {"headerName":"AMC","field":"amc","type":"rightAligned"},
+              {"headerName":"MOS","field":"mos","type":"rightAligned"},
+              {"headerName":"ORDER QTY","field":"ordered_amount","type":"rightAligned"},
+              {"headerName":"ORDER PRICE","field":"ordered_price","type":"rightAligned"}
+            ],
+            "rowData":[],
+            "defaultColDef":{
+              "headerClass":"text-bold text-harmony",
+              "cellClass":"uppercase"
+            }
+          },
+          theme="quartz"
+        ).classes(add="lg-show grow w-full animate__animated animate__fadeIn").on("cellClicked",lambda e:self.MedicineDialog(e.args["data"],new=True))
         
-        with html.section().classes(add="flex flex-col justify-center"):
-          ui.button(icon="fas fa-circle-xmark fa-xl",color="",on_click=self.requisition_dialog.close).classes(add="bg-inherit m-0 px-3 text-lg text-bold text-red-500")
+        #Small screen
+        scroll_panel = ui.scroll_area().props(add="").classes(add="lg:hidden grow w-full")
     
-      #Display
-      with html.div().classes(add="grow w-full p-1 flex flex-col gap-3"):
-        if requisition["received"]:
-          #Small screen
-          with ui.scroll_area().classes(add="lg:hidden grow w-full rounded shadow-md shadow-[#07004d] py-3"):
-            for medicine in self.medicines:
-              with ui.button(color="",on_click=lambda e:self.MedicineDialog(medicine=[medicine for medicine in self.medicines if medicine["requisition_medicine_id"] == e.sender.props["id"].lower()][0],requisition=requisition,ordered=requisition["placed"])).props(add=f"elevated id={medicine['requisition_medicine_id']}").classes(add=f"w-full h-fit p-1 bg-sky-100 shadow-md shadow-[#07004d] flex flex-row"):
-                #Index
-                ui.label(str(self.medicines.index(medicine) + 1)).classes(add="size-8 rounded-full ring-1 ring-offset-1 ring-[#07004d] bg-harmony flex flex-col justify-center text-sky-300 text-lg font-semibold")
-                #Details
-                with html.div().classes(add="grow ml-1 h-full flex flex-col gap-1"):
-                  #Identity
-                  with html.section().classes(add="w-full px-1 flex flex-col md:flex-row justify-between font-semibold"):
-                    ui.label(medicine['name']).classes(add="text-start text-lg")
-                  
-                  #Stock details
-                  with html.section().classes(add="w-full px-1 flex flex-row justify-between gap-3 font-semibold"):
-                    ui.label(medicine['type']).classes(add="text-start md:text-end italic text-gray-700")
-                    with ui.label("AMC").classes(add="text-gray-700"):
-                      ui.label(f"{self.amc(medicine):,.0f}").classes(add="inline ml-1 text-sky-700")
-                    with ui.label("MOS").classes(add="text-gray-700"):
-                      ui.label(f"{self.mos(medicine):,.0f}").classes(add="inline ml-1 text-sky-700")
-    
-                  #Stats
-                  with html.div().classes(add="w-full px-1 flex flex-row justify-between font-semibold"):
-                    with ui.label("MAIN STORE").classes(add="text-gray-700"):
-                      ui.label(f"{medicine['store_balance']:,.0f}").classes(add="inline ml-1 text-sky-700")
-                    with ui.label("DISPENSING STORE").classes(add="text-gray-700"):
-                      ui.label(f"{medicine['dispensing_balance']:,.0f}").classes(add="inline ml-1 text-sky-700")
+    #Cosmetics
+    main_display.visible = False
 
-          #Large screen
-          ui.aggrid(
-            {
-              "columnDefs":[
-                {"headerName":"S/No","field":"sno","width":100},
-                {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","floatingFilter":True,"width":450},
-                {"headerName":"TYPE","field":"type","width":150},
-                {"headerName":"UNIT","field":"unit","width":150},
-                {"headerName":"BRAND NAME","field":"brand_name"},
-                {"headerName":"MANUFACTURER","field":"manufacturer"},
-                {"headerName":"EXPIRY DATE","field":"expire_date","width":200},
-                {"headerName":"STORE","field":"store_balance","width":150},
-                {"headerName":"DISPENSING","field":"dispensing_balance"}
-              ],
-              "rowData":[
-                {
-                  "sno":self.medicines.index(medicine) + 1,
-                  "name":medicine["name"],
-                  "type":medicine["type"],
-                  "unit":medicine["order_unit"],
-                  "brand_name":medicine["brand_name"] if medicine["brand_name"] else "---",
-                  "manufacturer":medicine["manufacturer"] if medicine["manufacturer"] else "---",
-                  "expire_date":medicine["expire_date"].strftime("%b %Y") if medicine["expire_date"] else "---",
-                  "store_balance":f"{medicine['store_balance']:,.0f}",
-                  "dispensing_balance":f"{medicine['dispensing_balance']:,.0f}"
-                }
-                for medicine in self.medicines
-              ]
-            },theme="quartz"
-            ).style(add="height:350px").classes(add="lg-show grow w-full bg-sky-300 text-sm uppercase").on("cellClicked",lambda e:self.MedicineDialog(medicine=[medicine for medicine in self.medicines if medicine["name"] == e.args["data"]["name"].lower()][0],requisition=requisition,ordered=requisition["placed"]))
-          
-        elif requisition["placed"]:
-          #Small screen
-          with ui.scroll_area().classes(add="lg:hidden grow w-full"):
-            for medicine in ordered_medicines:
-              with ui.button(color="",on_click=lambda e:self.MedicineDialog(medicine=[medicine for medicine in self.medicines if medicine["requisition_medicine_id"] == e.sender.props["id"].lower()][0],requisition=requisition,ordered=requisition["placed"])).props(add=f"elevated id={medicine['requisition_medicine_id']}").classes(add=f"w-full h-fit p-1 bg-sky-100 ring-2 ring-{self.stock_status_color(medicine)} flex flex-row"):
-                #Index
-                ui.label(str(self.medicines.index(medicine) + 1)).classes(add="size-8 rounded-full ring-1 ring-offset-1 ring-[#07004d] bg-harmony flex flex-col justify-center text-sky-300 text-lg font-semibold")
-                #Details
-                with html.div().classes(add="grow ml-1 h-full flex flex-col gap-1"):
-                  #Identity
-                  with html.section().classes(add="w-full px-1 font-semibold"):
-                    ui.label(medicine['name']).classes(add="text-start text-lg")
-                  with html.section().classes(add="w-full px-1 flex flex-row justify-between font-semibold"):
-                    ui.label(medicine['type']).classes(add="text-start md:text-end italic text-gray-600")
-                    ui.label(self.uom(medicine)).classes(add="text-start md:text-end italic text-gray-600")
-                  
-                  #Manufacturing details
-                  with html.section().classes(add="w-full px-1 flex flex-row justify-between font-semibold"):
-                    with html.span():
-                      html.span().classes(add="mr-1 fa-solid fa-hands-asl-interpreting text-gray-700")
-                      html.span(medicine["brand_name"] if medicine["brand_name"] else "---").classes(add="text-sky-700")
-                    with html.span():
-                      html.span().classes(add="mr-1 fa-solid fa-industry text-gray-700")
-                      html.span(medicine['manufacturer'] if medicine["manufacturer"] else "---").classes(add="text-sky-700")
-                    with html.span():
-                      html.span().classes(add="mr-1 fa-solid fa-hourglass-end text-gray-700")
-                      html.span(medicine["expire_date"].strftime("%b %Y") if medicine["expire_date"] else "---").classes(add="text-sky-700")
-    
-                  #Stats
-                  with html.div().classes(add="w-full px-1 flex flex-row justify-between font-semibold"):
-                    with ui.label("STORE BALANCE").classes(add="text-gray-600"):
-                      ui.label(f"{medicine['store_balance']:,.0f}").classes(add="inline ml-1 text-sky-700")
-                    with ui.label("DISPENSING BALANCE").classes(add="text-gray-600"):
-                      ui.label(f"{medicine['dispensing_balance']:,.0f}").classes(add="inline ml-1 text-sky-700")
-            
-          #Large Screen
-          ui.aggrid(
-            {
-              "columnDefs":[
-                {"headerName":"S/No","field":"sno","width":100},
-                {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","width":450},
-                {"headerName":"TYPE","field":"type","width":150},
-                {"headerName":"UNIT","field":"unit","width":150},
-                {"headerName":"BRAND NAME","field":"brand_name"},
-                {"headerName":"MANUFACTURER","field":"manufacturer"},
-                {"headerName":"BATCH NO","field":"batch_no"},
-                {"headerName":"MFG DATE","field":"mfg_date","width":200},
-                {"headerName":"EXPIRY DATE","field":"expire_date","width":200},
-                {"headerName":"STATUS","field":"status","cellClassRules":{"text-green-600 text-bold":"x == 'Received'","text-red-600 text-bold":"x == 'Rejected'"}},
-                {"headerName":"AMOUNT","field":"amount"},
-                {"headerName":"COST (TZS)","field":"cost"}
-              ],
-              "rowData":[
-                {
-                  "sno":self.medicines.index(medicine) + 1,
-                  "name":medicine["name"],
-                  "type":medicine["type"],
-                  "unit":self.uom(medicine),
-                  "brand_name":medicine["brand_name"] if medicine["brand_name"] else "---",
-                  "manufacturer":medicine["manufacturer"] if medicine["manufacturer"] else "---",
-                  "batch_no":medicine["batch_no"] if medicine["batch_no"] else "---",
-                  "mfg_date":medicine["mfg_date"].strftime("%b %Y") if medicine["mfg_date"] else "---",
-                  "expire_date":medicine["expire_date"].strftime("%b %Y") if medicine["expire_date"] else "---",
-                  "status":"Received" if medicine["received_amount"] else "Rejected" if medicine["rejected"] else "---",
-                  "amount":f"{medicine['received_amount']:,.0f}" if medicine['received'] else f"{medicine['rejected_amount']:,.0f}" if medicine["rejected"] else "---",
-                  "cost":f"{medicine['received_price']:,.2f}" if medicine['received'] else f"{medicine['rejected_price']:,.2f}" if medicine["rejected"] else "---"
-                }
-                for medicine in self.medicines
-              ]
-            },theme="quartz"
-            ).style(add="height:350px").classes(add="lg-show grow w-full bg-sky-300 text-sm uppercase").on("cellClicked",lambda e:self.MedicineDialog(medicine=[medicine for medicine in self.medicines if medicine["name"] == e.args["data"]["name"].lower()][0],requisition=requisition,ordered=requisition["placed"]))
-          
-          #Totals & Buttons
-          with html.div().classes(add="w-full p-2 flex flex-row justify-between gap-5"):
-            #Totals
-            with html.div().classes(add="w-full lg:w-fit flex flex-row justify-center lg:justify-between"):
-              with ui.label("TOTAL COST").classes(add="w-fit rounded p-2 shadow-md shadow-[#07004d] text-xl text-bold text-black"):
-                ui.label(f"{sum([medicine['received_price'] for medicine in self.medicines if not medicine['cancelled']]):,.2f} TZS").classes(add="inline ml-2 text-sky-700")
-            #Buttons
-            with html.div().classes(add="w-full lg:w-fit flex flex-row justify-center lg:justify-between gap-5"):
-              ui.button(text="RECEIVE",color="",on_click=lambda e:self.RequisitionConfirmationDialog(requisition=requisition,receive=True)).props(add="glossy").classes(add="bg-harmony text-yellow-500 text-bold text-xl")
-      
-        elif requisition["initiated"]:
-          #Small screen
-          with ui.scroll_area().classes(add="lg:hidden grow w-full py-3 rounded shadow-md shadow-[#07004d]"):
-            for medicine in self.medicines:
-              with ui.button(color="",on_click=lambda e:self.MedicineDialog(medicine=[medicine for medicine in self.medicines if medicine["requisition_medicine_id"] == e.sender.props["id"].lower()][0],requisition=requisition,ordered=requisition["placed"])).props(add=f"elevated id={medicine['requisition_medicine_id']}").classes(add=f"w-full h-fit p-1 bg-sky-100 shadow-md shadow-[#07004d] flex flex-row"):
-                #Index
-                ui.label(str(self.medicines.index(medicine) + 1)).classes(add="size-8 rounded-full ring-1 ring-offset-1 ring-[#07004d] bg-harmony flex flex-col ga-2 justify-center text-sky-300 text-lg font-semibold")
-                #Details
-                with html.div().classes(add="grow ml-1 h-full flex flex-col gap-1"):
-                  #Identity
-                  with html.section().classes(add="w-full p1-2 shadow-xs shadow-[#07004d] font-semibold"):
-                    with html.div().classes(add=""):
-                      ui.label(medicine['name']).classes(add="text-start text-lg")
-                    with html.section().classes(add="w-full px-1 flex flex-row justify-between font-semibold"):
-                      ui.label(medicine['type']).classes(add="text-start md:text-end italic text-gray-600")
-                      ui.label(self.uom(medicine)).classes(add="text-start md:text-end italic text-gray-600")
-                      ui.label(f"{medicine['unit_price']} TZS/Unit").classes(add="text-start md:text-end italic text-gray-600")
-                                
-                  #Stock details
-                  with html.section().classes(add="w-full px-1 grid grid-cols-3 justify-start font-semibold"):
-                    #Start balance
-                    with ui.label("START BALANCE").classes(add="col-start-1 col-span-2 row-start-1 text-start text-gray-700"):
-                      ui.label(f"{medicine["initial_store_balance"]:,}").classes(add="inline ml-1 text-sky-600")
-                    #Closing balance
-                    with ui.label("CLOSING BALANCE").classes(add="col-start-1 col-span-2 row-start-2 text-start text-gray-700"):
-                      ui.label(f"{medicine["physical_count"]:,}").classes(add="inline ml-1 text-sky-600")
-                    #AMC
-                    with ui.label("AMC").classes(add="col-start-3 row-start-1 text-end text-gray-700"):
-                      ui.label(f"{medicine["amc"]:,}").classes(add="inline ml-1 text-sky-600")
-                    #MOS
-                    with ui.label("MOS").classes(add="col-start-3 row-start-2 text-end text-gray-700"):
-                      ui.label(f"{self.mos(medicine):,}").classes(add="inline ml-1 text-sky-600")
-    
-                  #Current Order
-                  with html.div().classes(add="w-full px-1 flex flex-row justify-between font-semibold"):
-                    #Order Amount
-                    with ui.label("ORDER QTY").classes(add="col-start-1 row-start-1 text-start text-gray-700"):
-                      ui.label(f"{medicine["ordered_amount"]:,}").classes(add="inline ml-1 text-sky-600")
-                    #Total cost
-                    with ui.label("TOTAL COST").classes(add="col-start-1 row-start-1 text-start text-gray-700"):
-                      ui.label(f"{medicine['ordered_price']:,.2f}").classes(add="inline ml-1 text-sky-600")
-          
-          #Large Screen
-          ui.aggrid(
-            {
-              "columnDefs":[
-                {"headerName":"S/No","field":"sno","width":100},
-                {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","width":450},
-                {"headerName":"TYPE","field":"type"},
-                {"headerName":"UoM","field":"uom","width":170},
-                {"headerName":"START BALANCE","field":"start_balance"},
-                {"headerName":"AMC","field":"amc","width":120},
-                {"headerName":"CLOSING BALANCE","field":"closing_balance"},
-                {"headerName":"MOS","field":"mos","width":120},
-                {"headerName":"ORDER AMOUNT","field":"order_amount"},
-                {"headerName":"UNIT PRICE (TZS)","field":"unit_price"},
-                {"headerName":"TOTAL PRICE (TZS)","field":"cost"}
-              ],
-              "rowData":[
-                {
-                  "sno":self.medicines.index(medicine) + 1,
-                  "name":medicine["name"],
-                  "type":medicine["type"],
-                  "uom":self.uom(medicine),
-                  "start_balance":medicine["initial_store_balance"],
-                  "amc":medicine["amc"],
-                  "closing_balance":medicine["physical_count"],
-                  "mos":self.mos(medicine),
-                  "order_amount":medicine["ordered_amount"],
-                  "unit_price":medicine["unit_price"],
-                  "cost":f"{medicine['ordered_price']:,.2f}"
-                }
-                for medicine in self.medicines
-              ]
-            },theme="quartz"
-            ).style(add="height:350px").classes(add="lg-show grow w-full bg-sky-300 uppercase").on("cellClicked",lambda e:self.MedicineDialog(medicine=[medicine for medicine in self.medicines if medicine["name"] == e.args["data"]["name"].lower()][0],requisition=requisition,ordered=requisition["placed"]))
-          #Totals & Buttons
-          with html.div().classes(add="w-full p-2 flex flex-row justify-between gap-5"):
-            #Totals
-            with html.div().classes(add="w-full lg:w-fit flex flex-row justify-center lg:justify-between"):
-              with ui.label("TOTAL COST").classes(add="w-fit rounded p-2 shadow-md shadow-[#07004d] text-xl text-bold text-black"):
-                ui.label(f"{sum([medicine['ordered_price'] for medicine in self.medicines if not medicine['cancelled']]):,.2f} TZS").classes(add="inline ml-2 text-sky-700")
-            #Buttons
-            with html.div().classes(add="w-full lg:w-fit flex flex-row justify-center lg:justify-between gap-5"):
-              ui.button(text="ORDER",color="",on_click=lambda e:self.RequisitionConfirmationDialog(requisition=requisition,order=True)).props(add="glossy").classes(add="bg-harmony text-yellow-500 text-bold text-xl")
-              ui.button(text="CANCEL",color="",on_click=lambda e:self.RequisitionConfirmationDialog(requisition=requisition,cancel=True)).props(add="glossy").classes(add="bg-harmony text-rose-500 text-bold text-xl")
-      
-        else:
-          #Small screen
-          with ui.scroll_area().classes(add="lg:hidden grow w-full py-3 rounded shadow-md shadow-[#07004d]"):
-            for medicine in self.medicines:
-              with ui.button(color="",on_click=lambda e:self.MedicineDialog(medicine=[medicine for medicine in self.medicines if medicine["requisition_medicine_id"] == e.sender.props["id"].lower()][0],requisition=requisition,ordered=requisition["placed"])).props(add=f"elevated id={medicine['requisition_medicine_id']}").classes(add=f"w-full h-fit p-1 bg-sky-100 shadow-md shadow-[#07004d] flex flex-row"):
-                #Index
-                ui.label(str(self.medicines.index(medicine) + 1)).classes(add="size-8 rounded-full ring-1 ring-offset-1 ring-[#07004d] bg-harmony flex flex-col ga-2 justify-center text-sky-300 text-lg font-semibold")
-                #Details
-                with html.div().classes(add="grow ml-1 h-full flex flex-col gap-1"):
-                  #Identity
-                  with html.section().classes(add="w-full p1-2 shadow-xs shadow-[#07004d] font-semibold"):
-                    with html.div().classes(add=""):
-                      ui.label(medicine['name']).classes(add="text-start text-lg")
-                    with html.section().classes(add="w-full px-1 flex flex-row justify-between font-semibold"):
-                      ui.label(medicine['type']).classes(add="text-start md:text-end italic text-gray-600")
-                      ui.label(self.uom(medicine)).classes(add="text-start md:text-end italic text-gray-600")
-                      ui.label(f"{medicine['unit_price']:,.2f} TZS/Unit").classes(add="text-start md:text-end italic text-gray-600")
-                                
-                  #Stock details
-                  with html.section().classes(add="w-full px-1 grid grid-cols-3 justify-start font-semibold"):
-                    #Start balance
-                    with ui.label("START BALANCE").classes(add="col-start-1 col-span-2 row-start-1 text-start text-gray-700"):
-                      ui.label(f"{medicine["initial_store_balance"]:,.0f}").classes(add="inline ml-1 text-sky-600")
-                    #Closing balance
-                    with ui.label("CLOSING BALANCE").classes(add="col-start-1 col-span-2 row-start-2 text-start text-gray-700"):
-                      ui.label(f"{medicine["physical_count"]:,.0f}").classes(add="inline ml-1 text-sky-600")
-                    #AMC
-                    with ui.label("AMC").classes(add="col-start-3 row-start-1 text-end text-gray-700"):
-                      ui.label(f"{medicine["amc"]:,.0f}").classes(add="inline ml-1 text-sky-600")
-                    #MOS
-                    with ui.label("MOS").classes(add="col-start-3 row-start-2 text-end text-gray-700"):
-                      ui.label(f"{self.mos(medicine):,}").classes(add="inline ml-1 text-sky-600")
-    
-                  #Current Order
-                  with html.div().classes(add="w-full px-1 flex flex-row justify-between font-semibold"):
-                    #Order Amount
-                    with ui.label("ORDER QTY").classes(add="col-start-1 row-start-1 text-start text-gray-700"):
-                      ui.label(f"{medicine["ordered_amount"]:,}").classes(add="inline ml-1 text-sky-600")
-                    #Total cost
-                    with ui.label("TOTAL COST").classes(add="col-start-1 row-start-1 text-start text-gray-700"):
-                      ui.label(f"{medicine['ordered_price']:,.2f}").classes(add="inline ml-1 text-sky-600")
-          
-          #Large Screen
-          ui.aggrid(
-            {
-              "columnDefs":[
-                {"headerName":"S/No","field":"sno","width":100},
-                {"headerName":"NAME","field":"name","filter":"agTextColumnFilter","width":450},
-                {"headerName":"TYPE","field":"type"},
-                {"headerName":"UoM","field":"uom","width":170},
-                {"headerName":"START BALANCE","field":"start_balance"},
-                {"headerName":"AMC","field":"amc","width":120},
-                {"headerName":"CLOSING BALANCE","field":"closing_balance"},
-                {"headerName":"MOS","field":"mos","width":120},
-                {"headerName":"ORDER AMOUNT","field":"order_amount"},
-                {"headerName":"UNIT PRICE (TZS)","field":"unit_price"},
-                {"headerName":"TOTAL PRICE (TZS)","field":"cost"}
-              ],
-              "rowData":[
-                {
-                  "sno":self.medicines.index(medicine) + 1,
-                  "name":medicine["name"],
-                  "type":medicine["type"],
-                  "uom":self.uom(medicine),
-                  "start_balance":medicine["initial_store_balance"],
-                  "amc":medicine["amc"],
-                  "closing_balance":medicine["physical_count"],
-                  "mos":self.mos(medicine),
-                  "order_amount":medicine["ordered_amount"],
-                  "unit_price":medicine["unit_price"],
-                  "cost":f"{medicine['ordered_price']:,.2f}"
-                }
-                for medicine in self.medicines
-              ]
-            },theme="quartz"
-            ).style(add="height:350px").classes(add="lg-show grow w-full bg-sky-300 uppercase").on("cellClicked",lambda e:self.MedicineDialog(medicine=[medicine for medicine in self.medicines if medicine["name"] == e.args["data"]["name"].lower()][0],requisition=requisition,ordered=requisition["placed"]))
-          #Totals & Buttons
-          with html.div().classes(add="w-full p-2 flex flex-row justify-between gap-5"):
-            #Totals
-            with html.div().classes(add="w-full lg:w-fit flex flex-row justify-center lg:justify-between"):
-              with ui.label("TOTAL COST").classes(add="w-fit rounded p-2 shadow-md shadow-[#07004d] text-xl text-bold text-black"):
-                ui.label(f"{sum([medicine['ordered_price'] for medicine in self.medicines if not medicine['cancelled']]):,.2f} TZS").classes(add="inline ml-2 text-sky-700")
-            #Buttons
-            with html.div().classes(add="w-full lg:w-fit flex flex-row justify-center lg:justify-between gap-5"):
-              ui.button(text="INITIATE",color="",on_click=lambda e:self.RequisitionConfirmationDialog(requisition=requisition,initiate=True)).props(add="glossy").classes(add="bg-harmony text-yellow-500 text-bold text-xl")
-              ui.button(text="CANCEL",color="",on_click=lambda e:self.RequisitionConfirmationDialog(requisition=requisition,cancel=True)).props(add="glossy").classes(add="bg-harmony text-rose-500 text-bold text-xl")
-    
-  def MedicineDialog(self,medicine:dict,requisition:dict,ordered:bool):
-    """A method to display medicine dialog"""
-    #ALERTS
-    if not ordered and self.mos(medicine) > 4:
-      ui.notify(message="This item is overstocked!",type="warning",position="center")
-    
+    #Timer
+    ui.timer(0.1,show_main_display,once=True)
+  
+  def MedicinesReceivingDisplay(self,medicines):
+    """"""
     #DATA
-    medicine = medicine
-    medicine["transfer_balance"] = 0
-    if not requisition["received"]:
-      medicine["received_amount"] = medicine["ordered_amount"]
-      medicine["received_price"] = medicine["ordered_price"]
+    for medicine in medicines:
+      medicine["sno"] = medicines.index(medicine) + 1
+    self.current_medicines = medicines   #This is for refreshing the medicines panel after editing a given medicines
 
-    #MODS
-    def display_units(amount=None):
-      if not amount:
-        return
-
-      #Update units display
-      units_display.clear()
-      with units_display.classes(add="animated__animate animate__fadeIn animate__slow"):
-        if amount:
-          ui.label(f"{round(int(amount)/medicine['order_unit_size']):,}").classes(add="text-center text-sky-700")
-        else:
-          ui.label(str(0)).classes(add="w-full text-center text-sky-700")
+    #UI
+    self.requisition_display_panel.clear()
+    with self.requisition_display_panel:
+      #Main display
+      with html.div().classes(add="grow w-full py-2 lg:p-0 flex flex-col bg-sky-50"):
+        #Large screen
+        ui.aggrid(
+          options={
+            "columnDefs":[
+              {"headerName":"","field":"sno","width":100},
+              {"headerName":"NAME","field":"name","sortable":True,"filter":True,"floatingFilter":True,"width":500},
+              {"headerName":"EXPIRY DATE","field":"expiry_date","type":"rightAligned"},
+              {"headerName":"ORDERED QTY","field":"ordered_amount","type":"rightAligned"},
+              {"headerName":"ORDERED PRICE","field":"ordered_price","type":"rightAligned","width":200},
+              {"headerName":"RECEIVED QTY","field":"received_amount","type":"rightAligned"},
+              {"headerName":"RECEIVED PRICE","field":"received_price","type":"rightAligned"},
+              {"headerName":"REJECTED QTY","field":"rejected_amount","type":"rightAligned"},
+            ],
+            "rowData":[{
+              "sno":medicines.index(medicine) + 1,
+              "name":medicine["medicine_name"],
+              "expiry_date":medicine["expire_date"].strftime("%b %Y") if medicine["expire_date"] else "---",
+              "ordered_amount":f"{medicine['ordered_amount']:,.0f}",
+              "ordered_price":f"{medicine["ordered_price"]:,.2f}",
+              "received_amount":f"{medicine['received_amount']:,.0f}",
+              "received_price":f"{medicine["received_price"]:,.2f}",
+              "rejected_amount":f"{medicine['rejected']:,.0f}",
+              "rejected_price":f"{medicine["rejected_price"]:,.2f}",
+              "medicine_id":medicine["medicine_id"]
+            } for medicine in medicines],
+            "defaultColDef":{
+              "headerClass":"text-bold text-harmony",
+              "cellClass":"uppercase"
+            }
+          },
+          theme="quartz"
+        ).classes(add="lg-show grow w-full animate__animated animate__fadeIn").on("cellClicked",lambda e:self.MedicineDialog(data=[medicine for medicine in medicines if medicine["medicine_id"] == e.args["data"]["medicine_id"]][0],ordered=True))
+        
+        #Small screen
+        with ui.scroll_area().props(add="").classes(add="lg:hidden grow w-full"):
+          for medicine in medicines:
+            self.SmallScreenMedicineDisplay(medicine,ordered=True)
     
-      #Update medicine dialog
-      self.medicine_dialog.update()
+  def ReceivedMedicinesDisplay(self,medicines):
+    """"""
+    #DATA
+    self.current_medicines = medicines   #This is for refreshing the medicines panel after editing a given medicines
+
+    #FXS
+    async def show_main_display():
+      medicines = [await self.fetch_medicine_data(medicine=medicine,index=self.current_medicines.index(medicine),received=True) for medicine in self.current_medicines]
+
+      #Large screen
+      main_grid.options["rowData"] = medicines
+      main_grid.update()
+
+      #Small Screen
+      with scroll_panel:
+        for medicine in medicines:
+          self.SmallScreenMedicineDisplay(medicine,received=True)
+
+      spinner_display.visible = False
+      main_display.visible = True
+
+    #UI
+    self.requisition_display_panel.clear()
+    with self.requisition_display_panel:
+      #Loading spinner
+      with html.div().classes(add="grow w-full flex flex-col justify-center items-center") as spinner_display:
+        PageLoading()
+      
+      #Main display
+      main_display = html.div().classes(add="grow w-full py-2 lg:p-0 flex flex-col bg-sky-50")
+      main_display.visible = False
+      
+      with main_display:
+        #Large screen
+        main_grid = ui.aggrid(
+          options={
+            "columnDefs":[
+              {"headerName":"","field":"sno","width":100},
+              {"headerName":"NAME","field":"name","sortable":True,"filter":True,"floatingFilter":True,"width":500},
+              {"headerName":"EXPIRY DATE","field":"expiry_date","type":"rightAligned"},
+              {"headerName":"MAIN STORE","field":"main_balance","type":"rightAligned"},
+              {"headerName":"DISPENSING","field":"dispensing_balance","type":"rightAligned"},
+              {"headerName":"AMC","field":"amc","type":"rightAligned"},
+              {"headerName":"ADC","field":"adc","type":"rightAligned"},
+              {"headerName":"MOS","field":"mos","type":"rightAligned"},
+              {"headerName":"DOS","field":"dos","type":"rightAligned","headerTooltip":"Days of consumption"},
+              {"headerName":"LAST COUNT","field":"last_count","type":"rightAligned"}
+            ],
+            "rowData":[],
+            "defaultColDef":{
+              "headerClass":"text-bold text-harmony",
+              "cellClass":"uppercase"
+            }
+          },
+          theme="quartz"
+        ).classes(add="lg-show grow w-full animate__animated animate__fadeIn").on("cellClicked",lambda e:self.MedicineDialog(e.args["data"],received=True))
+        
+        #Small screen
+        scroll_panel = ui.scroll_area().props(add="").classes(add="lg:hidden grow w-full")
+    
+    #Cosmetics
+    main_display.visible = False
+
+    #Timer
+    ui.timer(0.1,show_main_display,once=True)
+  
+  def SmallScreenMedicineDisplay(self,medicine,new:bool=False,ordered:bool=False,received:bool=False):
+    """Displays a button widget for one medicine in medicines display panels above"""
+    #DATA
+    medicine["name"] = medicine["medicine_name"] if "medicine_name" in medicine else medicine["name"]
     
     #UI
-    with ui.dialog() as self.medicine_dialog,html.div().style(add=f"min-width:{ '50' if medicine['received'] else '60'}%;").classes(add="bg-sky-100 p-0.5"):
-      #Title
-      ui.label(medicine["name"]).classes(add="w-full bg-harmony p-1 rounded-t text-2xl lg:text-3xl text-bold text-center text-yellow-500 uppercase")
-      #Separator
-      ui.separator().classes(add="w-full bg-[#09026f]")
-      
-      #Updating received medicine
-      if medicine["received"]:
-        with html.div().classes(add="w-full p-3 flex flex-col gap-5"):
-          #Transfer to dispensing store
-          with ui.expansion(text="TRANSFER TO DISPENSING STORE").classes(add="w-full rounded shadow-md shadow-[#07004d]"):
-            with html.div().classes(add="w-full bg-harmony flex flex-row justify-around gap-2 p-2"):
-              with ui.label("STORE:").classes(add="bg-inherit text-center text-sky-300 text-bold text-xl lg:text-3xl"):
-                ui.label(f"{medicine['store_balance']:,.0f}").classes(add="inline ml-0.5 bg-inherit text-yellow-500 text-bold text-xl lg:text-3xl")
-              with ui.label("DISPENSING:").classes(add="bg-inherit text-center text-yellow-50 text-bold text-xl lg:text-3xl"):
-                ui.label(f"{medicine['dispensing_balance']:,.0f}").classes(add="inline ml-0.5 bg-inherit text-yellow-500 text-bold text-xl lg:text-3xl")
-            with html.div().classes(add="w-full flex flex-row justify-center gap-5 p-0.5"):
-              ui.number(label=f"No of {medicine['order_unit']}s",min=1,max=medicine["store_balance"]).bind_value(medicine,"transfer_balance").props(add=f"{'' if medicine['store_balance'] else 'disable'} label-color='#07004d' input-class='font-medium'").classes(add="w-40 rounded shadow-md shadow-[#07004d] px-5 bg-sky-50 text-lg")
-              ui.button(text="TRANSFER",color="",on_click=lambda e:self.update_medicine(medicine=medicine,requisition=requisition,transfer=True)).props(add=f"{'' if medicine['store_balance'] else 'disable'} glossy").classes(add="bg-harmony text-yellow-500 text-bold text-xl")
+    with ui.button(color="",on_click=lambda e:self.MedicineDialog(medicine,new=new,ordered=ordered,received=received)).props(add="dense").classes(add="w-full p-1 pr-3 bg-sky-100 shadow-md shadow-[#07004d]"):
+      if received:
+        #Header
+        with html.div().classes(add="w-full grid grid-cols-11"):
+          with ui.label(f"{medicine['sno']}. ").classes(add="col-span-10 justify-self-start text-start text-sky-600 text-lg"):
+            ui.label(medicine["name"].upper()).classes(add="inline ml-1 text-harmony")
+          ui.icon(name=f"fa-solid {'fa-circle-check'if medicine["received"] else 'fa-circle-xmark'}",color="green" if medicine["received"] else "red").classes(add="justify-self-end")
+        
+        #Separator
+        ui.separator().classes(add="w-full bg-harmony")
+
+        #Details
+        if medicine["received"]:
+          with html.div().classes(add="w-full grid grid-cols-3"):
+            #Expiry Date
+            ui.chip(text=medicine["expiry_date"],icon="fa-solid fa-hourglass-half fa-sm",color="",text_color="").props(add="dense").classes(add="bg-inherit text-sky-700 text-bold")
+        
+        #Stats
+        with html.div().classes(add="w-full grid grid-cols-5"):
+          #Balances
+          with html.div().classes(add="col-span-3 grid grid-cols-2"):
+            ui.label("MAIN STORE").classes(add="text-start font-bold")
+            ui.label(medicine["main_balance"]).classes(add="justify-self-start font-medium text-sky-700")
+            ui.label("DISPENSING").classes(add="text-start font-bold")
+            ui.label(medicine["dispensing_balance"]).classes(add="justify-self-start font-medium text-sky-700")
           
-          #Physical count
-          with ui.expansion(text="PHYSICAL COUNT").classes(add="w-full rounded shadow-md shadow-[#07004d]"):
-            with html.div().classes(add="w-full bg-harmony flex flex-row justify-around gap-2 p-2"):
-              with ui.label("STORE BALANCE:").classes(add="w-full bg-inherit text-center text-sky-300 text-bold text-xl lg:text-3xl"):
-                ui.label(f"{medicine['store_balance']:,.0f}").classes(add="inline ml-0.5 bg-inherit text-yellow-500 text-bold text-xl lg:text-3xl")
-              if medicine["physical_count_date"]:
-                with ui.label().classes(add="w-full py-0 bg-inherit italic text-md text-center"):
-                  html.span("Last physical count was").classes(add="text-sky-200")
-                  html.span(f"{format_age(medicine['physical_count_date'])} ago").classes(add="ml-1 text-yellow-500")
-            with html.div().classes(add="w-full flex flex-row justify-around gap-x-2 gap-y-5 p-0.5"):
-              ui.number(label="MAIN STORE").bind_value(medicine,"store_balance").classes(add="w-40 rounded shadow-md shadow-[#07004d] px-5 bg-sky-50 text-lg")
-              ui.number(label="DISPENSING STORE").bind_value(medicine,"dispensing_balance").classes(add="w-40 rounded shadow-md shadow-[#07004d] px-5 bg-sky-50 text-lg")
-              ui.button(text="update count",color="",on_click=lambda e:self.update_medicine(medicine=medicine,requisition=requisition,count=True)).props(add="glossy").classes(add="bg-harmony text-yellow-500 text-bold text-xl")
-       
+          #Daily Stats
+          with html.div().classes(add="flex grid grid-cols-3"):
+            ui.label("ADC").classes(add="text-start font-bold")
+            ui.label(medicine["adc"]).classes(add="col-span-2 font-medium text-sky-700")
+            ui.label("DOS").classes(add="text-start font-bold")
+            ui.label(medicine["dos"]).classes(add="col-span-2 font-medium text-sky-700")
+          
+          #Monthly stats
+          with html.div().classes(add="flex grid grid-cols-3"):
+            ui.label("AMC").classes(add="text-start font-bold")
+            ui.label(medicine["amc"]).classes(add="col-span-2 font-medium text-sky-700")
+            ui.label("MOS").classes(add="text-start font-bold")
+            ui.label(medicine["mos"]).classes(add="col-span-2 font-medium text-sky-700")
+                
+      elif ordered:
+        #Header
+        with html.div().classes(add="w-full grid grid-cols-11"):
+          with ui.label(f"{medicine['sno']}. ").classes(add="col-span-10 justify-self-start text-start text-sky-700 text-lg"):
+            ui.label(medicine["name"].upper()).classes(add="inline ml-1 text-harmony")
+          ui.icon(name=f"fa-solid {'fa-circle-check'if medicine["received"] else 'fa-circle-xmark'}",color="green" if medicine["received"] else "red").classes(add="justify-self-end")
+        
+        #Separator
+        ui.separator().classes(add="w-full bg-harmony")
+
+        #Details
+        if medicine["received"]:
+          with html.div().classes(add="w-full grid grid-cols-3"):
+            #Expiry Date
+            ui.chip(text=medicine["expire_date"],icon="fa-solid fa-hourglass-half fa-sm",color="",text_color="").props(add="dense").classes(add="bg-inherit text-sky-700 text-bold")
+        
+        #Stats
+        with html.div().classes(add="w-full p-1 grid grid-cols-2 gap-2"):
+          with html.span().classes(add="w-full flex flex-col gap-0 rounded shadow-sm shadow-[#07004d]"):
+            ui.label("ORDERED QTY").classes(add="rounded-t bg-harmony text-sky-300 text-center font-bold")
+            ui.label(medicine["ordered_amount"]).classes(add="rounded-b font-medium text-sky-700")
+          
+          with html.span().classes(add="w-full flex flex-col gap-0 rounded shadow-sm shadow-[#07004d]"):
+            ui.label("ORDERED PRICE").classes(add="rounded-t bg-harmony text-sky-300 text-center font-bold")
+            ui.label(medicine["ordered_price"]).classes(add="rounded-b font-medium text-sky-700")
+
+          with html.span().classes(add="w-full flex flex-col gap-0 rounded shadow-sm shadow-[#07004d]"):
+            ui.label("RECEIVED QTY").classes(add="rounded-t bg-harmony text-sky-300 text-center font-bold")
+            ui.label(medicine["received_amount"]).classes(add="rounded-b font-medium text-sky-700")
+          
+          with html.span().classes(add="w-full flex flex-col gap-0 rounded shadow-sm shadow-[#07004d]"):
+            ui.label("RECEIVED PRICE").classes(add="rounded-t bg-harmony text-sky-300 text-center font-bold")
+            ui.label(medicine["received_price"]).classes(add="rounded-b font-medium text-sky-700")
+
+          with html.span().classes(add="w-full flex flex-col gap-0 rounded shadow-sm shadow-[#07004d]"):
+            ui.label("REJECTED QTY").classes(add="rounded-t bg-harmony text-sky-300 center font-bold")
+            ui.label(medicine["rejected_amount"]).classes(add="rounded-b font-medium text-sky-700")
+
+          with html.span().classes(add="w-full flex flex-col gap-0 rounded shadow-sm shadow-[#07004d]"):
+            ui.label("REJECTED PRICE").classes(add="rounded-t bg-harmony text-sky-300 text-center font-bold")
+            ui.label(medicine["rejected_price"]).classes(add="rounded-b font-medium text-sky-700")
+        
+      elif new:
+        #Header
+        with html.div().classes(add="w-full grid grid-cols-11"):
+          with ui.label(f"{medicine['sno']}. ").classes(add="col-span-10 justify-self-start text-start text-sky-700 text-lg"):
+            ui.label(medicine["name"].upper()).classes(add="inline ml-1 text-harmony")
+          ui.icon(name=f"fa-solid {'fa-circle-check'if medicine["ordered"] else 'fa-circle-xmark'}",color="green" if medicine["ordered"] else "red").classes(add="justify-self-end")
+        
+        #Separator
+        ui.separator().classes(add="w-full bg-harmony")
+
+        #Stats
+        with html.div().classes(add="w-full grid grid-cols-4"):
+          #Balances
+          with html.div().classes(add="col-span-3 grid grid-cols-2"):
+            ui.label("CLOSING BAL").classes(add="text-start font-bold")
+            ui.label(f"{medicine['current_balance']:,.0f}").classes(add="justify-self-start font-medium text-sky-700")
+            ui.label("ORDERED QTY").classes(add="text-start font-bold")
+            ui.label(f"{medicine['ordered_amount']:,.0f}").classes(add="justify-self-start font-medium text-sky-700")
+          
+          #Daily Stats
+          with html.div().classes(add="flex grid grid-cols-3"):
+            ui.label("AMC").classes(add="text-start font-bold")
+            ui.label(f"{medicine['amc']:,.0f}").classes(add="col-span-2 self-justify-end font-medium text-sky-700")
+            ui.label("MOS").classes(add="text-start font-bold")
+            ui.label(f"{medicine['mos']:,.0f}").classes(add="col-span-2 self-justify-end font-medium text-sky-700")
+
+  def MedicineDialog(self,data,new:bool=False,ordered:bool=False,received:bool=False):
+    """A method to display medicine dialog"""
+    #DATA
+    if received:
+      medicine_id,name = data["medicine_id"],data["name"]
+      inventory_data = {
+        "medicine_name":name,
+        "main_balance":0,
+        "dispensing_balance":0,
+        "transfer_balance":0,
+        "last_count":None,
+        "transferable":False,
+        "main_count":0,
+        "dispensing_coung":0
+      }
+    elif ordered:
+      medicine = data
+    elif new:
+      medicine = data
+
+    #FXS
+    async def update_inventory_data():
+      inventory_data.update(await self.fetch_inventory_data(medicine_id))
+
+      transfer_input.update()
+
+      for spinner in [spinner_1,spinner_2,spinner_3,spinner_4,spinner_5]:
+        spinner.visible = False
+      
+      for label in [main_balance_label,main_balance_label_2,disp_balance_label,disp_balance_label_2,last_count_label]:
+        label.visible = True
+    
+    def calculate_units(value):
+      return math.ceil(value/medicine["order_unit_size"])
+    
+    def calculate_price(unit_price):
+      if unit_price:
+        return unit_price * (medicine["ordered_amount"]/medicine["order_unit_size"])
       else:
-        #Receive medicine
-        if ordered:
-          #Identity
-          with html.section().classes(add="w-full p-2 flex flex-row justify-around gap-3 lg:gap-0"):
-            ui.input(label="BRAND NAME").bind_value(medicine,"brand_name").classes(add="w-full lg:w-auto rounded shadow-md shadow-[#07004d] px-3 bg-white text-lg lg:text-xl uppercase")
-            ui.input(label="MANUFACTURER").bind_value(medicine,"manufacturer").classes(add="w-full lg:w-auto rounded shadow-md shadow-[#07004d] px-3 bg-white text-lg lg:text-xl uppercase")
-            ui.input(label="BATCH/LOT NO").bind_value(medicine,"batch_no").classes(add="w-full lg:w-auto rounded shadow-md shadow-[#07004d] px-3 bg-white text-lg lg:text-xl uppercase")
+        return 0
+
+    #UI
+    with ui.dialog() as self.medicine_dialog,html.div().style(add=f"min-width:30%;min-height:50%;").classes(add="bg-sky-100 p-0.5 flex flex-col gap-0"):
+      #For received medicine
+      if received:
+        #Header
+        with html.header().classes(add="bg-harmony w-full grid grid-cols-11 items-center"):
+          #Title
+          ui.label(name).classes(add="col-span-10 w-full p-1 rounded-t text-2xl lg:text-3xl text-bold text-center text-sky-300 uppercase")
+          ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=self.medicine_dialog.close).classes(add="bg-inherit text-red-600 text-xl justify-self-end")
+        
+        #Body
+        with html.div().classes(add="grow w-full p-2 flex flex-col gap-5"): 
+          #Updating received medicine
+          if received:
+            #Transfer to dispensing store
+            with html.div().classes(add="w-full rounded bg-sky-100 shadow-sm shadow-[#07004d] flex flex-col gap-1"):
+              #Header
+              with html.div().classes(add="w-full flex flex-col"):
+                ui.label("TRANSFER TO DISPENSING STORE").classes(add="w-full p-1 rounded-t bg-harmony text-sky-300 text-bold text-xl text-start")
+              
+              with html.div().classes(add="w-full p-1 grid grid-cols-2 gap-3"):
+                #Main Store balance
+                with ui.label("MAIN STORE:").classes(add="bg-inherit text-center text-harmony text-bold text-xl"):
+                  spinner_1 = ui.spinner(type="dots",size="md").classes(add="inline ml-1")
+                  main_balance_label = ui.label().classes(add="inline ml-1 bg-inherit text-sky-600 text-bold text-xl").bind_text_from(inventory_data,"main_balance",backward=lambda balance:f"{balance:,.0f}")
+              
+                #Dispensing Store balance
+                with ui.label("DISPENSING:").classes(add="bg-inherit text-center text-harmony text-bold text-xl"):
+                  spinner_2 = ui.spinner(type="dots",size="md").classes(add="inline ml-1")
+                  disp_balance_label = ui.label().classes(add="inline ml-1 bg-inherit text-sky-600 text-bold text-xl").bind_text_from(inventory_data,"dispensing_balance",backward=lambda balance:f"{balance:,.0f}")
+              
+              #Inputs & Buttons
+              with html.div().classes(add="w-full p-2 flex flex-row justify-center gap-5 p-0.5").bind_visibility_from(inventory_data,"transferable"):
+                transfer_input = ui.number(label=f"No of {uom(name)}s".upper(),min=inventory_data["main_balance"]).props(add="stack-label").classes(add="w-40 rounded shadow-md shadow-[#07004d] px-5 bg-sky-50 text-lg").bind_value(inventory_data,"transfer_balance")
+                ui.button(text="TRANSFER",color="",on_click=lambda e:self.update_inventory(data=inventory_data,transfer=True)).props(add="glossy").classes(add="bg-harmony text-yellow-500 text-bold text-xl")
+            
+            #Physical count
+            with html.div().classes(add="w-full rounded bg-sky-100 shadow-sm shadow-[#07004d] flex flex-col gap-1"):
+              #Header
+              with html.div().classes(add="w-full rounded-t flex flex-col bg-harmony"):
+                ui.label("PHYSICAL COUNT").classes(add="w-full p-0 px-1 rounded-t bg-inherit text-sky-300 text-bold text-xl text-start")
+                with ui.label("Last Count:").classes(add="p-0 px-1 rounded-t bg-inherit text-sky-100 text-bold text-md text-start"):
+                  spinner_3 = ui.spinner(type="dots",size="md").classes(add="inline ml-1")
+                  last_count_label = ui.label().classes(add="inline ml-1 px-1 text-white text-md").bind_text_from(inventory_data,"last_count",backward=lambda count_date:count_date.strftime("%d %b %Y") if count_date else "---")
+                
+              with html.div().classes(add="w-full p-1 grid grid-cols-2 gap-3"):
+                #Main Store balance
+                with ui.label("MAIN STORE:").classes(add="bg-inherit text-center text-harmony text-bold text-xl"):
+                  spinner_4 = ui.spinner(type="dots",size="md").classes(add="inline ml-1")
+                  main_balance_label_2 = ui.label().classes(add="inline ml-1 bg-inherit text-sky-600 text-bold text-xl").bind_text_from(inventory_data,"main_balance",backward=lambda balance:f"{balance:,.0f}")
+              
+                #Dispensing Store balance
+                with ui.label("DISPENSING:").classes(add="bg-inherit text-center text-harmony text-bold text-xl"):
+                  spinner_5 = ui.spinner(type="dots",size="md").classes(add="inline ml-1")
+                  disp_balance_label_2 = ui.label().classes(add="inline ml-1 bg-inherit text-sky-600 text-bold text-xl").bind_text_from(inventory_data,"dispensing_balance",backward=lambda balance:f"{balance:,.0f}")
+              
+              #Inputs
+              with html.div().classes(add="w-full p-2 flex flex-row justify-center gap-3 p-0.5"):
+                ui.number(label="MAIN STORE").props(add="stack-label").classes(add="w-40 rounded shadow-md shadow-[#07004d] px-5 bg-sky-50 text-lg").bind_value(inventory_data,"main_count")
+                ui.number(label="DISPENSING STORE").props(add="stack-label").classes(add="w-40 rounded shadow-md shadow-[#07004d] px-5 bg-sky-50 text-lg").bind_value(inventory_data,"dispensing_count")
+                ui.button(text="update count",color="",on_click=lambda e:self.update_inventory(inventory_data,count=True)).props(add="glossy").classes(add="bg-harmony text-yellow-500 text-bold text-xl")
+
+        #Cosmetics
+        for label in [main_balance_label,disp_balance_label,last_count_label,main_balance_label_2,disp_balance_label_2]:
+          label.visible = False
+      
+        ui.timer(5,update_inventory_data,once=True)
+      
+      #For ordered medicine
+      elif ordered:
+        #Header
+        with html.header().classes(add="bg-harmony w-full grid grid-cols-11 items-center"):
+          #Title
+          ui.label(medicine["name"]).classes(add="col-span-10 w-full p-1 rounded-t text-2xl lg:text-3xl text-bold text-center text-sky-300 uppercase")
+          ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=self.medicine_dialog.close).classes(add="bg-inherit text-red-600 text-xl justify-self-end")
+        
+        #Body
+        with html.div().classes(add="grow w-full p-2 flex flex-col gap-5"):
           #Dates
-          with html.section().classes(add="w-full p-2 grid grid-cols-2 gap-3"):
-            with ui.input(label="MFG DATE").props(add="readonly").classes(add="w-full shadow-md shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl") as mfg_date_display:
-              with ui.dialog() as calendar:
-                ui.date(mask='YYYY-MM-DD',on_change=calendar.close).props(add=f"bordered square today-btn color='harmony' event-color='orange' first-day-of-week='1' navigation-max-year-month='{datetime.now().strftime("%Y/%m")}'").bind_value(mfg_date_display).bind_value(medicine,"mfg_date")
-                with mfg_date_display.add_slot("prepend"):
-                  ui.icon("fas fa-cake-candles",color="").classes(add="text-harmony").on("click",calendar.open)
-            with ui.input(label="EXPIRY DATE").props(add="id='readonly").classes(add="w-full rounded shadow-md shadow-[#07004d] px-3 bg-white text-lg lg:text-xl") as exp_date_display:
-              with ui.dialog() as calendar:
-                ui.date(mask='YYYY-MM-DD',on_change=calendar.close).props(add=f"bordered square today-btn color='harmony' event-color='orange' first-day-of-week='1' navigation-min-year-month='{datetime.now().strftime("%Y/%m")}'").bind_value(exp_date_display).bind_value(medicine,"expire_date")
-                with exp_date_display.add_slot("prepend"):
-                  ui.icon("fas fa-cake-candles",color="").classes(add="text-harmony").on("click",calendar.open)
+          with ui.input(label="EXPIRY DATE").props(add="id='readonly").classes(add="w-full rounded shadow-md shadow-[#07004d] px-3 bg-white text-lg lg:text-xl") as exp_date_display:
+            with ui.dialog() as calendar:
+              ui.date(mask='YYYY-MM-DD',on_change=calendar.close).props(add=f"bordered square today-btn color='harmony' event-color='orange' first-day-of-week='1' navigation-min-year-month='{datetime.now().strftime("%Y/%m")}'").bind_value(exp_date_display).bind_value(medicine,"expire_date")
+              with exp_date_display.add_slot("prepend"):
+                ui.icon("fas fa-cake-candles",color="").classes(add="text-harmony").on("click",calendar.open)
+                
           #Quantity
           with html.section().classes(add="w-full p-2 grid grid-cols-2  gap-3"):
             ui.number(label="RECEIVED QTY",placeholder=f"Ordered: {medicine['ordered_amount']:,.0f}").bind_value(medicine,"received_amount").classes(add="w-full shadow-md shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl")
             ui.number(label="RECEIVED COST",placeholder=f"Ordered: {medicine['ordered_price']:,.0f}").bind_value(medicine,"received_price").classes(add="w-full shadow-md shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl")
             ui.number(label="REJECTED QTY",placeholder=f"Ordered: {medicine['ordered_amount']:,.0f}").bind_value(medicine,"rejected_amount").classes(add="w-full shadow-md shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl")
             ui.number(label="REJECTED COST",placeholder=f"Ordered: {medicine['ordered_price']:,.0f}").bind_value(medicine,"rejected_price").classes(add="w-full shadow-md shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl")
+          
+          #Space
+          ui.space()
+
           #Button
           with html.div().classes(add="w-full py-2 flex flex-row justify-center"):
-            ui.button(text="RECEIVE MEDICINE",color="",on_click=lambda e:self.update_medicine(medicine=medicine,requisition=requisition,receive=True)).classes(add="bg-harmony text-yellow-500 text-bold text-lg")
+            ui.button(text="PROCESS MEDICINE",color="",on_click=lambda e:self.receive_medicine(data=medicine)).classes(add="bg-harmony text-sky-300 text-bold text-lg")
+      
+      #For new order
+      elif new:
+        #Header
+        with html.header().classes(add="bg-harmony w-full grid grid-cols-11 items-center"):
+          #Title
+          ui.label(medicine["name"]).classes(add="col-span-10 w-full p-1 rounded-t text-2xl lg:text-3xl text-bold text-center text-sky-300 uppercase")
+          ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=self.medicine_dialog.close).classes(add="bg-inherit text-red-600 text-xl justify-self-end")
         
-        #Edit medicine order
-        else:
-          #Header
-          with html.div().classes(add="w-full bg-harmony flex flex-row justify-around gap-3 p-2 text-bold"):
-            #Details
-            with ui.label("UoM:").classes(add="text-sky-300 text-lg lg:text-xl"):
-              ui.label(self.uom(medicine)).classes(add="inline ml-0.5 text-yellow-500 uppercase")
-            with ui.label("BALANCE:").classes(add="text-sky-300 text-lg lg:text-xl"):
-              ui.label(medicine["physical_count"]).classes(add="inline ml-0.5 text-yellow-500 uppercase")
-            with ui.label("AMC:").classes(add="text-sky-300 text-lg lg:text-xl"):
-              ui.label(medicine["amc"]).classes(add="inline ml-0.5 text-yellow-500 uppercase")
-            with ui.label("MOS:").classes(add="text-sky-300 text-lg lg:text-xl"):
-              ui.label(self.mos(medicine)).classes(add="inline ml-0.5 text-yellow-500 uppercase")
+        #Seprator
+        ui.separator().classes(add="w-full bg-[#09026f]")
+
+        #Displays
+        with html.div().classes(add="w-full py-2 bg-harmony grid grid-cols-6 text-bold"):
+          #UOM
+          with ui.label("UOM: ").classes(add="w-full text-sky-400 text-center"):
+            ui.label().classes(add="inline ml-1 text-sky-50 uppercase").bind_text_from(medicine,"order_unit_size",backward=lambda val:f"{int(val)}{uom(medicine_name=medicine['name'],compact=True)}" if val else None).bind_text(medicine,"order_unit")
           
-          #Ordering
-          with html.div().classes(add="w-full p-2 flex flex-row justify-center lg:justify-around gap-5"):
-            #Order amount
-            ui.number(label=f"{medicine['order_unit']}s to order",min=1,on_change=lambda e:display_units(e.value)).bind_value(medicine,"ordered_amount").classes(add="w-36 rounded shadow-md shadow-[#07004d] px-3 bg-sky-50 text-lg lg:text-xl uppercase")
-            #Units display
-            with html.span().classes(add="px-1 rounded shadow-md shadow-[#07004d] flex flex-col text-lg lg:text-xl text-harmony font-semibold"):
-              ui.label("UNITS").classes(add="w-full text-center")
-              with html.span().classes(add="w-full") as units_display:
-                display_units(medicine["ordered_amount"])
-            #Unit cost
-            ui.number(label="UNIT COST(TZS)",min=0,on_change=lambda e:self.medicine_dialog.update()).bind_value(medicine,"unit_price").classes(add="w-32 rounded shadow-md shadow-[#07004d] px-3 bg-sky-50 text-lg lg:text-xl uppercase")
-            #Buttons
-            if not (medicine["ordered"] and medicine["received"]):
-              with html.div().classes(add="w-full lg:w-fit flex flex-row justify-center"):
-                ui.button(text="order medicine",color="",on_click=lambda e:self.update_medicine(medicine=medicine,requisition=requisition,order=True)).props(add="glossy").classes(add="bg-harmony text-yellow-500 text-bold text-lg")
+          #Units display
+          with ui.label("UNITS: ").classes(add="col-span-2 w-full text-sky-400 text-center"):
+            ui.label().classes(add="inline ml-1 text-sky-50").bind_text_from(medicine,"ordered_amount",backward=lambda val:f"{calculate_units(val):,.0f}")
+          
+          #Total price
+          with ui.label("PRICE: ").classes(add="col-span-3 w-full text-sky-400 text-center"):
+            ui.label().classes(add="inline ml-1 text-sky-50 uppercase").bind_text_from(medicine,"unit_price",backward=lambda val:f"{calculate_price(val):,.2f} TZS")
 
+        #Body
+        with html.div().classes(add="w-full p-2 pt-3 grid grid-cols-3 gap-5"):
+          #Order unit size
+          ui.number(label=f"{uom(medicine['name'])}s/UNIT".upper(),min=1).props(add="stack-label").classes(add="w-36 rounded shadow-md shadow-[#07004d] px-3 bg-sky-50 text-lg lg:text-xl uppercase").bind_value(medicine,"order_unit_size")
+          
+          #Order amount
+          ui.number(label=f"{uom(medicine['name'])}s to order".upper(),min=1).props(add="stack-label").classes(add="w-36 rounded shadow-md shadow-[#07004d] px-3 bg-sky-50 text-lg lg:text-xl uppercase").bind_value(medicine,"ordered_amount")
+          
+          #Unit cost
+          ui.number(label="UNIT PRICE(TZS)",min=0,on_change=lambda e:self.medicine_dialog.update()).props(add="stack-label").bind_value(medicine,"unit_price").bind_value_to(medicine,"ordered_price",forward=lambda val:calculate_price(val)).classes(add="w-32 rounded shadow-md shadow-[#07004d] px-3 bg-sky-50 text-lg lg:text-xl uppercase")
+          
+          #Space
+          with html.div().classes(add="w-full col-span-3"):
+            ui.space()
+
+          #Buttons
+          ui.button(text="order medicine",color="",on_click=lambda e:self.order_medicine(medicine)).props(add="glossy").classes(add="col-span-3 justify-self-center bg-harmony text-sky-300 text-bold text-lg")
+
+
+
+      
     self.medicine_dialog.open()
-
+  
+          
 
 class StockAnalysisDisplay():
   """A class for UI and functionalities of stock analysis"""
@@ -6218,7 +6171,7 @@ class StockAnalysisDisplay():
                   ui.label(f"{medicine['dispensing_balance']:,.0f}").classes(add="inline ml-1 text-sky-700")
 
 class FacilityFormulary():
-  def __init__(self,user,formulary=None,parent=None):
+  def __init__(self,user):
     #DATA
     self.user = user
     self.initial_data()
@@ -6229,16 +6182,15 @@ class FacilityFormulary():
       for i in range(2):
         ui.separator().classes(add="lg-show w-full bg-[#09026f]")
       #Header
-      with html.section().classes(add="w-full p-1 rounded-t lg:rounded-0 flex flex-row bg-harmony text-yellow-500"):
+      with html.section().classes(add="w-full p-1 lg:rounded-0 flex flex-row bg-harmony text-yellow-500"):
         with html.div().classes(add="rounded-t-md grow bg-inherit flex flex-row content-center gap-5 lg:gap-1"):
           ui.label("FORMULARY").classes(add="lg:order-2 grow rounded-t text-2xl lg:text-3xl text-bold")
           ui.button(icon="fa-solid fa-circle-plus",color="",on_click=self.MedicineDialog).classes(add="lg:order-1 size-8 rounded-[50%] bg-inherit text-yellow-500")
-          #ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=self.parent.formulary_dialog.close if self.parent.formulary_dialog else None).classes(add="lg:hidden size-8 bg-inherit text-red-500")
-      
+
       #Body
       with html.div().classes(add="grow w-full flex flex-col justify-center content-center") as self.formulary_panel:
         if self.medicines:
-          self.FormularyAggrid(self.medicines)
+          self.FormularyAggrid()
           
         else:
           with html.div().classes(add=""):
@@ -6247,8 +6199,18 @@ class FacilityFormulary():
 
   #FUNCTIONALITIES
   def initial_data(self):
-    self.medicines = get_formulary()
+    self.medicines = [self.format_formulary_medicine(medicine) for medicine in get_formulary()]
     self.template_medicines = get_formulary_medicines()
+
+    self.medicine = {}
+
+  def format_formulary_medicine(self,formulary_medicine):
+    _new_medicine = formulary_medicine._asdict()
+    _new_medicine["schemes"] = [scheme._asdict() for scheme in _new_medicine["schemes"]]
+    for scheme in _new_medicine["schemes"]:
+      scheme["prices"] = [pricing._asdict() for pricing in scheme["prices"]]
+    
+    return _new_medicine
 
   def retrieve_medicine(self,medicine:str):
     """A method that retrieves service details and populate details in ServiceDetailsForm"""
@@ -6256,44 +6218,74 @@ class FacilityFormulary():
       return
     
     medicine = get_formulary_medicine(medicine.lower())
-    medicine["payment"] = self.pricings(medicine)
+
+    if medicine["medicine_id"] in [medicine["medicine_id"] for medicine in self.medicines]:
+      ui.notify(message="Medicine already in the formulary!",position="top",type="warning")
+      return
     
-    self.MedicineDetailsForm(medicine)
-
-
-  def pricings(self,medicine:dict):
-    """Returns a namedtuple object with prices of a 'medicine'"""
-
-    for scheme in medicine["schemes"]:
-      for pricing in scheme["prices"]:
-        pricing["scheme_item_code"] = scheme["scheme_item_code"]
-        pricing["restricted"] = scheme["restricted"]
+    #Formatting medicine
+    medicine["active"] = True
     
-    output = {scheme["scheme_name"]:[pricing for pricing in scheme["prices"] if pricing["active"]][0] for scheme in medicine["schemes"] if scheme.get("active")}
-    output["logger"] = self.user.username
-    output["medicine_id"] = medicine["medicine_id"]
-    if "nhif" in output:
-      output["insured"] = True
+    self.new_medicine_panel.clear()
+    with self.new_medicine_panel.classes(remove="justify-center items-center gap-5",add="gap-1"):
+      self.MedicineDetailsForm(medicine=medicine,new=True)
+
+  async def retrieve_payment_scheme(self,scheme:str,medicine):
+    if not scheme:
+      return
+    
+    scheme = await admin_processor.retrieve_payment_scheme(name=scheme.lower(),medicine=medicine)
+
+    if not scheme:
+      ui.notify(message=f"No details found for {scheme.upper()}",position="top",type="warning")
     else:
-      output["insured"] = False
-      output["nhif"] = {
-        "scheme_id":f"cash-{medicine['medicine_id'].lower()}",
-        "scheme_item_code":"",
-        "copayment":False,
-        "price_range":False,
-        "min":0,
-        "max":0,
-        "standard":0,
-        "priority":0,
-        "topup":0
-      }
+      self.NewPaymentSchemePanel(medicine=medicine,scheme=scheme)
+  
+  def register_payment_scheme_and_pricing(self,scheme,medicine):
+    scheme["prices"] = [scheme["prices"]]
 
-    return output
+    status = admin_db.register_scheme(scheme=scheme,default=True)
 
-  def update_formulary(self,data,edit:bool=False,delete:bool=False):
+    ui.notify(message=status["message"],type=status["type"],position=status["position"])
+
+    if "schemes" in medicine:
+      medicine["schemes"].append(scheme)
+    else:
+      medicine["schemes"] = [scheme]
+    
+    self.initial_data()
+    self.PaymentSchemes(medicine["schemes"])
+
+  def update_pricing(self,pricing):
+    """updates the database if they arent similar"""
+    
+    #Scheme
+    scheme = {"scheme_id":pricing["scheme_id"],"active":pricing["active"],"restricted":pricing["restricted"]}
+
+    #Pricing
+    pricing.pop("active")
+    pricing.pop("restricted")
+
+    if not pricing["price_range"]:
+      pricing["min"],pricing["max"] = 0.0,0.0
+
+    if not pricing["copayment"]:
+      pricing["topup"] = 0.0
+    
+    #Updating database
+    pricing_status = admin_db.register_pricing(pricing)
+    scheme_status = admin_db.update_scheme(scheme)
+
+    if pricing_status["status"]:
+      ui.notify(message=pricing_status["message"],position=pricing_status["position"],type=pricing_status["type"])
+    else:
+      ui.notify(message=scheme_status["message"],position=scheme_status["position"],type=scheme_status["type"])
+
+  async def update_formulary(self,raw_data,edit:bool=False,delete:bool=False):
     """"""
 
-    data = {key:value.lower() for key,value in data.items() if type(value) == str}
+    data = {key:value.lower() for key,value in raw_data.items() if type(value) == str}
+    data["active"] = raw_data["active"]
 
     if edit:
       status = update_formulary(medicine=data)
@@ -6301,15 +6293,21 @@ class FacilityFormulary():
       status = update_formulary(medicine=data,delete=True)
     else:
       status = register_formulary([data])
+      await self.retrieve_payment_scheme(scheme="cash",medicine=data)
+      
 
     ui.notify(message=status["message"],type=status["type"],position=status["position"])
-  
-    self.medicines = get_formulary()
-    self.FormularyAggrid(self.medicines)
-    self.medicine_dialog.close()
-
+    
+    self.initial_data()
+    
+    if edit or delete:
+      self.FormularyAggrid()
+      self.medicine_dialog.close()
+    else:
+      pass
+    
   #DISPLAYS
-  def FormularyAggrid(self,formulary:list[dict]):
+  def FormularyAggrid(self):
     """"""
     #FXS
     def Status(medicine,lg:bool=False):
@@ -6327,32 +6325,22 @@ class FacilityFormulary():
           status = "<span class='fa-solid fa-circle-dot text-red-600 text-bold' ></span>"
       
       return status
-
-    def MiniPayment(medicine):
-      pricings = self.pricings(medicine)
-      pricings.pop("logger")
-      pricings.pop("medicine_id")
-      pricings.pop("insured")
-      return f"<div class='grid grid-cols-2 gap-2 text-bold uppercase'>{''.join([f'<div class="w-full text-center {'col-start-1 text-harmony' if scheme == 'cash' else 'col-start-2 text-yellow-700'}">{scheme}</div>' for scheme,pricing in pricings.items() if pricing['standard'] or pricing["price_range"]])}</div"
     
-    def Payment(medicine:dict,cash:bool=False,nhif:bool=False):
-      def _format_price(price):
-        return f"{price:,.2f}"
+    def CashPrice(medicine):
+      scheme = [scheme for scheme in medicine["schemes"] if scheme["scheme_name"] == "cash"][0]
+      price = [price for price in scheme["prices"] if price["active"]][0]["standard"]
 
-      pricings = self.pricings(medicine)
-      if cash:
-        price = pricings.get("cash")
-        if price["price_range"]:
-          return f"<div class='text-harmony font-semibold'>{price['min']:,.2f} - {price['max']:,.2f}</div>"
-        else:
-          return f"<div class='text-harmony font-semibold'>{price['standard']:,.2f}</div>"
-      
-      if nhif:
-        if "nhif" in pricings:
-          price = pricings.get("nhif")
-          return f"<div class='grid grid-cols-2 gap-5 font-semibold'><div class='grid grid-cols-2 gap-1' ><span class='text-yellow-800' >STANDARD</span><span class='justify-self-end' >{_format_price(price['standard']) if price['standard'] else '---'}</span></div><div class='grid grid-cols-2 gap-1' ><span class='text-yellow-800' >PRIORITY</span><span class='justify-self-end' >{_format_price(price['priority']) if price['priority'] else '---'}</span></div></div>"
-        else:
-          return f"<div class='grid grid-cols-2 gap-3 font-semibold'><div class='grid grid-cols-2 gap-1' ><span class='text-yellow-800' >STANDARD</span><span class='justify-self-end' >---</span></div><div class='grid grid-cols-2 gap-1' ><span class='text-yellow-800' >PRIORITY</span><span class='justify-self-end' >---</span></div></div>"
+      return price
+  
+    def InsuranceSchemes(medicine):
+      schemes = [scheme["scheme_name"] for scheme in medicine["schemes"] if scheme["active"] and scheme["scheme_name"] != "cash"]
+      nhif = "<span class='text-yellow-800 text-lg'>NHIF</span>" if "nhif" in schemes else ""
+      assemble = "<span class='text-teal-800'>Assemble</span>" if "assemble" in schemes else ""
+      jubilee = "<span class='text-red-800 text-lg'>Jubilee</span>" if "jubilee" in schemes else ""
+      strategis = "<span class='text-green-700 text-lg'>Strategis</span>" if "strategis" in schemes else ""
+      britam = "<span class='text-sky-700 text-lg'>Britam</span>" if "britam" in schemes else ""
+
+      return f"<span class='text-bold' >{nhif} {assemble} {jubilee} {strategis} {britam}</span>"
 
     #UI
     self.formulary_panel.clear()
@@ -6361,24 +6349,24 @@ class FacilityFormulary():
       ui.aggrid(
         options={
           "columnDefs":[
-            {"headerName":"","field":"status","width":40},
+            {"headerName":"","field":"status","width":100},
             {"headerName":"NAME","field":"name","sortable":True,"filter":True,"floatingFilter":True,"width":500},
             {"headerName":"TYPE","field":"type","width":200},
-            {"headerName":"","field":"prices"}
+            {"headerName":"CASH","field":"cash_price","width":200,"type":"rightAligned"}
           ],
           "rowData":[
             {
               "name":medicine["name"].upper(),
               "status":Status(medicine),
               "type":medicine["type"].title(),
-              "prices":MiniPayment(medicine),
+              "cash_price":f"{CashPrice(medicine):,.2f}" if "schemes" in medicine else "---",
               "medicine_id":medicine["medicine_id"]
-            } for medicine in formulary
+            } for medicine in self.medicines
           ]
         },
         theme="quartz",
         html_columns=[0,3]
-      ).classes(add="lg:hidden grow w-full bg-inherit text-sm animate__animated animate__fadeIn").on("cellClicked",lambda e:self.MedicineDialog(medicine=[medicine for medicine in formulary if medicine['medicine_id'] == e.args['data']['medicine_id'].lower()][0]))
+      ).classes(add="lg:hidden grow w-full bg-inherit text-sm animate__animated animate__fadeIn").on("cellClicked",lambda e:self.MedicineDialog(medicine=[medicine for medicine in self.medicines if medicine['medicine_id'] == e.args['data']['medicine_id'].lower()][0]))
 
       #Large Screen
       ui.aggrid(
@@ -6390,53 +6378,59 @@ class FacilityFormulary():
             {"headerName":"LEVEL","field":"prescription_level","width":100},
             {"headerName":"STATUS","field":"status","width":100},
             {"headerName":"CASH (TZS)","field":"cash_prices","width":150},
-            {"headerName":"NHIF PRICES","field":"nhif_prices","width":500}
+            {"headerName":"INSURANCE SCHEMES","field":"insurances","width":500}
           ],
           "rowData":[
             {
-              "sno":formulary.index(medicine) + 1,
+              "sno":self.medicines.index(medicine) + 1,
               "name":medicine["name"].upper(),
               "status":Status(medicine=medicine,lg=True),
               "type":medicine["type"].upper(),
               "prescription_level":medicine["prescription_level"].upper() if medicine["prescription_level"] else "-",
-              "cash_prices":Payment(medicine=medicine,cash=True),
-              "nhif_prices":Payment(medicine=medicine,nhif=True),
+              "cash_price":f"{CashPrice(medicine):,.2f}" if "schemes" in medicine else "---",
+              "insurances":InsuranceSchemes(medicine) if "schemes" in medicine else "---",
               "medicine_id":medicine["medicine_id"]
-            } for medicine in formulary
+            } for medicine in self.medicines
           ]
         },
         theme="quartz",
         html_columns=[4,5,6]
-      ).classes(add="lg-show grow w-full bg-inherit text-sm animate__animated animate__fadeIn").on("cellClicked",lambda e:self.MedicineDialog(medicine=[medicine for medicine in formulary if medicine['medicine_id'] == e.args['data']['medicine_id'].lower()][0]))
+      ).classes(add="lg-show grow w-full bg-inherit text-sm animate__animated animate__fadeIn").on("cellClicked",lambda e:self.MedicineDialog(medicine=[medicine for medicine in self.medicines if medicine['medicine_id'] == e.args['data']['medicine_id'].lower()][0]))
 
   def MedicineDialog(self,medicine:dict|None=None):
     """A method to display dialog for medicine editing"""
     #DATA
-    if medicine:
-      medicine["payment"] = self.pricings(medicine=medicine)
+    self.medicine = medicine
+
+    #FXS
+    def close_dialog():
+      self.medicine_dialog.close()
+      self.FormularyAggrid()
 
     # UI
-    with ui.dialog().props(add="transition-show='jump-up' transition-hide='jump-down' transition-duration='500'") as self.medicine_dialog,html.div().style(add="min-width:40%;min-height:70%;").classes(add="p-0.5 rounded bg-sky-100 flex flex-col"):
+    with ui.dialog().props(add="transition-show='jump-up' transition-hide='jump-down' transition-duration='500'") as self.medicine_dialog,html.div().style(add="min-width:50%;min-height:80%;").classes(add="p-0.5 rounded bg-sky-100 flex flex-col"):
       #Header
-      with html.div().classes(add="bg-harmony rounded-t p-1 flex flex-row justify-between"):
-        ui.label("MEDICINE DETAILS").classes(add="bg-inherit grow text-yellow-500 text-2xl lg:text-3xl text-bold")
-        ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=self.medicine_dialog.close).classes(add="size-8 bg-inherit text-rose-500")
+      with html.div().classes(add="bg-harmony rounded-t p-1 grid grid-cols-11 items-center"):
+        ui.label(medicine["name"] if medicine else "MEDICINE DETAILS").classes(add="col-span-10 bg-inherit grow text-sky-300 text-2xl lg:text-3xl text-bold uppercase")
+        ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=self.medicine_dialog.close).classes(add="justify-self-end size-8 bg-inherit text-rose-500")
       
       #Body
-      with html.div().classes(add="grow p-1 flex flex-col gap-5"):
+      with html.div().classes(add="grow py-2 flex flex-col gap-5 items-center"):
         if medicine:
           self.MedicineDetailsForm(medicine=medicine,edit=True)
         else:
-          ui.select(label="MEDICINE NAME",options=self.template_medicines,with_input=True,on_change=lambda e:self.retrieve_medicine(medicine=e.value)).props(add=f"popup-content-class='uppercase'").classes(add="px-1 bg-white shadow-md shadow-[#07004d] rounded text-lg")
-          with html.div().classes(add="w-full grow flex flex-row justify-center items-center"):
-            ui.label("Choose medicine above to add to the formulary").classes(add="text-red-600 text-xl italic font-semibold fa-fade")
-    
+          ui.select(label="MEDICINE NAME",options=self.template_medicines,with_input=True,on_change=lambda e:self.retrieve_medicine(medicine=e.value)).props(add=f"input-class='px-2' popup-content-class='uppercase'").classes(add="px-1 bg-white shadow-md shadow-[#07004d] rounded text-lg")
+          ui.separator().classes(add="w-full")
+          with html.div().classes(add="w-full grow flex flex-row justify-center items-center") as self.new_medicine_panel:
+            with html.div().classes(add="flex flex-col items-center gap-3 bg-red"):
+              pass
+
     self.medicine_dialog.open()
   
-  def MedicineDetailsForm(self,medicine:dict|None=None,edit:bool=False):
+  def MedicineDetailsForm(self,medicine:dict|None=None,new:bool=False,edit:bool=False):
     #DATA
     tab_sections = ["general","pricing"]
-    
+     
     if edit:
       data = medicine
       for key,value in data.items():
@@ -6446,34 +6440,47 @@ class FacilityFormulary():
     else:
       if medicine:
         data = medicine
-      data = {
-        "medicine_id":None,"name":None,"type":None,"drug_class":None,"active":True,
-        "fda_pregnancy_category_1":None,"pregnancy_category_2":None,"fda_pregnancy_category_3":None,"prescription_level":None,
-      }
+      else:
+        data = {
+          "medicine_id":None,"name":None,"type":None,"drug_class":None,"active":True,
+          "fda_pregnancy_category_1":None,"pregnancy_category_2":None,"fda_pregnancy_category_3":None,"prescription_level":None,
+        }
     
+    #FXS
+    async def template_payment_schemes():
+      scheme_names = await admin_processor.get_template_payment_schemes()
+      if "schemes" in medicine:
+        scheme_names = [name for name in scheme_names if name not in [i["scheme_name"] for i in medicine["schemes"]]]
+      add_scheme_select.options = [name.upper() for name in scheme_names]
+      add_scheme_select.update()
+
     #UI
-    with html.form().classes(add="grow w-full px-1 flex flex-col gap-3"):
+    with html.form().classes(add="grow w-full flex flex-col gap-3"):
       #General Details
-      ui.input(label="NAME").props(add="type='text'").props(add="readonly").classes(add="col-span-2 w-full px-2 rounded bg-white shadow-sm shadow-[#07004d] text-lg uppercase").bind_value(data,"name")
+      ui.input(label="NAME").props(add="type='text'").props(add="readonly").classes(add=f"{ 'hidden' if medicine else '' } w-[90%] px-2 rounded bg-white shadow-sm shadow-[#07004d] text-lg uppercase").bind_value(data,"name")
       
       #Tabs
-      with html.div().classes(add="w-full p-0 rounded-b shadow-sm shadow-[#07004d]"):
-        with ui.tabs(value=tab_sections[0]).props(add="inline-label mobile-arrows outside-arrows active-class='text-sky-500'").classes(add="w-full rounded-b bg-harmony py-1 text-yellow-500 font-bold") as medicine_tabs:
+      with html.div().classes(add="w-full rounded-b shadow-sm shadow-[#07004d]"):
+        #Separator
+        for i in range(2):
+          ui.separator().classes(add="w-full bg-[#09026f]")
+        #Tabs
+        with ui.tabs(value=tab_sections[0]).props(add="inline-label mobile-arrows outside-arrows spread active-class='text-sky-500'").classes(add="w-full rounded-b bg-harmony py-1 text-sky-200 font-bold") as medicine_tabs:
           for section in tab_sections:
-            ui.tab(name=section).props(add="dense")
+            ui.tab(name=section).props(add="")
       
       #Panels
       with html.div().classes(add="grow w-full rounded-br flex flex-col"):
         with ui.tab_panels(tabs=medicine_tabs,value=tab_sections[0]).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='700'").classes(add="bg-inherit grow w-full grid grid-cols-1"):
-          #Profile
-          with ui.tab_panel(name="general").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col gap-0.5"):
+          #Details
+          with ui.tab_panel(name="general").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-between gap-0.5"):
             #General
             with html.section().classes(add="w-full grid grid-cols-2 gap-3"):
-              ui.input(label="TYPE").props(add="type='text'").props(add="readonly").classes(add="w-full px-2 rounded bg-white shadow-sm shadow-[#07004d] text-lg").bind_value(data,"type")
-              ui.toggle(options={True:"active",False:"inactive"},value=True,on_change=lambda e:ui.notify(e.value)).props(add="glossy spread size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="w-full bg-harmony font-semibold")
+              ui.input(label="TYPE").props(add="type='text'").props(add="readonly").classes(add="w-full px-2 rounded bg-white shadow-sm shadow-[#07004d] text-lg").bind_value(data,"type",backward=lambda val:val.title())
+              ui.toggle(options={True:"active",False:"inactive"}).props(add="glossy spread size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="w-full bg-harmony font-semibold").bind_value(data,"active")
             
             #Other details
-            with html.section().classes(add="w-full p-1 flex flex-col justify-between gap-3"):
+            with html.section().classes(add="grow w-full p-1 flex lg:grid grid-cols-2 flex-col justify-between gap-3"):
               #Pregnancy Category (1st Trimester)
               with html.div().classes(add="p-1 rounded bg-sky-50 shadow-sm shadow-[#07004d]"):
                 ui.label("PREGNANCY CATEGORY (1ST TIMESTER))").props(add="inline").classes(add="font-medium")
@@ -6494,19 +6501,156 @@ class FacilityFormulary():
                 ui.label("PRESCRIPTION LEVEL").classes(add="font-medium")
                 ui.radio(options=[None,"A","B","C","D","S"]).props(add="inline left-label").classes(add="").bind_value(data,"prescription_level")
 
+            #Buttons
+            with html.div().classes(add=f"w-full py-2 flex flex-row justify-center items-center gap-5"):
+              ui.button(text="SAVE",color="",on_click=lambda e:self.update_formulary(raw_data=data,edit=edit)).props(add="glossy").classes(add=" bg-harmony text-yellow-500 text-bold text-xl")
+              ui.button(text="DELETE",color="",on_click=lambda e:self.update_formulary(raw_data=data,delete=True)).props(add="glossy").classes(add=f"{'hidden' if new else ''} bg-harmony text-red-600 text-bold text-xl")
           
-          #Logs
-          with ui.tab_panel(name="pricing").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col gap-0.5"):
-            pass
-        
-      
-      #Buttons
-      with html.div().classes(add=f"w-full flex flex-row {'justify-center gap-5' if medicine else 'justify-center'}"):
-        ui.button(text="SAVE",color="",on_click=lambda e:self.update_formulary(data=data,edit=True if medicine else False)).props(add="glossy").classes(add=" bg-harmony text-yellow-500 text-bold text-xl")
-        if medicine:
-          ui.button(text="DELETE",color="",on_click=lambda e:self.update_formulary(data=data,delete=True)).props(add="glossy").classes(add="bg-harmony text-red-600 text-bold text-xl")
+          #Payment Schemes
+          with ui.tab_panel(name="pricing").classes(add="w-full h-full q-pa-none p-0 rounded-0 flex flex-col gap-2"):
+            #Add new button
+            with html.div().classes(add="w-full px-3 py-1 flex flex-row justify-center"):
+              with ui.select(label="SELECT SCHEME",options=[],on_change=lambda e:self.retrieve_payment_scheme(scheme=e.value,medicine=self.medicine)).props(add=f"input-class='px-2' popup-content-class='uppercase'").classes(add="w-60 p-0 px-1 bg-white shadow-md shadow-[#07004d] rounded text-lg") as add_scheme_select:
+                with add_scheme_select.add_slot("prepend"):
+                  html.span().classes(add="fa-solid fa-circle-plus text-harmony")
+                  
+            #Payment scheme
+            with html.div().classes(add="grow w-full bg-white flex flex-col") as self.payment_schemes_panel:
+              self.PaymentSchemes(data["schemes"] if "schemes" in data else None)
+  
+    #ASYNCS
+    ui.timer(0.1,lambda:template_payment_schemes(),once=True)
+  
+  def NewPaymentSchemePanel(self,scheme,medicine):
+    """"""
+    #DATA
+    medicine = medicine
+    scheme = scheme
+    scheme["prices"]["logger"] = self.user.username
 
-#Nursing
+    #UI
+    self.payment_schemes_panel.clear()
+    with self.payment_schemes_panel:
+      with html.div().classes(add="grow w-full flex flex-col gap-1 bg-sky-100 rounded shadow-sm shadow-[#07004d]"):
+        #Header
+        with html.section().classes(add="w-full p-1 rounded-t bg-harmony grid grid-cols-3 lg:grid-cols-2"):
+          ui.label(scheme["scheme_name"].upper()).classes(add=" px-1 text-xl text-sky-300 text-bold")
+          with html.div().classes(add="col-span-2 lg:col-span-1 flex flex-row justify-between items-center gap-1"):
+            ui.switch(text="ACTIVE",value=scheme["active"]).props(add="dense left-label color='green' icon='fa-solid fa-power-off' size='lg'").classes(add="bg-inherit text-bold text-lg text-sky-200").bind_value(scheme,"active")
+            ui.switch(text="RESTRICTED",value=scheme["restricted"]).props(add="dense left-label color='green' icon='fa-solid fa-power-off' size='lg'").classes(add="bg-inherit text-bold text-lg text-sky-200").bind_value(scheme,"restricted")
+        #Prices
+        with html.section().classes(add="w-full p-1 flex flex-col lg:grid grid-cols-6  gap-3"):
+          #Cash pricing
+          if scheme["scheme_name"].lower() == "cash":
+            #Price Range Switch
+            price_range_switch = ui.switch(text="PRICE RANGE").props(add="color='green' icon='fa-solid fa-power-off' size='lg'").classes(add="col-span-6 lg:col-span-2 w-full bg-sky-50 shadow-sm shadow-[#07004d] text-bold text-lg text-harmony").bind_value(scheme["prices"],"price_range")
+            #Min
+            ui.number(label="MIN").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value").bind_value(scheme["prices"],"min",backward=lambda val:float(val))
+            #Max
+            ui.number(label="MAX").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value").bind_value(scheme["prices"],"max",backward=lambda val:float(val))
+            #Standard
+            ui.number(label="STANDARD").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value",backward=lambda e:not e).bind_value(scheme["prices"],"standard",backward=lambda val:float(val))
+            #Priority
+            ui.number(label="PRIORITY").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value",backward=lambda e:not e).bind_value(scheme["prices"],"priority",backward=lambda val:float(val))
+            
+          #Insurance pricing(s)
+          else:
+            with html.div().classes(add="col-span-6 grid grid-cols-2 gap-3"):
+              #Copayment switch
+              copayment_switch = ui.switch(text="COPAYMENT").props(add="color='green' icon='fa-solid fa-power-off' size='lg'").classes(add="col-span-2 lg:col-span-1 bg-sky-50 shadow-sm shadow-[#07004d] text-bold text-lg text-harmony").bind_value(scheme["prices"],"copayment")
+              #Topup
+              ui.number(label="TOPUP").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-2 lg:col-span-1 shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(copayment_switch,"value").bind_value(scheme["prices"],"topup",backward=lambda val:float(val))
+            
+            with html.div().classes(add="col-span-6 grid grid-cols-2 gap-3"):
+              #Standard
+              ui.number(label="STANDARD").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-2 lg:col-span-1 shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_value(scheme["prices"],"standard",backward=lambda val:float(val))
+              #Priority
+              ui.number(label="PRIORITY").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-2 lg:col-span-1 h-auto shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_value(scheme["prices"],"priority",backward=lambda val:float(val))
+        
+        #Amna kitu kabisa
+        with html.div().classes(add="grow w-full "):
+          ui.space()
+
+        #Save button
+        with html.div().classes(add="w-full flex flex-row justify-center items-center gap-5"):
+          if scheme["scheme_name"] != "cash":
+            ui.button(text="GET PRICES",color="").props(add=f"glossy").classes(add="hidden bg-harmony text-sky-300 text-bold text-xl")
+          ui.button(text="SAVE CHANGES",color="",on_click=lambda e:self.register_payment_scheme_and_pricing(scheme=scheme,medicine=medicine)).props(add=f"glossy").classes(add="bg-harmony text-sky-300 text-bold text-xl")
+
+  def PaymentSchemes(self,schemes=None):
+    """Displays for editing payment schemes for medicines"""
+    #DATA
+    if schemes:
+      for scheme in schemes:
+        scheme["current_pricing"] = [pricing for pricing in scheme["prices"] if pricing["active"]][0]
+
+    #UI
+    self.payment_schemes_panel.clear()
+    with self.payment_schemes_panel:
+      #Schemes
+      with html.div().classes(add="grow w-full flex flex-col gap-1"):
+        #Scheme zenyewe
+        with ui.scroll_area().classes(add="w-full grow p-0 q-pa-none bg-white rounded-none shadow-md shadow-[307004d] animate__animated animate__fadeIn animate__slow"):
+          if schemes:
+            for scheme in schemes:
+              pricing = scheme["current_pricing"]
+              #Scheme Proper
+              with html.div().props(add=f"scheme_id='{scheme["scheme_id"]}'").classes(add="w-full flex flex-col gap-1 bg-sky-100 rounded shadow-sm shadow-[#07004d]"):
+                #Header
+                with html.section().classes(add="w-full p-0.5 rounded-t bg-harmony grid grid-cols-3 lg:grid-cols-2"):
+                  ui.label(scheme["scheme_name"].upper()).classes(add=" px-1 text-xl text-sky-300 text-bold")
+                  with html.div().classes(add="col-span-2 lg:col-span-1 flex flex-row justify-between items-center"):
+                    ui.switch(text="ACTIVE",value=scheme["active"]).props(add="dense left-label color='green' icon='fa-solid fa-power-off'").classes(add="bg-inherit text-bold text-sky-200")
+                    ui.switch(text="RESTRICTED",value=scheme["restricted"]).props(add="dense left-label color='green' icon='fa-solid fa-power-off'").classes(add="bg-inherit text-bold text-sky-200")
+                #Prices
+                with html.section().classes(add="grow w-full p-1 grid grid-cols-6 gap-2"):
+                  #Cash pricing
+                  if scheme["scheme_name"].lower() == "cash":
+                    #Price Range Switch
+                    price_range_switch = ui.switch(text="PRICE RANGE",value=pricing["price_range"]).props(add="color='green' icon='fa-solid fa-power-off' size='lg'").classes(add="col-span-6 lg:col-span-2 w-full bg-sky-50 shadow-sm shadow-[#07004d] text-bold text-lg text-harmony")
+                    #Min
+                    min_cash_price = ui.number(label="MIN",value=pricing["min"]).props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value")
+                    #Max
+                    max_cash_price = ui.number(label="MAX",value=pricing["max"]).props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value")
+                    #Standard
+                    standard_cash_price = ui.number(label="STANDARD",value=pricing["standard"]).props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value",backward=lambda e:not e)
+                    #Priority
+                    priority_cash_price = ui.number(label="PRIORITY",value=pricing["priority"]).props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value",backward=lambda e:not e)
+                    
+                  #Insurance pricing(s)
+                  else:
+                    #Copayment
+                    with html.div().classes(add="col-span-6 lg:col-span-3 w-full grid grid-cols-1 gap-2"):
+                      #Copayment switch
+                      copayment_switch = ui.switch(text="COPAYMENT",value=pricing["copayment"]).props(add="color='green' icon='fa-solid fa-power-off' size='lg'").classes(add="w-full bg-sky-50 shadow-sm shadow-[#07004d] text-bold text-lg text-harmony")
+                      #Topup
+                      ui.number(label="TOPUP",value=pricing["topup"]).props(add="bordered stack-label label-color='#07004d'").classes(add="w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(copayment_switch,"value")
+                    #Prices Inputs
+                    with html.div().classes(add="col-span-6 lg:col-span-3 grid grid-cols-1 gap-2"):
+                      #Standard
+                      ui.number(label="STANDARD",value=pricing["standard"]).props(add="bordered stack-label label-color='#07004d'").classes(add="w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl")
+                      #Priority
+                      ui.number(label="PRIORITY",value=pricing["priority"]).props(add="bordered stack-label label-color='#07004d'").classes(add="w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl")
+                      
+                  #Save button
+                  ui.button(text="SAVE CHANGES",color="",on_click=lambda e:self.update_pricing({
+                    "scheme_id":e.sender.parent_slot.parent.parent_slot.parent.props["scheme_id"],
+                    "active":e.sender.parent_slot.parent.parent_slot.parent.slots["default"].children[0].slots["default"].children[1].slots["default"].children[0].props["model-value"],
+                    "restricted":e.sender.parent_slot.parent.parent_slot.parent.slots["default"].children[0].slots["default"].children[1].slots["default"].children[1].props["model-value"],
+                    "copayment":e.sender.parent_slot.parent.slots["default"].children[0].slots["default"].children[0].props["model-value"] if e.sender.props["scheme"].lower() != "cash" else False,
+                    "topup":float(e.sender.parent_slot.parent.slots["default"].children[0].slots["default"].children[1].props["model-value"]) if e.sender.props["scheme"].lower() != "cash" else 0.0,
+                    "price_range":e.sender.parent_slot.parent.slots["default"].children[0].props["model-value"] if e.sender.props["scheme"].lower() == "cash" else False,
+                    "min":float(e.sender.parent_slot.parent.slots["default"].children[1].props["model-value"]) if e.sender.props["scheme"].lower() == "cash" else 0.0,
+                    "max":float(e.sender.parent_slot.parent.slots["default"].children[2].props["model-value"]) if e.sender.props["scheme"].lower() == "cash" else 0.0,
+                    "standard":float(e.sender.parent_slot.parent.slots["default"].children[3].props["model-value"]) if e.sender.props["scheme"].lower() == "cash" else float(e.sender.parent_slot.parent.slots["default"].children[1].slots["default"].children[0].props["model-value"]),
+                    "priority":float(e.sender.parent_slot.parent.slots["default"].children[4].props["model-value"]) if e.sender.props["scheme"].lower() == "cash" else float(e.sender.parent_slot.parent.slots["default"].children[1].slots["default"].children[1].props["model-value"]),
+                    "logger":self.user.username
+                  })).props(add=f"glossy scheme='{scheme["scheme_name"]}'").classes(add="col-span-6 justify-self-center bg-harmony text-sky-300 text-bold text-xl")
+
+
+
+
+
 class DispensingStoreManagement():
   """A class for UI and functionalities of dispensing store management"""
 
@@ -6751,10 +6895,8 @@ class DispensingStoreManagement():
         },theme="quartz"
         ).style(add="height:350px").classes(add="w-full bg-sky-300 text-sm uppercase")
 
-#Consultations
 
-
-
+#Management
 class StaffManager():
   """This class constructs UI for Staff management interface"""
 
@@ -7470,12 +7612,6 @@ class ServicesManager():
         with html.div().classes(add="lg:col-span-5 w-full py-2 flex flex-row justify-center"):
           ui.button(text="SAVE SERVICE",color="",on_click=lambda e:self.save_service(service=data,update=True if edit else False)).props(add="glossy").classes(add="bg-harmony text-yellow-500 text-bold text-xl")
           
-
-###MISCS
-def Clock(parent):
-  parent.clear()
-  with parent:
-    ui.label(datetime.now().strftime("%d %b %Y  %HH:%MM:%SS")).classes(add="text-yellow-500")
 
 
 

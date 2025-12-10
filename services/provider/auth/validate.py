@@ -2,6 +2,7 @@
 
 #GENERAL IMPORTS
 import json
+from collections import namedtuple
 
 #FASTAPI IMPORTS
 from sqlmodel import select,Session
@@ -18,23 +19,23 @@ from services.provider.configs import database_engine
 #PRIVATE FUNCTIONS
 def authenticate_user(data:dict):
   """Retrieves data from users table row and returns as a User class instance,if no user found"""
-    
   requested_username,requested_password = data["username"],data["password"]
 
-  _data = {"user_exists":False,"user":None,"password_match":False,"username":requested_username,"active":False}
+  Credentials = namedtuple("Credentials",["user","username","exists","password_match","logged"],defaults=[None,None,False,False,False])
+  credentials = Credentials()
 
   with Session(database_engine) as session:
     db_user:User = session.exec(select(User).where(User.username == requested_username)).first()
 
     if db_user:
-      _data["user_exists"] = True
+      credentials = credentials._replace(exists=True)
+      credentials = credentials._replace(username=db_user.username)
 
       if db_user.password == requested_password:
-        _data["user"] = unmodel_user(db_user)
-        _data["password_match"] = True
-        _data["active"] = True if db_user.active else False
-    
-  return _data
+        credentials = credentials._replace(user= unmodel_user(db_user))
+        credentials = credentials._replace(password_match=True)
+        credentials = credentials._replace(logged=True)
+  return credentials
 
   
     
