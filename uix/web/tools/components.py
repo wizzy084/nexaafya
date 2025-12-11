@@ -67,12 +67,18 @@ def StatusDot(active:bool=True):
 
   return f"<span class='fa-solid fa-circle { 'text-green-600' if active  else 'text-red-600'}'></span>"
 
-def PageLoading():
+def PageLoading(lg:bool=False):
   """Just a loading display, nothing much"""
 
-  with html.div().classes(add="flex flex-col items-center gap-3"):
-    ui.spinner(type="puff",size="xl")
-    html.span("Please wait...").classes(add="text-sky-500 italic font-medium text-lg")
+  with html.div().classes(add=f"{'w-[200px] h-[200px]'} grid grid-cols-1 gap-1"):
+    #Logo
+    with html.div().classes(add="w-full"):
+      ui.image("uix/web/assets/images/bgs/nexasoft1.png").classes(add="w-full h-full fa-fade")
+    
+    #Loading
+    with html.div().classes(add="w-full flex flex-row justify-center items-center gap-3"):
+      ui.label("Please wait").classes(add=f"{'text-3xl' if lg else 'text-xl'} text-bold text-sky-600")
+      ui.spinner(type="dots",size="md")
 
 ###
 

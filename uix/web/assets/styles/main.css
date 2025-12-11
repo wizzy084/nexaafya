@@ -37,7 +37,7 @@
 .text-harmony {color: #07004d !important;}
 
 .dialog-bg {
-  background: linear-gradient(180deg, #04fafd 5%, #119dff 70%, #030423);
+  background: linear-gradient(180deg, #0418fd 15%,#0418fd 15%, #119dff 20%, #030423);
   backdrop-filter: blur(1px);
   overflow-y: hidden;
 }
@@ -72,14 +72,25 @@
 }
   
 
-/* BODY */
+/* BACKGROUNDS */
+.default-bg {
+  height:100%;
+  width:100%;
+  background: #000428;  /* fallback for old browsers */
+  background: -webkit-linear-gradient(to top, #004e92, #000428);  /* Chrome 10-25, Safari 5.1-6 */
+  background: linear-gradient(to top, #004e92, #000428); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+  background-position: center;
+  background-size: cover;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
 .login-bg {
   height: 100%;
   width: 100%;
-  background-image:url('/images/bgs/leaves.avif');
+  background-image:url('/images/bgs/hills.avif');
   background-position: center;
   background-size: cover;
-  animation: 600s parallax infinite linear;
   }
 
 .dashboard-bg {
@@ -88,15 +99,7 @@
   background-color:#07004d;
 }
 
-  /* DISPLAYS */
-  .login-blur {
-  background-color: inherit;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  }
 
-
-  /* MISC */
-  .padless :deep(.q-stepper__header){
-    padding: 0 !important;
-  }
+.nexa-roll {
+  animation: roll 3s linear infinite;
+}

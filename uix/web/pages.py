@@ -8,19 +8,16 @@ from fastapi import Request
 from nicegui import app,html,ui,APIRouter
 
 #APP IMPORTS
-from services.provider.auth.validate import authenticate_user
-from services.provider.admin.db import register_login,update_login
+from services.provider.admin.models import User
 
 #UIX IMPORTS
 from .configs import HEAD_LINKS,META_TAGS,BODY_LINKS
 from .tools.widgets import *
+from .tools import animations
 
 
 #HELPER FUNCTIONS
-async def db_login_update(credentials):
-  if credentials.user and credentials.user.active and not [log for log in credentials.user.logins if log.logged]:
-    _login_id = f"{credentials.username}-log-{str(uuid.uuid4()).split('-')[0]}"
-    register_login({"login_id":_login_id,"username":credentials.user.username})
+
 
 #PAGE ROUTES
 router = APIRouter(prefix="")
@@ -28,35 +25,11 @@ router = APIRouter(prefix="")
 @ui.page("/",title="NexaClinic",api_router=router)
 async def main_page():
   """A route to display login page by default"""
- 
-  #Primers
-  Credentials = namedtuple("Credentials",["user","username","exists","password_match","logged"],defaults=[None,None,False,False,False])
 
   await ui.context.client.connected()
-  
-  #Same tab
-  if app.storage.tab:
-    if "credentials" in app.storage.tab:
-      credentials =app.storage.tab["credentials"]
-    else:
-      credentials = authenticate_user(app.storage.tab)
-      app.storage.tab["credentials"] = credentials
-      app.storage.user["credentials"] = credentials #update({"username":credentials.username})
-  #Same browser
-  elif app.storage.user:
-    '''ui.notify(app.storage.user)
-    if "credentials" in app.storage.user:
-      credentials = app.storage.user["credentials"]
-    else:'''
-    credentials = authenticate_user(app.storage.user)
-  
-  #Nyet
-  else:
-    credentials = Credentials()
-  
-  Page(credentials=credentials)
 
-  ui.timer(0.1,lambda:db_login_update(credentials),once=True)
+  Page()
+
 
   
 
@@ -65,32 +38,38 @@ async def main_page():
 class Page():
   """A class to construct a page layout for the admin panel"""
 
-  def __init__(self,credentials:dict):
-    
+  def __init__(self):
+
     #PAGE SETUP
-    self.credentials = credentials
-    self.user = self.credentials.user
-    self.initial_data()
-    self.Metadata()
-    self.Notifications()
-
-    ##DISPLAYS
-    #USER DASHBOARD
-    if self.user and self.user.active:
-      self.PageHeader()
-      ui.separator().classes(add="#05002b")
-      self.MainPageContent()
-
-    #LOGIN DISPLAY
-    else:
-      with html.div().style(add="width:100%;height:100%;").classes(add=""):
-        #Content
-        with html.div().style(add="width:100%;height:100%;overflow-y:hidden;").classes(add="relative flex flex-row justify-center content-center"):
-          Login(credentials=self.credentials)
+    self.Metadata(default=True)
     
-  #PAGE SETUP
-  def initial_data(self):
-    #PAGE TAB SEC
+    #BASE UI
+    with html.div().style(add="width:100%;height:100%;").classes(add="bg-inherit flex flex-col justify-center items-center") as self.main_panel:
+      PageLoading(lg=True)
+
+    #LOADING
+    ui.timer(0.1,self.load_page_with_credentials,once=True)
+      
+  
+  def initial_data(self,user:dict):
+    #USER INITIALIZATION
+    self.user = User(
+      username = user["username"],
+      title = user["title"],
+      qualification = user["qualification"],
+      designation = user["designation"],
+      first_name = user["first_name"],
+      middle_name = user["middle_name"],
+      last_name = user["last_name"],
+      birthdate = user["birthdate"],
+      gender = user["gender"],
+      password = user["password"],
+      is_super = user["is_super"],
+      roles = user["roles"],
+      registered_on = user["registered_on"]
+    )
+    
+    #MAIN PAGE OPTIONS
     if self.user:
       if "director" in self.user.roles:
         self.sections = {"services":["fa-solid fa-stethoscope",ClinicianServicesManager],"management":["fa-solid fa-briefcase",FacilityManager]}
@@ -103,10 +82,10 @@ class Page():
       elif "radiographer" in self.user.roles or "radiologist" in self.user.roles:
         self.sections = {"studies":["fa-solid fa-x-ray",StudiesManagementDisplay]}
 
-  def Metadata(self):
+  def Metadata(self,default:bool=False):
     """Inserts meta tags in the head of HTML document rendered by this class"""
     #Overall Styling
-    ui.query('.nicegui-content').classes(f"absolute-full h-full flex flex-col overflow-y-auto overflow-x-hidden p-0 gap-0 {'dashboard-bg' if self.user and self.user.active else 'login-bg'} ")
+    ui.query('.nicegui-content').classes(f"absolute-full h-full overflow-y-auto overflow-hidden p-0 gap-0 default-bg")
     
     #Meta tags
     for META_TAG in META_TAGS:
@@ -118,24 +97,24 @@ class Page():
     for BODY_LINK in BODY_LINKS:
       ui.add_body_html(code=BODY_LINK)
   
-  def Notifications(self):
-    """Displays popup notification with name of user and contextual message"""
+  async def load_page_with_credentials(self):
+    """Loads page after validation"""
 
-    if self.credentials.user:
-      if self.user.active:
-        if self.credentials.password_match:
-          if self.credentials.logged:
-            pass
-            #ui.notify(message=f"Welcome back {self.user.title.capitalize()} {self.user.first_name.capitalize()} {self.user.last_name.capitalize()}",caption="Have a nice experience!",timeout=5000,icon="fas fa-check-double fa-lg",color="light-blue-7",textColor="white",type="positive",position="top")
-        else:
-          ui.notify(message="Invalid password!",caption="Try Again or Contact System Admin",progress=True,timeout=3000,icon="fas fa-circle-exclamation fa-beat-fade",textColor="black",type="warning",position="top")
-      else:
-        ui.notify(message="Inactive Account!",caption="Contact Clinic Administration",progress=True,timeout=5000,icon="fas fa-circle-exclamation fa-beat-fade",textColor="white",type="secondary",position="top")
-  
+    self.main_panel.clear()
+    if app.storage.user:
+      user = app.storage.user["credentials"]["user"]
+      #DATA
+      self.initial_data(user)
+
+      self.PageHeader()
+      with self.main_panel.classes(add="dashboard-bg"):
+        ui.separator().classes(add="#05002b")
+        self.MainPageContent()
+    
     else:
-      if self.credentials.username and not self.credentials.exists:
-        ui.notify(message=f"No User Found!",caption="Check your username!",timeout=3000,icon="fas fa-circle-exclamation fa-beat-fade",textColor="white",type="negative",position="top")
-
+      with self.main_panel:
+        Login()
+    
   #FUNCTIONALITITES
   def logout(self):
     """Logs out the current user and returns a login page"""
@@ -153,7 +132,12 @@ class Page():
     ui.navigate.to("/")
   
   def display_user_profile(self):
-    pass
+    """Displays User Profile"""
+
+    with ui.dialog().props(add="transition-show='jump' transition-hide='jump' transitin-duration='300'").classes(add="") as self.user_profile_dialog,html.div().style(add="min-width:75%;min-height:75%;").classes(add="bg-sky-100 animate__animated animate__fadeIn animate__show flex flex-col lg:flex-row"):
+      UserProfileManager(user=self.user,parent=self.user_profile_dialog)
+    
+    self.user_profile_dialog.open()
 
   #DISPLAYS
   def PageHeader(self):
@@ -198,7 +182,7 @@ class Page():
       ui.separator().classes(add="w-full bg-[#09026f]")
 
       #Page Tab Panels
-      with ui.tab_panels(tabs=self.page_tabs,value=list(self.sections.keys())[-1]).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='300'").classes(add="grow w-full bg-inherit grid grid-cols-1"):
+      with ui.tab_panels(tabs=self.page_tabs,value=list(self.sections.keys())[0]).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='300'").classes(add="grow w-full bg-inherit grid grid-cols-1"):
         #Director
         
         for title,content in self.sections.items():
@@ -270,8 +254,8 @@ class Page():
               
             #Logout functionality
             with html.div().classes(add="w-full py-3 flex flex-row justify-center gap-3"):
-              ui.button(text="profile",icon="fas fa-user-profile",color="",on_click=self.display_user_profile).props(add="glossy").classes(add="rounded bg-harmony text-bold text-sky-300 text-lg")
-              ui.button(text="logout",icon="fas fa-power-off",color="",on_click=self.logout).props(add="glossy").classes(add="rounded bg-harmony text-bold text-red-500 text-lg")
+              ui.button(text="profile",color="",on_click=self.display_user_profile).props(add="glossy").classes(add="rounded bg-harmony text-bold text-sky-300 text-lg")
+              ui.button(text="logout",color="",on_click=self.logout).props(add="glossy").classes(add="rounded bg-harmony text-bold text-red-500 text-lg")
 
   def SiteTitle(self):
     """A function to construct a VERO title for the admin panel"""

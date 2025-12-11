@@ -156,11 +156,17 @@
 }
 
 /* BACKGROUND ANIMATIONS */
-@keyframes parallax { 100% {background-position: -5000px 20%;}}
+@keyframes wobblde { 100% {background-position: -5000px 20%;}}
 
 
 /* TEXT ANIMATIONS */
 @keyframes typing {
   from {width:0;opacity:0;}
   to {width:100%;opacity:1;}
+}
+
+@keyframes roll {
+  0% {transform: rotateZ(0deg);}
+  50% {transform: rotateZ(180deg);}
+  100% {transform: rotateZ(360deg);}
 }

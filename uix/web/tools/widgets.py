@@ -8,6 +8,7 @@ from nicegui import app,html,ui
 
 #SERVICES IMPORTS
 from services.provider.admin import constants
+from services.provider.auth.validate import authenticate_user
 from services.provider.admin.db import *
 from services.provider.admin.constants import *
 from services.provider.admin.processor import *
@@ -27,52 +28,72 @@ from ._snippets import *
 class Login():
   """"""
 
-  def __init__(self,credentials=None):
+  def __init__(self):
     #DATA
-    self.credentials = credentials
     self.data()
 
-
     #UI
-    if self.credentials:
-      with html.div().classes(add="login-blur w-[75%] lg:w-[60%] ring-1 ring-green-900 rounded shadow-md shadow-green-600 animate__animated animate__fadeIn animate__slow flex flex-col") as self.master_panel:
-        #Large Screen
-        with html.div().classes(add="rounded grow w-full lg-flex flex-col"):
-          with ui.splitter(value=50).props(add="before-class='rounded-l' after-class='rounded-r' separator-class='bg-gradient-to-b from-sky-600 to-green-600'").classes(add="grow w-full rounded") as splitter:
-            #Posters
-            with splitter.before:
-              with html.div().classes(add="w-full h-full rounded-l bg-black") as self.noticeboard:
-                self.LoginPosters()
-            
-            #Login
-            with splitter.after:
-              with html.div().classes(add="w-full h-full rounded-r flex flex-col justify-between items-center gap-1") as self.login_display:
-                self.LoginForm()
+    with html.div().classes(add="login-blur w-[75%] lg:w-[60%] ring-1 ring-blue-500 rounded shadow-sm shadow-blue-500 animate__animated animate__fadeIn animate__slow flex flex-col") as self.master_panel:
+      #Large Screen
+      with html.div().classes(add="rounded grow w-full lg-flex flex-col"):
+        with ui.splitter(value=50).props(add="before-class='rounded-l' after-class='rounded-r' separator-class='bg-gradient-to-b from-sky-600 to-green-600'").classes(add="grow w-full rounded") as splitter:
+          #Posters
+          with splitter.before:
+            with html.div().classes(add="w-full h-full rounded-l bg-black") as self.noticeboard:
+              self.LoginPosters()
           
-        #Small Screen
-        with html.div().classes(add="lg:hidden grow rounded w-full flex flex-col"):
-          with ui.splitter(value=1).props(add="after-class='rounded' separator-class='bg-inherit'").classes(add="grow w-full rounded") as splitter:
-            #Login
-            with splitter.after:
-              with html.div().classes(add="w-full h-full rounded flex flex-col justify-between items-center gap-1") as self.login_display:
-                self.LoginForm()
+          #Login
+          with splitter.after:
+            with html.div().classes(add="w-full h-full rounded-r flex flex-col justify-between items-center gap-1") as self.login_display:
+              self.LoginForm()
+        
+      #Small Screen
+      with html.div().classes(add="lg:hidden grow rounded w-full flex flex-col"):
+        with ui.splitter(value=1).props(add="after-class='rounded' separator-class='bg-inherit'").classes(add="grow w-full rounded") as splitter:
+          #Login
+          with splitter.after:
+            with html.div().classes(add="w-full h-full rounded flex flex-col justify-between items-center gap-1") as self.login_display:
+              self.LoginForm()
 
 
   #FUNCTIONALITIES
   def data(self):
+    #CREDENTIALS
+    self.credentials = {"user":None,"active":False,"username":None,"exists":None,"password_match":None,"logged":None}
+
     #POSTERS
     login_posters_path = Path("./uix/web/assets/images/login")
     self.login_posters =[img_poster for img_poster in [poster for poster in login_posters_path.iterdir() if login_posters_path.exists() and login_posters_path.is_dir()] if img_poster.suffix.lower() in [".png",".jpg"]]
 
-  def login(self,credentials:dict):
+  async def login(self,credentials:dict):
     """"""
-    
     if credentials["username"] and credentials["password"]:
-      #STORAGE
-      app.storage.user.update(credentials)
+      #VALIDATION
+      validation_credentials = await authenticate_user(credentials)
+      self.credentials = validation_credentials
 
-      #NAVIGATE
-      ui.navigate.reload()
+      ###
+      if validation_credentials["user"]:
+        #STORAGE
+        app.storage.user.update({"credentials":validation_credentials})
+
+        #NAVIGATE
+        ui.navigate.reload()
+
+        #UPDATE LOGIN
+        ui.timer(0.1,self.db_login_update,once=True)
+      
+      #NOTIFICATION
+      self.LoginNotifications()
+    
+    else:
+      #LOGIN UPDATE
+      self.LoginForm()
+
+  async def db_login_update(self):
+    if self.credentials["active"] and not [log for log in self.credentials["user"]["logins"] if log["logged"]]:
+      _login_id = f"{self.credentials["username"]}-log-{str(uuid.uuid4()).split('-')[0]}"
+      admin_db.register_login({"login_id":_login_id,"username":self.credentials["user"]["username"]})
 
   def LoginPosters(self):
     """"""
@@ -88,46 +109,68 @@ class Login():
   def LoginForm(self):
     """"""
     #DATA
-    credentials = {"username":self.credentials.username,"password":""}
+    credentials = {"username":"","password":""}
 
     #FXS
     def password_input_autofocus():
-      return "autofocus" if self.credentials.exists and not self.credentials.password_match else "" 
+      if self.credentials:
+        return "autofocus" if self.credentials["active"] and not self.credentials["password_match"] else "" 
+      else:
+        return ""
 
     #UI
     self.login_display.clear()
     with self.login_display:
       #Title
-      with html.section().classes(add="w-full pb-3 flex flex-col gap-3"):
+      with html.section().classes(add="w-full pb-3 lg:pt-2 flex flex-col gap-3"):
         with html.div().classes(add="py-3 text-center"):
           BrandName(size="text-5xl")
       
       ui.space()
 
       #Header
-      ui.label("STAFF LOGIN").style(add="").classes(add="select-none text-2xl text-sky-200 font-bold lg:text-3xl")
+      ui.label("STAFF LOGIN").style(add="").classes(add="select-none text-2xl lg:text-5xl text-sky-200 font-bold lg:text-3xl")
 
       #Login Form
       with html.form().props(add="onsubmit='event.preventDefault();'").classes(add="w-full rounded-sm flex flex-col items-center content-center gap-5 py-5"):
         #Username Input
-        with ui.input(label="USERNAME").props(add="hide-bottom-space required stack-label standout outlined label-color='#07004d' bg-color='light-blue-1' input-class='text-base text-blue-10 font-medium italic' type='text' id='username' name='username'").classes(add="w-52").bind_value(credentials,"username",forward=lambda username:username.strip() if username else "") as username_input:
+        with ui.input(label="USERNAME").props(add="hide-bottom-space required stack-label standout outlined label-color='#07004d' bg-color='light-blue-1' input-class='text-base lg:text-xl text-blue-10 font-medium italic' type='text' id='username' name='username'").classes(add="w-52 lg:w-68").bind_value(credentials,"username",forward=lambda username:username.strip() if username else "") as username_input:
           with username_input.add_slot("prepend"):
             ui.icon(name="fa-solid fa-user fa-sm").classes(add="m-0 mr-2 text-harmony")
             ui.separator().props(add="vertical")
 
         #Password Input
-        with ui.input(label="PASSWORD",password_toggle_button=True).props(add=f"{ password_input_autofocus()} hide-bottom-space required stack-label standout outlined label-color='#07004d' color='light-blue-9' bg-color='light-blue-1' input-class='text-base text-blue-10 font-medium italic' type='password' id='password' name='password'").classes(add="w-52").bind_value(credentials,"password",forward=lambda password:password.strip() if password else "") as password_input:
+        with ui.input(label="PASSWORD",password_toggle_button=True).props(add=f"{ password_input_autofocus()} hide-bottom-space required stack-label standout outlined label-color='#07004d' color='light-blue-9' bg-color='light-blue-1' input-class='text-base lg:text-xl text-blue-10 font-medium italic' type='password' id='password' name='password'").classes(add="w-52 lg:w-68").bind_value(credentials,"password",forward=lambda password:password.strip() if password else "") as password_input:
           with password_input.add_slot("prepend"):
             ui.icon(name="fa-solid fa-user-lock fa-sm").classes(add="m-0 mr-2 text-harmony")
             ui.separator().props(add="vertical")
 
         #Submit button
         with html.span():
-          ui.button(text="log in",color="",on_click=lambda e:self.login(credentials)).props(add="dense glossy padding='sm' type='submit'").classes(add="w-32 bg-harmony shadow-sm shadow-green-500 text-2xl text-sky-200")
+          ui.button(text="log in",color="",on_click=lambda e:self.login(credentials)).props(add="dense glossy padding='sm' type='submit'").classes(add="w-32 lg:w-40 bg-harmony shadow-sm shadow-blue-500 text-2xl text-sky-200")
         
       #Company name
-      with html.section().classes(add="w-full px-1 flex flex-row justify-end"):
+      with html.section().classes(add="w-full px-1 flex flex-row justify-between items-center"):
+        ui.html(f"<span class='text-bold text-sky-50'>&copy;{datetime.now().year}</span>",sanitize=False)
         CompanyName()
+  
+  def LoginNotifications(self):
+    """"""
+
+    if self.credentials["user"]:
+      pass
+    
+    elif self.credentials["exists"]:
+      if self.credentials["active"]:
+        if not self.credentials["password_match"]:
+          ui.notify(message="Invalid password!",caption="Try Again or Contact System Admin",progress=True,timeout=3000,icon="fas fa-circle-exclamation fa-beat-fade",textColor="black",type="warning",position="top")
+      else:
+        ui.notify(message="Inactive Account!",caption="Contact Clinic Administration",progress=True,timeout=5000,icon="fas fa-circle-exclamation fa-beat-fade",textColor="white",type="secondary",position="top")
+    else:
+      ui.notify(message=f"No User Found!",caption="Check your username!",timeout=3000,icon="fas fa-circle-exclamation fa-beat-fade",textColor="white",type="negative",position="top")
+
+
+
 
 #RECEPTION
 class ClientsManager():
@@ -7442,5 +7485,27 @@ class ServicesManager():
                     "logger":self.user.username
                   })).props(add=f"glossy scheme='{scheme["scheme_name"]}'").classes(add="col-span-6 justify-self-center bg-harmony text-sky-300 text-bold text-xl")
 
+class UserProfileManager():
+  """Display widgets for management of user details"""
+
+  def __init__(self,user=None,parent=None):
+    """Initializing displays"""
+    #DATA
+    self.user = user
+    self.parent = parent
+    self.initial_data()
+    
+    #UI
+    with html.div().classes(add="grow w-full lg:w-auto lg:h-full"):
+      #Personal Details
+      with html.div().classes(add=""):
+        pass
+      
+      #Platform
+  
+
+  #Functionalities
+  def initial_data(self):
+    pass
 
 
