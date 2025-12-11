@@ -72,15 +72,15 @@ class Page():
     #MAIN PAGE OPTIONS
     if self.user:
       if "director" in self.user.roles:
-        self.sections = {"services":["fa-solid fa-stethoscope",ClinicianServicesManager],"management":["fa-solid fa-briefcase",FacilityManager]}
+        self.sections = {"services":["fa-solid fa-stethoscope",ClinicianServicesManager,ClinicianServicesManager],"management":["fa-solid fa-briefcase",self.DummyDisplay,FacilityManager]}
       elif "receptionist" in self.user.roles:
-        self.sections = {"clients":["fa-solid fa-users-rectangle",ReceptionManager],"services":["fa-solid fa-heart-pulse",NursingManager],"inventory":["fa-solid fa-house-medical",InventoryManager]}
+        self.sections = {"clients":["fa-solid fa-users-rectangle",ReceptionManager,ReceptionManager],"services":["fa-solid fa-heart-pulse",self.DummyDisplay,NursingManager],"inventory":["fa-solid fa-house-medical",self.DummyDisplay,InventoryManager]}
       elif "doctor" in self.user.roles:
-        self.sections = {"services":["fa-solid fa-stethoscope",ClinicianServicesManager]}
+        self.sections = {"services":["fa-solid fa-stethoscope",ClinicianServicesManager,ClinicianServicesManager]}
       elif "nurse" in self.user.roles:
-        self.sections = {"services":["fa-solid fa-heart-pulse",NursingServicesManagementDisplay]}
+        self.sections = {"services":["fa-solid fa-heart-pulse",NursingServicesManagementDisplay,NursingServicesManagementDisplay]}
       elif "radiographer" in self.user.roles or "radiologist" in self.user.roles:
-        self.sections = {"studies":["fa-solid fa-x-ray",StudiesManagementDisplay]}
+        self.sections = {"studies":["fa-solid fa-x-ray",StudiesManagementDisplay,StudiesManagementDisplay]}
 
   def Metadata(self,default:bool=False):
     """Inserts meta tags in the head of HTML document rendered by this class"""
@@ -134,12 +134,15 @@ class Page():
   def display_user_profile(self):
     """Displays User Profile"""
 
-    with ui.dialog().props(add="transition-show='jump' transition-hide='jump' transitin-duration='300'").classes(add="") as self.user_profile_dialog,html.div().style(add="min-width:75%;min-height:75%;").classes(add="bg-sky-100 animate__animated animate__fadeIn animate__show flex flex-col lg:flex-row"):
+    with ui.dialog().props(add="transition-show='jump' transition-hide='jump' transitin-duration='300'").classes(add="") as self.user_profile_dialog,html.div().style(add="min-width:60%;min-height:50%;").classes(add="bg-sky-100 animate__animated animate__fadeIn animate__show flex flex-col"):
       UserProfileManager(user=self.user,parent=self.user_profile_dialog)
     
     self.user_profile_dialog.open()
 
   #DISPLAYS
+  def DummyDisplay(self,user=None):
+    pass
+
   def PageHeader(self):
     """Displays the header of the page"""
   
@@ -175,6 +178,16 @@ class Page():
 
   def MainPageContent(self):
     """Returns display for page navigation"""
+
+    #Async tab display
+    async def render_tab_display(e):
+      for tab in e.sender.slots['default'].children:
+        if tab.props['name'] == e.value:
+          tab.clear()
+          with tab:
+            with html.div().classes(add="grow w-full p-1 flex flex-col justify-between gap-2"):
+              self.sections[e.value][2](user=self.user.username)
+
     
     #Main Page Content
     with html.div().classes(add="grow w-full overflow-hidden flex flex-col"):
@@ -182,7 +195,7 @@ class Page():
       ui.separator().classes(add="w-full bg-[#09026f]")
 
       #Page Tab Panels
-      with ui.tab_panels(tabs=self.page_tabs,value=list(self.sections.keys())[0]).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='300'").classes(add="grow w-full bg-inherit grid grid-cols-1"):
+      with ui.tab_panels(tabs=self.page_tabs,value=list(self.sections.keys())[0],on_change=lambda e:render_tab_display(e)).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='300'").classes(add="grow w-full bg-inherit grid grid-cols-1"):
         #Director
         
         for title,content in self.sections.items():
@@ -231,7 +244,7 @@ class Page():
           with html.div().classes(add="lg-show h-full"):
             #Title & Name
             with html.div().classes(add="w-full text-md text-bold uppercase"):
-              ui.label(f"{user.title} {user.last_name}, {user.designation}").classes(add="w-full text-center")
+              ui.label(f"{user.title} {user.last_name}").classes(add="w-full text-center")
             #Allocation/department
             with html.div().classes(add="w-full text-xs uppercase italic text-yellow-200"):
               ui.label(department()).classes(add="w-full text-center")

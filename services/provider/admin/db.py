@@ -395,7 +395,7 @@ def update_facility_subscription(subscription:dict):
 
       register_facility_subscription(subscription)
 
-def update_staff(staff,activate:bool=False,edit:bool=False,suspend:bool=False):
+def update_staff(staff,activate:bool=False,edit:bool=False,suspend:bool=False,new_password:bool=False):
   """"""
   if activate:
     with Session(database_engine) as session:
@@ -432,6 +432,15 @@ def update_staff(staff,activate:bool=False,edit:bool=False,suspend:bool=False):
       session.commit()
 
       return {"success":True,"message":"Successfully edited!","type":"positive","position":"top"}
+  
+  if new_password:
+    with Session(database_engine) as session:
+      user:User = session.exec(select(User).where(User.username == staff["username"].lower())).first()
+      user.password = staff["password"]
+
+      session.commit()
+
+      return {"success":True,"message":"Password successfully changed!","type":"positive","position":"top"}    
   
   if suspend:
     with Session(database_engine) as session:

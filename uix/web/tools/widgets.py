@@ -169,9 +169,6 @@ class Login():
     else:
       ui.notify(message=f"No User Found!",caption="Check your username!",timeout=3000,icon="fas fa-circle-exclamation fa-beat-fade",textColor="white",type="negative",position="top")
 
-
-
-
 #RECEPTION
 class ClientsManager():
   """A class for registratio of clients, new + revisits"""
@@ -7494,18 +7491,38 @@ class UserProfileManager():
     self.user = user
     self.parent = parent
     self.initial_data()
-    
+    self.passwords = {"old":"","new":"","confirm_new":""}
     #UI
-    with html.div().classes(add="grow w-full lg:w-auto lg:h-full"):
+    with html.div().classes(add="grow w-full flex flex-col"):
       #Personal Details
-      with html.div().classes(add=""):
-        pass
+      with html.div().classes(add="w-full p-1 grid grid-cols-11 bg-harmony items-center justify-center"):
+        ui.label(f"{self.user.title} {self.user.first_name} {self.user.last_name}".upper()).classes(add="col-span-10 w-full text-center text-sky-400 text-5xl  text-bold bg-inherit")
+        ui.button(icon="fa-regular fa-circle-xmark",color="",on_click=self.parent.close).props(add="dense").classes(add="text-red-600 bg-inherit")
       
       #Platform
+      ui.separator().classes(add="bg-sky-50 w-full")
+      ui.label("CHANGE PASSWORD").classes(add="w-full p-1 text-xl text-bold bg-harmony")
+      with html.div().classes(add="w-full grow bg-green flex flex-col lg:flex-row gap-3 items-center justify-center lg:justify-around"):
+        #Password Input
+        ui.input(label="OLD PASSWORD",password_toggle_button=True).props(add=f"hide-bottom-space required stack-label standout outlined label-color='#07004d' color='light-blue-9' bg-color='light-blue-1' input-class='text-base lg:text-xl text-blue-10 font-medium italic' type='password' id='password' name='password'").classes(add="w-72 shadow-md shadow-[#07004d]").bind_value(self.passwords,"old",forward=lambda password:password.strip() if password else "")
+        
+        #Password Input
+        ui.input(label="NEW PASSWORD",password_toggle_button=True).props(add=f"hide-bottom-space required stack-label standout outlined label-color='#07004d' color='light-blue-9' bg-color='light-blue-1' input-class='text-base lg:text-xl text-blue-10 font-medium italic' type='password' id='password' name='password'").classes(add="w-72 shadow-md shadow-[#07004d]").bind_value(self.passwords,"new",forward=lambda password:password.strip() if password else "")
+        
+        #Password Input
+        ui.input(label="NEW PASSWORD",password_toggle_button=True).props(add=f"hide-bottom-space required stack-label standout outlined label-color='#07004d' color='light-blue-9' bg-color='light-blue-1' input-class='text-base lg:text-xl text-blue-10 font-medium italic' type='password' id='password' name='password'").classes(add="w-72 shadow-md shadow-[#07004d]").bind_value(self.passwords,"confirm_new",forward=lambda password:password.strip() if password else "")
+      
+      #Buttons
+      with html.div().classes(add="w-full py-2 flex flex-row justify-center"):
+        ui.button("SAVE NEW PASSWORD",color="",on_click=self.change_password).props(add="glossy").classes(add="w-auto bg-harmony text-xl text-sky-300")
   
 
   #Functionalities
   def initial_data(self):
     pass
-
+  
+  def change_password(self):
+    status = admin_db.update_staff(staff={"username":self.user.username,"password":self.passwords["confirm_new"]},new_password=True)
+    ui.notify(message=status["message"],type=status["type"],position="top")
+    self.parent.close()
 
