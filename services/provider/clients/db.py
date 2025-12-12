@@ -1070,7 +1070,7 @@ def update_visit(visit:dict):
     with Session(database_engine) as session:
       db_visit:Visit = list(session.exec(select(Visit).where(Visit.visit_id == visit["visit_id"])))[0]
 
-      db_visit.is_active = visit["is_active"]
+      db_visit.active = visit["active"]
       db_visit.end_time = datetime.now()
 
       session.commit()
