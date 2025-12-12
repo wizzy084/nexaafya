@@ -186,7 +186,7 @@ class Page():
           tab.clear()
           with tab:
             with html.div().classes(add="grow w-full p-1 flex flex-col justify-between gap-2"):
-              self.sections[e.value][2](user=self.user.username)
+              self.sections[e.value][2](user=self.user)
 
     
     #Main Page Content

@@ -27,8 +27,8 @@ def format_client_id() -> int:
     id_str = str(latest_id) if latest_id else None
     
     #Other Clients
-    if id_str:
-      id_end = int(id_str.split(id_primer)[-1]) + 1
+    if id_str and id_str[:4] == id_primer:
+      id_end = int(id_str[4:]) + 1
 
       if id_end < 10:
         new_id_end = f"00{id_end}"

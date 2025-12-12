@@ -65,16 +65,16 @@ def feed_next_kin(next_kin:dict,db_client:Client):
       session.add(db_next_kin)
       session.commit()
 
-def feed_visit(visit:dict,db_client:Client):
+def feed_visit(visit:dict):
   """Adds details of 'next_kin' to create new row in 'next_of_kin' table in database"""
   
   db_visit = Visit(
-    client_id = db_client.client_id,
+    client_id = visit["client_id"],
     visit_id = visit["visit_id"],
     start_time = datetime.now(),
     payment_mode = visit["payment_mode"],
     package = visit["package"].lower(),
-    prescription_no = f"{visit['client_id']}{str(uuid4()).split('-')[1]}",
+    prescription_no = f"{visit['client_id']}{str(uuid.uuid4()).split('-')[1]}",
     attendee_id = visit["attendee_id"]
   )
   
@@ -507,12 +507,12 @@ def register_visit(visit:dict):
     if client_visit_count > 0:
       latest_client_visit = db_client.visits[-1]
       if not latest_client_visit.is_active:
-        feed_visit(visit,db_client)
+        feed_visit(visit)
         return {"status":True,"message":"Visit successfully initiated!","type":"positive","position":"top"}
       else:
         return {"status":False,"message":"There is an active visit! Close an active visit and try again!","type":"negative","position":"center"}
     else:
-      feed_visit(visit,db_client)
+      feed_visit(visit)
       return {"status":True,"message":"Visit successfully initiated!","type":"positive","position":"top"}
 
     session.commit()
@@ -521,7 +521,7 @@ def register_appointment(appointment:dict):
   """Creates a new row in 'appointment' table in database using details from 'client_id' interger input"""
  
   with Session(database_engine) as session:
-    if session.exec(select(Appointment).where(func.date(Appointment.appointment_time) == datetime.now().date())).first():
+    if session.exec(select(Appointment).where(Appointment.client_id == appointment["client_id"]).where(func.date(Appointment.appointment_time) == datetime.now().date())).first():
       return {"message":"Client has appointment today!","caption":"View appointments tab","position":"top","type":"warning"}
     else:
       feed_appointment(appointment)

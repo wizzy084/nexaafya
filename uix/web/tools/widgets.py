@@ -450,8 +450,48 @@ class ClientsManager():
       clients_db.register_triage({"vitals":vitals,"anthropometrics":anthrops})
       
     #LABWORK
-    elif selected_service.type == "laboratory":
-      pass
+    elif selected_service.type == "procedure":
+      procedure_id = f"{visit_data['visit_id']}proc{str(uuid.uuid4()).split('-')[1]}"
+      procedure = {
+        "visit_id":visit_data["visit_id"].lower(),
+        "procedure_id":procedure_id,
+        "attendee_id":self.user.username,
+        "name":selected_service.name,
+        "count":1,
+        "payment":{
+          "visit_id":visit_data["visit_id"].lower(),
+          "payment_id":f"{procedure_id}pay{str(uuid.uuid4()).split('-')[1]}",
+          "payment_mode":visit_data["payment_mode"].lower(),
+          "cost":service_prices._asdict()[visit_data['package'].lower()],
+          "billed":True,
+          "billed_amount":service_prices._asdict()[visit_data['package'].lower()],
+          "authorization_no":visit_data["authorization_no"]
+        }
+      }
+      status = clients_db.register_visit(visit)
+      clients_db.register_procedure(procedure)
+    
+    elif selected_service.type == "imaging":
+      imaging_id = f"{visit_data['visit_id']}img{str(uuid.uuid4()).split('-')[1]}"
+      imaging = {
+        "visit_id":visit_data["visit_id"].lower(),
+        "imaging_id":imaging_id,
+        "attendee_id":self.user.username,
+        "study":selected_service.name,
+        "notes":"",
+        "payment":{
+          "visit_id":visit_data["visit_id"].lower(),
+          "payment_id":f"{imaging_id}pay{str(uuid.uuid4()).split('-')[1]}",
+          "payment_mode":visit_data["payment_mode"].lower(),
+          "cost":service_prices._asdict()[visit_data['package'].lower()],
+          "billed":True,
+          "billed_amount":service_prices._asdict()[visit_data['package'].lower()],
+          "authorization_no":visit_data["authorization_no"]
+        },
+      }
+      status = clients_db.register_visit(visit)
+      clients_db.register_imaging(imaging)
+      
 
     #Notification
     ui.notify(message=status["message"],position=status["position"],type=status["type"])
@@ -463,7 +503,7 @@ class ClientsManager():
 
   def register_appointment(self,appointment:dict):
     """Register a new appointment and store data to database"""
-
+    
     if appointment["date"].date() == datetime.now().date():
       ui.notify(message="Appointment date is the same as today!",position="top",type="info")
       return
@@ -471,7 +511,7 @@ class ClientsManager():
     status = clients_db.register_appointment(appointment)
 
     #Notification
-    ui.notify(message=status["message"],type=status["type"],position="center")
+    ui.notify(message=status["message"],type=status["type"],position="top")
     
     #UI Update
     self.initial_data()
@@ -546,11 +586,11 @@ class ClientsManager():
     def StatusDot(client):
       """A function to return a styled icon based on status of client's last visit"""
       if client.visits:
-        cancelled = self.last_visit(client).cancelled
+        active = self.last_visit(client).active
       else:
-        cancelled = True
+        active = False
 
-      return f"<span class='fa-solid fa-circle { 'text-red-600' if cancelled else 'text-green-600'}'></span>"
+      return f"<span class='fa-solid fa-circle { 'text-red-600' if not active else 'text-green-600'}'></span>"
     
     def GenderIcon(client):
       """Returns a styled gender icon based on client's gender"""
@@ -586,13 +626,13 @@ class ClientsManager():
                 "sno":self.clients.index(client) + 1,
                 "client_id":client.client_id,
                 "name":f"{client.first_name.capitalize()} {client.middle_name.capitalize() if client.middle_name else ''} {client.last_name.capitalize()}",
-                "age":f"{format_age(client.birthdate).split(' ')[0]} {format_age(client.birthdate).split(' ')[1]}",
+                "age":f"{format_age(client.birthdate)}",
                 "gender":client.gender.capitalize(),
                 "address":client.address.title(),
                 "payment_mode":client.payment_mode.upper(),
                 "card_no":client.card_no if client.card_no else "---",
                 "last_visit":format_age(self.last_visit(client).start_time) if client.visits else "---",
-                "status":"---" if not client.visits else "Inactive" if self.last_visit(client).cancelled else "Active"
+                "status":"---" if not client.visits else "Active" if self.last_visit(client).active else "Inactive"
               } for client in self.clients
             ],
           },theme="quartz"
@@ -613,7 +653,7 @@ class ClientsManager():
                 "status":StatusDot(client),
                 "client_id":client.client_id,
                 "name":f"{client.first_name} {client.middle_name[0] if client.middle_name else ''} {client.last_name.capitalize()}".title(),
-                "age":f"{format_age(client.birthdate).split(' ')[0]} {format_age(client.birthdate).split(' ')[1]}",
+                "age":f"{format_age(client.birthdate)}",
                 "gender":GenderIcon(client)
               } for client in self.clients
             ],
@@ -632,7 +672,7 @@ class ClientsManager():
   def ClientDialog(self,client:dict|None=None):
     """"""
     #UI
-    with ui.dialog().props(add=f"transition-show='jump-up' transition-hide='jump-down' transition-duration='100'") as self.client_dialog,html.div().style(add="min-width:75%;min-height:50%;").classes(add="bg-sky-50 flex flex-col"):
+    with ui.dialog().props(add=f"transition-show='jump-up' transition-hide='jump-down' transition-duration='100'") as self.client_dialog,html.div().style(add="min-width:50%;min-height:50%;").classes(add="bg-sky-50 flex flex-col"):
       with html.div().classes(add="grow w-full flex flex-col") as self.client_panel:
         self.ClientPanel(client=client)
       
@@ -705,9 +745,9 @@ class ClientsManager():
       "mobile":client.mobile if client else None
     }
     insurance_data = {
-      "scheme":self.client.payment_mode if client else payment_modes[0],
+      "scheme":client.payment_mode if client else payment_modes[0],
       "id_type":"",
-      "id_number":self.client_data.card_no if client else ""
+      "id_number":self.client_data["card_no"] if client else ""
       }
     
     #UI
@@ -723,7 +763,7 @@ class ClientsManager():
         #Payment
         with html.form().classes(add="lg:col-span-3 w-full grid grid-cols-6 gap-3 p-2 animate__animated animate__fadeIn"):
           #Scheme
-          self.scheme_selectable = ui.select(options=json.loads(self.basics.active_payment_modes),label="SCHEME",value=insurance_data["scheme"]).props(add="bordered popup-content-class='uppercase'").classes(add="col-span-3 md:col-span-1 shadow-md shadow-[#07004d] px-2 bg-white rounded-sm text-lg uppercase").bind_value_to(insurance_data,"scheme").bind_value_to(self.client_data,"payment_mode")
+          self.scheme_selectable = ui.select(options=json.loads(self.basics.active_payment_modes),label="SCHEME",value=insurance_data["scheme"]).props(add="bordered popup-content-class='uppercase' readonly").classes(add="col-span-3 md:col-span-2 shadow-md shadow-[#07004d] px-2 bg-white rounded-sm text-lg uppercase").bind_value_to(insurance_data,"scheme").bind_value_to(self.client_data,"payment_mode")
           #ID Type
           ui.select(options=id_number_types,label="ID TYPE",value=id_number_types[0]).props(add="bordered popup-content-class='uppercase'").classes(add="col-span-3 md:col-span-1 shadow-md shadow-[#07004d] px-3 bg-white rounded-sm text-lg uppercase").bind_value_to(insurance_data,"id_type").bind_visibility_from(self.scheme_selectable,"value",lambda v: v.lower() != "cash")
           #ID No input
@@ -753,7 +793,7 @@ class ClientsManager():
             #Gender
             ui.select(options=["Male","Female"],value="Female",label="GENDER").props(add="bordered stack-label popup-content-class='uppercase'").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg").bind_value(self.client_data,"gender")
             #Marital status
-            ui.select(options=marital_statuses,label="MARITAL STATUS",value=marital_statuses[0]).props(add=" bordered stack-label popup-content-class='uppercase'").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg uppercase").bind_value(self.client_data,"marital_status")
+            ui.select(options=marital_statuses,label="MARITAL STATUS").props(add=" bordered stack-label popup-content-class='uppercase'").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg uppercase").bind_value(self.client_data,"marital_status")
             #Occupation
             ui.select(options=occupations,label="OCCUPATION",with_input=True).props(add="bordered stack-label popup-content-class='uppercase'").classes(add="shadow-md shadow-[#07004d] bg-white rounded-sm px-2 text-lg uppercase").bind_value(self.client_data,"occupation")
             #Address
@@ -857,7 +897,7 @@ class ClientsManager():
         caption=f"{len(all_services):,.0f} Service{'' if len(all_services) == 1 else 's'} {len(all_services) - len(cancelled_services) } Valid {len(cancelled_services):,.0f} Cancelled",
         group="visits_group"
       ).props(add=f"dense icon='fas fa-notes-medical' header-class='rounded p-1 bg-sky-100 {'bg-sky-100 text-sky-900' if visit.cancelled else 'text-green-600'}'").classes(add="w-full my-2 bg-sky-50 rounded shadow-md shadow-[#07004d] text-bold text-xl text-black"):
-        with html.div().classes(add="w-full grid gap-3 grid-cols-2 lg:grid-cols-4"):
+        with html.div().classes(add="w-full grid gap-3 grid-cols-2 lggrid-cols-4"):
           #Payments
           with ui.button(color="",on_click=lambda e:self.PaymentsDialog(services=all_services)).props(add="bordered glossy dense").classes(add="w-full p-1 rounded-md bg-harmony shadow-md shadow-[#07004d] flex flex-row gap-5") as payments_button:
             with payments_button.add_slot("default"):
@@ -1259,6 +1299,7 @@ class AppointmentsManager():
     
   #FUNCTIONALITIES
   def initial_data(self):
+    self.selectable_years = json.loads(admin_processor.get_facility_data().years_of_existence)
     self._appointments = get_appointments()
     self.appointments = [appointment._asdict() for appointment in self._appointments] if self._appointments else []
     self.clients = get_clients()
@@ -1500,7 +1541,7 @@ class AppointmentsManager():
     
       if duration == "monthly":
         with ui.button_group().classes(add="bg-inherit w-3/5 lg:w-4/5 flex flex-row gap-3 rounded-full ring-1 ring-blue-400 shadow-md shadow-sky-500 px-3 animate__animated animate__zoomIn"):
-          year_label = ui.select(label="YEAR",options=constants.YEARS,on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value)).props(add="dark dense").classes(add="grow pl-2 rounded-l-full text-lg").bind_value(self,"picked_year")
+          year_label = ui.select(label="YEAR",options=self.selectable_years,on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value)).props(add="dark dense").classes(add="grow pl-2 rounded-l-full text-lg").bind_value(self,"picked_year")
           with year_label.add_slot("prepend"):
             ui.icon("fa-regular fa-calendar-check",color="sky-400")
           month_label = ui.select(label="MONTH",options=list(calendar.month_name)[1:],on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value)).props(add="dark dense").classes(add="grow pl-2 rounded-r-full text-lg").bind_value(self,"picked_month")
@@ -1508,7 +1549,7 @@ class AppointmentsManager():
             ui.icon("fa-regular fa-calendar-check",color="sky-400")
         
       if duration == "annual":
-        ui.select(label="YEAR",options=constants.YEARS,on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value)).props(add="dark dense hide-bottom-space").classes(add="bg-inherit ring-1 ring-blue-400 shadow-md shadow-sky-500 w-fit rounded-full px-5 text-lg animate__animated animate__zoomIn").bind_value(self,"picked_year")        
+        ui.select(label="YEAR",options=self.selectable_years,on_change=lambda e:self.load_appointments(duration=self.duration_toggle.value)).props(add="dark dense hide-bottom-space").classes(add="bg-inherit ring-1 ring-blue-400 shadow-md shadow-sky-500 w-fit rounded-full px-5 text-lg animate__animated animate__zoomIn").bind_value(self,"picked_year")        
     
   def load_appointments(self,duration:str,date=None,date_range=None):
     #Daily
@@ -1592,7 +1633,7 @@ class AppointmentsManager():
           "appt_date":appointment["appointment_time"].strftime("%d %b %Y"),
           "status":"Active" if appointment["made"] and not (appointment["done"] or appointment["cancelled"]) else "Completed" if appointment["done"] else "Cancelled" if appointment["cancelled"] else "---",
         } for appointment in appointments]
-      },theme="quartz").classes(add="lg-show w-full h-full animate__animated animate__fadeIn animate_delay-2s animate__slow").on("cellClicked",lambda e:self.AppointmentDialog(appointment=[appointment for appointment in appointments if appointment["client_id"] == e.args["data"]["client_id"]][0]))
+      },theme="quartz").classes(add="lg-show w-full h-full animate__animated animate__fadeIn animate_delay-2s animate__slow") #.on("cellClicked",lambda e:self.AppointmentDialog(appointment=[appointment for appointment in appointments if appointment["client_id"] == e.args["data"]["client_id"]][0]))
     
     #Small Screens
     ui.aggrid(
@@ -1609,14 +1650,14 @@ class AppointmentsManager():
                 "status":StatusDot(appointment),
                 "client_id":appointment["client_id"],
                 "name":appointment["client_name"].title(),
-                "age":f"{format_age(appointment['client_birthdate']).split(' ')[0]} {format_age(appointment['client_birthdate']).split(' ')[1]}",
+                "age":f"{format_age(appointment['client_birthdate'])}",
                 "gender":GenderIcon(appointment)
               } for appointment in appointments
             ],
           },
           html_columns=[0,3],
           theme="quartz"
-        ).classes(add="lg:hidden w-full h-full animate__animated animate__fadeIn animate__slow").on("cellClicked",lambda e:self.AppointmentDialog(appointment=[appointment for appointment in appointments if appointment["client_id"] == e.args["data"]["client_id"]][0]))
+        ).classes(add="lg:hidden w-full h-full animate__animated animate__fadeIn animate__slow") #.on("cellClicked",lambda e:self.AppointmentDialog(appointment=[appointment for appointment in appointments if appointment["client_id"] == e.args["data"]["client_id"]][0]))
     
   def AppointmentDialog(self,appointment:dict):
     """"""
@@ -1816,7 +1857,7 @@ class TriageManager():
     #Vitals
     if vital:
       if vital.done:
-        if (vital.temperature and vital.pulse_rate and vital.resp_rate and vital.o2sat) or (vital.sbp and vital.dbp):
+        if vital.temperature or (vital.pulse_rate and vital.sbp and vital.dbp):
           statuses.add("done")
         elif (vital.temperature or vital.sbp or vital.dbp or vital.pulse_rate or vital.resp_rate or vital.o2sat):
           statuses.add("incomplete")
@@ -1828,7 +1869,7 @@ class TriageManager():
     #Anthropometrics
     if visit["anthropometrics"]:
       if get_duration(visit["client_birthdate"])["years"] > 2:
-        _anthrops_all = [_anthrop for _anthrop in visit["anthropometrics"] if _anthrop.weight and _anthrop.height]
+        _anthrops_all = [_anthrop for _anthrop in visit["anthropometrics"] if _anthrop.weight or _anthrop.height]
         _anthrops_some = [_anthrop for _anthrop in visit["anthropometrics"] if _anthrop.weight or _anthrop.height]
       else:
         _anthrops_all = [_anthrop for _anthrop in visit["anthropometrics"] if _anthrop.weight and _anthrop.height and _anthrop.muac and _anthrop.head_circum]
@@ -1885,7 +1926,7 @@ class TriageManager():
 
       return f"<span class='fa-solid fa-{genders[visit['client_gender'].lower()]} text-{colors[visit['client_gender'].lower()]}'></span>"
     
-    age = f"<span class='ml-1'>{format_age(visit['client_birthdate']).split(' ')[0]} {format_age(visit['client_birthdate']).split(' ')[1][0].upper()}</span>"
+    age = f"<span class='ml-1'>{format_age(visit['client_birthdate'])}</span>"
     gender = GenderIcon(visit)
     payment_mode = f"<span class=''>{visit['payment_mode'].upper()}</span>"
 
@@ -1938,7 +1979,7 @@ class TriageManager():
               "client_id":visit["client_id"],
               "visit_id":visit["visit_id"].upper(),
               "name":visit["client_name"].title(),
-              "age":f"{format_age(visit['client_birthdate']).split(' ')[0]} {format_age(visit['client_birthdate']).split(' ')[1]}",
+              "age":f"{format_age(visit['client_birthdate'])}",
               "gender":visit["client_gender"].capitalize(),
               "duration":f"{format_age(visit['start_time'])}",
               "payment":visit["payment_mode"].upper(),
@@ -2061,17 +2102,18 @@ class TriageManager():
             with html.div().classes(add="w-full"):
               ui.label("VITAL SIGNS").classes(add="w-full bg-harmony text-sky-300 text-bold text-center text-3xl")
               with html.div().classes(add="w-full p-3 flex flex-row justify-around gap-5"):
+                self.weight_input = ui.number(label="WEIGHT (kg)",min=0,max=370).bind_value(anthrops,"weight").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-lg")
                 if get_duration(visit["client_birthdate"])["years"] >= 12:
                   self.sbp_input = ui.number(label="SBP (mmHg)",min=0,max=370).bind_value(vitals,"sbp").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-lg")
                   self.dbp_input = ui.number(label="DBP (mmHg)",min=0,max=360).bind_value(vitals,"dbp").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-lg")
                 self.pr_input = ui.number(label="PR (bpm)",min=0,max=500).bind_value(vitals,"pr").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-lg")
                 self.temp_input = ui.number(label="TEMP (℃)",min=11.8,max=46.3).props(add="required").bind_value(vitals,"temp").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-lg")
-                self.rr_input = ui.number(label="RR (cpm)",min=0,max=200).bind_value(vitals,"rr").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-base")
-                self.o2sat_input = ui.number(label="O₂ SAT (%)",min=0,max=100).bind_value(vitals,"osat").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-base")
+                self.rr_input = ui.number(label="RR (cpm)",min=0,max=200).bind_value(vitals,"rr").classes(add="hidden w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-base")
+                self.o2sat_input = ui.number(label="O₂ SAT (%)",min=0,max=100).bind_value(vitals,"osat").classes(add="hidden w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-base")
           
           #Anthropometrics
           if "anthropometrics" in triage_data:
-            with html.div().classes(add="w-full"):
+            with html.div().classes(add="hidden w-full"):
               ui.label("ANTHROPOMETRICS").classes(add="w-full bg-harmony text-sky-300 text-bold text-center text-3xl")
               with html.div().classes(add="w-full p-2 flex flex-row justify-around lg:justify-center gap-5"):
                 self.weight_input = ui.number(label="WEIGHT (kg)",min=0,max=370).bind_value(anthrops,"weight").classes(add="w-32 bg-white rounded shadow-md shadow-sky-600 px-5 text-lg")
@@ -2107,7 +2149,7 @@ class TriageManager():
       self.triages_dialog.close()
 
     #UI
-    with ui.dialog().props(add="transition-show='scale' transition-hide='scale' transition-duration='500'") as self.triages_dialog,html.div().style(add="min-width:90%;min-height:60%;").classes(add="bg-sky-100 flex flex-col"):
+    with ui.dialog().props(add="transition-show='scale' transition-hide='scale' transition-duration='500'") as self.triages_dialog,html.div().style(add="min-width:50%;min-height:60%;").classes(add="bg-sky-100 flex flex-col"):
       #HEADER
       with html.div().classes(add="w-full rounded-t p-1 flex flex-row bg-harmony"):
         with html.div().classes(add="grow"):
@@ -2415,7 +2457,7 @@ class DispensingManager():
 
       return f"<span class='fa-solid fa-{genders[visit['client_gender'].lower()]} text-{colors[visit['client_gender'].lower()]}'></span>"
     
-    age = f"<span class='ml-1'>{format_age(visit['client_birthdate']).split(' ')[0]} {format_age(visit['client_birthdate']).split(' ')[1][0].upper()}</span>"
+    age = f"<span class='ml-1'>{format_age(visit['client_birthdate'])}</span>"
     gender = GenderIcon(visit)
     payment_mode = f"<span class=''>{visit['payment_mode'].upper()}</span>"
 
@@ -2716,7 +2758,7 @@ class ConsultationsManager():
 
       return f"<span class='fa-solid fa-{genders[visit.client_gender.lower()]} text-{colors[visit.client_gender.lower()]}'></span>"
     
-    age = f"<span class='ml-1'>{format_age(visit.client_birthdate).split(' ')[0]} {format_age(visit.client_birthdate).split(' ')[1][0].upper()}</span>"
+    age = f"<span class='ml-1'>{format_age(visit.client_birthdate)}</span>"
     gender = GenderIcon(visit)
     payment_mode = f"<span class=''>{visit.payment_mode.upper()}</span>"
 
@@ -2864,7 +2906,7 @@ class ConsultationsManager():
               "sno":visits.index(visit) + 1,
               "client_id":visit.client_id,
               "name":visit.client_name.title(),
-              "age":f"{format_age(visit.client_birthdate).split(' ')[0]} {format_age(visit.client_birthdate).split(' ')[1]}",
+              "age":f"{format_age(visit.client_birthdate)}",
               "gender":visit.client_gender.capitalize(),
               "payment":visit.payment_mode.upper(),
               "vitals":self.vitals(visit),
@@ -4628,7 +4670,7 @@ class ProceduresManager():
 
       return f"<span class='fa-solid fa-{genders[visit.client_gender.lower()]} text-{colors[visit.client_gender.lower()]}'></span>"
     
-    age = f"<span class='ml-1'>{format_age(visit.client_birthdate).split(' ')[0]} {format_age(visit.client_birthdate).split(' ')[1][0].upper()}</span>"
+    age = f"<span class='ml-1'>{format_age(visit.client_birthdate)}</span>"
     gender = GenderIcon(visit)
     payment_mode = f"<span class=''>{visit.payment_mode.upper()}</span>"
 
