@@ -214,12 +214,16 @@ def get_pharmacy_visits():
     
     return [unmodel_visit(db_visit) for db_visit in db_visits if db_visit.medications or db_visit.medical_items]
 
-def get_consultation_diagnoses(consultation_id:str):
+async def get_consultation_diagnoses(consultation_id:str):
   """Retrieves diagnoses associated with consultation"""
+  diagnoses = []
 
-  consultation_diagnoses = [diagnosis for diagnosis in get_diagnoses() if diagnosis["consultation_id"] == consultation_id]
+  with Session(database_engine) as session:
+    db_diagnoses = session.exec(select(Diagnosis).where(Diagnosis.consultation_id == consultation_id.lower())).all()
+    if db_diagnoses:
+      diagnoses = [unmodel_diagnosis(db_diagnosis) for db_diagnosis in db_diagnoses]
 
-  return consultation_diagnoses
+  return diagnoses
 
 def counted_services(payments:list[dict]):
   """A function that returns a dictionary with keys as 'services' and value as the count of such services"""

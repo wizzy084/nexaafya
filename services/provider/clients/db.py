@@ -947,27 +947,25 @@ def register_diagnosis(diagnosis:dict):
   """A function to store 'diagnosis' data into created rows in diagnosis table"""
   
   #Provisional
-  if "provisional" in diagnosis:
-    provisional_icd,provisional = diagnosis["provisional"].split(":")
-    provisional_generic = provisional_icd.split(".")[0] if "." in provisional_icd else provisional_icd
-  
-    with Session(database_engine) as session:
-      db_diagnoses:list[Diagnosis] = list(session.exec(select(Diagnosis).where(Diagnosis.consultation_id == diagnosis["consultation_id"])))
+  provisional_generic = diagnosis["provisional_icd"].split(".")[0] if "." in diagnosis["provisional_icd"] else diagnosis["provisional_icd"]
 
-    
-      feedable_diagnosis = {
-        "consultation_id":diagnosis["consultation_id"],
-        "diagnosis_id":f"{diagnosis['consultation_id']}dx{str(uuid.uuid4()).split('-')[1]}",
-        "provisional":provisional,
-        "provisional_icd":provisional_icd,
-        "provisional_generic":provisional_generic,
-        "differentials":json.dumps(diagnosis["differentials"])
-       }
-  
-      feed_diagnosis(feedable_diagnosis)
+  with Session(database_engine) as session:
+    db_diagnoses:list[Diagnosis] = list(session.exec(select(Diagnosis).where(Diagnosis.consultation_id == diagnosis["consultation_id"])))
 
-      session.commit()
-      return {"message":"Provisional Diagnosis saved!","type":"positive","position":"top"}
+  
+    feedable_diagnosis = {
+      "consultation_id":diagnosis["consultation_id"],
+      "diagnosis_id":diagnosis["diagnosis_id"],
+      "provisional":diagnosis["provisional"],
+      "provisional_icd":diagnosis["provisional_icd"],
+      "provisional_generic":provisional_generic,
+      "differentials":json.dumps(diagnosis["differentials"])
+      }
+
+    feed_diagnosis(feedable_diagnosis)
+
+    session.commit()
+    return {"message":"Provisional Diagnosis saved!","type":"positive","position":"top"}
       
 def register_imaging(imaging:dict):
   """Creates a new row in imaging table and adds details from 'imaging' dictionary"""

@@ -3459,7 +3459,7 @@ class ConsultationsManager():
       ui.button(text="AMPLIFY",color="",on_click=amplify_complaints).classes(add="lg:col-span 2 w-full lg:w-1/2 place-self-center rounded bg-harmony shadow-md shadow-[#07004d] text-yellow-500 text-bold text-xl")
   
     #HPI
-    with html.section().classes(add="w-full grow flex flex-col lg:justify-around gap-y-0.5") as hpi_pad:
+    with html.section().classes(add="w-full p-1 grow flex flex-col lg:justify-around gap-y-0.5") as hpi_pad:
       HPI()
 
   def PastMedicalSurgicalHistory(self,consultation:dict,parent=None,visit=None,attendee_id=None):
@@ -3571,10 +3571,10 @@ class ConsultationsManager():
     #UI
     with html.div().classes(add="grow w-full p-1 flex flex-col justify-between lg:flex-row gap-1"):
       #GE
-      ui.textarea(label="GENERAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[250px]' label-color='#07004d'").classes(add="lg:w-[30%] shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(ge,"notes")
+      ui.textarea(label="GENERAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[300px]' label-color='#07004d'").classes(add="lg:w-[30%] shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(ge,"notes")
       #ODE
-      ui.textarea(label="EXTRAORAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[250px]' label-color='#07004d'").classes(add="lg:w-[30%] shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(orodental,"extraoral")
-      ui.textarea(label="INTRAORAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[250px]' label-color='#07004d'").classes(add="lg:w-[30%] shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(orodental,"intraoral")
+      ui.textarea(label="EXTRAORAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[300px]' label-color='#07004d'").classes(add="lg:w-[30%] shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(orodental,"extraoral")
+      ui.textarea(label="INTRAORAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[300px]' label-color='#07004d'").classes(add="lg:w-[30%] shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(orodental,"intraoral")
       
     #BUTTONS
     with html.div().classes(add="w-full py-1 flex flex-row justify-center"):
@@ -3626,8 +3626,10 @@ class ConsultationsManager():
 
       def save_diagnosis():
         diagnosis = {
-          "consultation_id":self.active_consultation.consultation_id,
-          "provisional":pdx,
+          "consultation_id":self.active_consultation["consultation_id"],
+          "diagnosis_id":f"{self.active_consultation['consultation_id']}dx{str(uuid.uuid4()).split('-')[1]}",
+          "provisional":pdx.split(":")[1],
+          "provisional_icd":pdx.split(":")[0],
           "differentials":list(ddxs)
         }
 
@@ -3687,14 +3689,20 @@ class ConsultationsManager():
 
   def DefinitiveDiagnoses(self,consultation:dict,parent=None,visit=None,attendee_id=None):
     #DATA
-    _selectable_diagnoses = set()
-    _selectable_diagnoses.update([f"{provisional['provisional_icd'].upper()}:{provisional['provisional']}" for provisional in self.active_diagnoses])
-    for diagnosis in self.active_diagnoses:
-      _selectable_diagnoses.update(diagnosis["differentials"])
-    
-    selectable_diagnoses = list(_selectable_diagnoses)
+    selectable_diagnoses = []
     
     #FXS
+    async def consult_diagnoses():
+      consultation_diagnoses = await clients_processor.get_consultation_diagnoses(consultation["consultation_id"])
+      _selectable_diagnoses = set()
+      _selectable_diagnoses.update([f"{provisional.provisional_icd.upper()}:{provisional.provisional}" for provisional in consultation_diagnoses])
+      for diagnosis in self.active_diagnoses:
+        _selectable_diagnoses.update(diagnosis["differentials"])
+    
+      selectable_diagnoses = list(_selectable_diagnoses)
+      definitive_select.options = selectable_diagnoses
+      definitive_select.update()
+
     def update_diagnosis(dx:str):
       if not dx:
         return
@@ -3726,11 +3734,14 @@ class ConsultationsManager():
     with html.section().classes(add="grow w-full flex flex-col lg:grid grid-cols-3 items-center gap-3 lg:gap-0"):
       #Selecteor
       with html.div().classes(add="w-full lg:h-full py-3 flex flex-row justify-center items-start"):
-        ui.select(options=selectable_diagnoses,label="DEFINITIVE DIAGNOSIS",with_input=True,on_change=lambda e:update_diagnosis(dx=e.value)).props(add=f"clearable").classes(add="lg:w-3/5 px-5 rounded shadow-md shadow-[#07004d] bg-white text-lg")
+        definitive_select = ui.select(options=[],label="DEFINITIVE DIAGNOSIS",with_input=True,on_change=lambda e:update_diagnosis(dx=e.value)).props(add=f"clearable").classes(add="lg:w-3/5 px-5 rounded shadow-md shadow-[#07004d] bg-white text-lg")
 
       #Diagnoses Display
       with html.div().classes(add="grow lg:col-span-2 w-full lg:h-full py-2 flex flex-col shadow-sm shadow-[#07004d]") as definitive_diagnoses_panel:
         self.DiagnosesDisplay(definitive=True)
+    
+    #Async retrieveal
+    ui.timer(0.1,consult_diagnoses,once=True)
     
   def DiagnosesDisplay(self,definitive:bool=False):
     """Displays list of diagnoses for client"""
@@ -4594,9 +4605,9 @@ class ProceduresManager():
   #FUNCTIONALITIES
   def initial_data(self):
     _procedure_visits = clients_processor.get_active_visits_with_procedures()
-    done_procedure_visits = sorted([self.format_procedure_visit(procedure_visit) for procedure_visit in _procedure_visits if self.procedure_visit_status(procedure_visit) == "done"],key=lambda e:e.procedures[-1].done_on,reverse=True)
-    pending_procedure_visits = [self.format_procedure_visit(procedure_visit) for procedure_visit in _procedure_visits if self.procedure_visit_status(procedure_visit) == "pending" or self.procedure_visit_status(procedure_visit) == "partial"]
-    undone_procedure_visits = sorted([self.format_procedure_visit(procedure_visit) for procedure_visit in _procedure_visits if self.procedure_visit_status(procedure_visit) == "not done"],key=lambda e:e.procedures[-1].ordered_on)
+    done_procedure_visits = sorted([self.format_procedure_visit(procedure_visit) for procedure_visit in _procedure_visits if self.procedure_visit_status(procedure_visit) == "done"],key=lambda e:e.procedures[-1]["done_on"],reverse=True)
+    pending_procedure_visits = sorted([self.format_procedure_visit(procedure_visit) for procedure_visit in _procedure_visits if self.procedure_visit_status(procedure_visit) == "pending" or self.procedure_visit_status(procedure_visit) == "partial"],key=lambda e:e.procedures[-1]["ordered_on"])
+    undone_procedure_visits = sorted([self.format_procedure_visit(procedure_visit) for procedure_visit in _procedure_visits if self.procedure_visit_status(procedure_visit) == "not done"],key=lambda e:e.procedures[-1]["ordered_on"])
     self.procedure_visits = pending_procedure_visits + undone_procedure_visits + done_procedure_visits
     
     #Activee Procedures
@@ -4775,6 +4786,7 @@ class ProceduresManager():
     #FXS
     def close_dialog():
       self.initial_data()
+      self.ProceduresDisplay(self.procedure_visits)
       self.procedures_dialog.close()
 
     #UI
@@ -4841,7 +4853,7 @@ class ProceduresManager():
                   
                   with html.div().classes(add="w-full flex flex-row justify-center"):
                     ider = ui.label(procedure['procedure_id']).classes(add="hidden") 
-                    ui.button(text="submit results",color="",on_click=lambda e:self.save_procedure({
+                    ui.button(text="save procedure notes",color="",on_click=lambda e:self.save_procedure({
                       "procedure_id":e.sender.parent_slot.parent.slots["default"].children[0]._text,
                       "visit_id":visit.visit_id,
                       "procedure_notes":notes.value,
@@ -6556,7 +6568,7 @@ class FacilityFormulary():
           with ui.tab_panel(name="general").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col justify-between gap-0.5"):
             #General
             with html.section().classes(add="w-full grid grid-cols-2 gap-3"):
-              ui.input(label="TYPE").props(add="type='text'").props(add="readonly").classes(add="w-full px-2 rounded bg-white shadow-sm shadow-[#07004d] text-lg").bind_value(data,"type",backward=lambda val:val.title())
+              ui.input(label="TYPE").props(add="type='text'").props(add="readonly").classes(add="w-full px-2 rounded bg-white shadow-sm shadow-[#07004d] text-lg").bind_value(data,"type",backward=lambda val:val.title() if val else "ITEM")
               ui.toggle(options={True:"active",False:"inactive"}).props(add="glossy spread size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="w-full bg-harmony font-semibold").bind_value(data,"active")
             
             #Other details
@@ -6629,7 +6641,7 @@ class FacilityFormulary():
             #Max
             ui.number(label="MAX").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value").bind_value(scheme["prices"],"max",backward=lambda val:float(val))
             #Standard
-            ui.number(label="STANDARD").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value",backward=lambda e:not e).bind_value(scheme["prices"],"standard",backward=lambda val:float(val))
+            ui.number(label="STANDARD").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value",backward=lambda e:not e).bind_value(scheme["prices"],"standard",backward=lambda val:float(val) if val else 0)
             #Priority
             ui.number(label="PRIORITY").props(add="bordered stack-label label-color='#07004d'").classes(add="col-span-6 lg:col-span-2 w-full shadow-sm shadow-[#07004d] bg-white rounded px-2 text-lg lg:text-xl").bind_visibility_from(price_range_switch,"value",backward=lambda e:not e).bind_value(scheme["prices"],"priority",backward=lambda val:float(val))
             
