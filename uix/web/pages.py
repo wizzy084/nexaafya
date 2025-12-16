@@ -16,8 +16,6 @@ from .tools.widgets import *
 from .tools import animations
 
 
-#HELPER FUNCTIONS
-
 
 #PAGE ROUTES
 router = APIRouter(prefix="")
@@ -50,7 +48,6 @@ class Page():
     #LOADING
     ui.timer(0.1,self.load_page_with_credentials,once=True)
       
-  
   def initial_data(self,user:dict):
     #USER INITIALIZATION
     self.user = User(
@@ -74,13 +71,13 @@ class Page():
       if "director" in self.user.roles:
         self.sections = {"services":["fa-solid fa-stethoscope",ClinicianServicesManager,ClinicianServicesManager],"management":["fa-solid fa-briefcase",self.DummyDisplay,FacilityManager]}
       elif "receptionist" in self.user.roles:
-        self.sections = {"clients":["fa-solid fa-users-rectangle",ReceptionManager,ReceptionManager],"services":["fa-solid fa-heart-pulse",self.DummyDisplay,NursingManager],"inventory":["fa-solid fa-house-medical",self.DummyDisplay,InventoryManager]}
+        self.sections = {"clients":["fa-solid fa-users-rectangle",ReceptionManager,ReceptionManager],"services":["fa-solid fa-heart-pulse",NursingManager,NursingManager],"inventory":["fa-solid fa-house-medical",self.DummyDisplay,InventoryManager]}
       elif "doctor" in self.user.roles:
         self.sections = {"services":["fa-solid fa-stethoscope",ClinicianServicesManager,ClinicianServicesManager]}
       elif "nurse" in self.user.roles:
-        self.sections = {"services":["fa-solid fa-heart-pulse",NursingServicesManagementDisplay,NursingServicesManagementDisplay]}
+        self.sections = {"services":["fa-solid fa-heart-pulse",NursingManager,NursingManager]}
       elif "radiographer" in self.user.roles or "radiologist" in self.user.roles:
-        self.sections = {"studies":["fa-solid fa-x-ray",StudiesManagementDisplay,StudiesManagementDisplay]}
+        self.sections = {"studies":["fa-solid fa-x-ray",self.DummyDisplay,self.DummyDisplay]}
 
   def Metadata(self,default:bool=False):
     """Inserts meta tags in the head of HTML document rendered by this class"""
@@ -322,14 +319,17 @@ class NursingManager():
 
           with ui.carousel_slide(name="dispensing").classes(add="q-pa-none p-0.5 gap-0 w-full h-full rounded light-blur"):
             DispensingManager(user=self.user)
+          
+          with ui.carousel_slide(name="imagings").classes(add="q-pa-none p-0.5 gap-0 w-full h-full rounded light-blur"):
+            ImagingStudiesManager(user=self.user)
 
       #Controls
       ##Large Screen
       with html.div().classes(add="lg-show w-full py-1 text-center"):
-        ui.toggle(options=["triage","dispensing"]).props(add="glossy size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="bg-[#07004d] rounded-full ring-1 ring-blue-500 shadow-md shadow-sky-600 text-bold").bind_value(carousel)
+        ui.toggle(options=["triage","dispensing","imagings"]).props(add="glossy size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="bg-[#07004d] rounded-full ring-1 ring-blue-500 shadow-md shadow-sky-600 text-bold").bind_value(carousel)
       ##Small Screen
       with html.div().classes(add="lg:hidden w-full"):
-        ui.toggle(options=["triage","dispensing"]).props(add="glossy spread size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="w-full bg-[#07004d] rounded-none text-bold").bind_value(carousel)
+        ui.toggle(options=["triage","dispensing","imagings"]).props(add="glossy spread size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="w-full bg-[#07004d] rounded-none text-bold").bind_value(carousel)
 
 class ClinicianServicesManager():
   """A class of UI for managing consultations"""
@@ -391,6 +391,7 @@ class InventoryManager():
       ##Small Screen
       with html.div().classes(add="lg:hidden w-full"):
         ui.toggle(options=["orders","formulary"]).props(add="glossy spread size='lg' toggle-color='bg-inherit' toggle-text-color='sky-500' text-color='yellow-500'").classes(add="w-full bg-[#07004d] rounded-none text-bold").bind_value(carousel)
+
 
 
 #ADMIN

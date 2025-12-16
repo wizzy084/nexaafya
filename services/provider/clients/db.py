@@ -506,7 +506,7 @@ def register_visit(visit:dict):
     
     if client_visit_count > 0:
       latest_client_visit = db_client.visits[-1]
-      if not latest_client_visit.is_active:
+      if not latest_client_visit.active:
         feed_visit(visit)
         return {"status":True,"message":"Visit successfully initiated!","type":"positive","position":"top"}
       else:
@@ -1061,14 +1061,14 @@ def update_diagnosis(diagnosis:dict):
       return {"status":True,"message":"Definitive Diagnosis saved!","type":"positive","position":"top"}
 
 
-def update_visit(visit:dict):
+def update_visit(visit:dict,close:bool=True):
   """A function that retrieves a row in visit table and modifies value(s) of its column(s)"""
 
-  if "is_active" in visit:
+  if close:
     with Session(database_engine) as session:
       db_visit:Visit = list(session.exec(select(Visit).where(Visit.visit_id == visit["visit_id"])))[0]
 
-      db_visit.active = visit["active"]
+      db_visit.active = False
       db_visit.end_time = datetime.now()
 
       session.commit()

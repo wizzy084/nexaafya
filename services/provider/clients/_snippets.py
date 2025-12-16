@@ -549,7 +549,7 @@ def unmodel_appointment(db_appointment:Appointment):
 
   return _Appointment(
     client_id = db_appointment.client.client_id,
-    client_name = f"{db_appointment.client.first_name} {db_appointment.client.middle_name[0]} {db_appointment.client.last_name}",
+    client_name = f"{db_appointment.client.first_name} {db_appointment.client.middle_name} {db_appointment.client.last_name}",
     client_birthdate = db_appointment.client.birthdate,
     client_gender = db_appointment.client.gender,
     client_address = db_appointment.client.address,
@@ -599,8 +599,8 @@ def unmodel_client(db_client:Client):
     payment_mode = db_client.payment_mode,
     card_no = db_client.card_no,
     kins = [unmodel_next_of_kin(db_nextofkin) for db_nextofkin in db_client.kins],
-    visits = [unmodel_visit(db_visit) for db_visit in db_client.visits],
-    appointments = [unmodel_appointment(db_appointment) for db_appointment in db_client.appointments]
+    visits = sorted([unmodel_visit(db_visit) for db_visit in db_client.visits],key=lambda visit:visit.start_time,reverse=True),
+    appointments = sorted([unmodel_appointment(db_appointment) for db_appointment in db_client.appointments],key=lambda appointment:appointment.appointment_time,reverse=True)
   )
 
 

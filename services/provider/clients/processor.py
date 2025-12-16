@@ -83,7 +83,7 @@ def get_active_visits():
   """Returns a list of dictionaries containing details of active visits in the database"""
 
   with Session(database_engine) as session:
-    db_active_visits:list[Visit] = list(session.exec(select(Visit).where(Visit.cancelled == False)))
+    db_active_visits:list[Visit] = list(session.exec(select(Visit).where(Visit.active == True)))
 
     return [unmodel_visit(db_active_visit) for db_active_visit in db_active_visits]
 
@@ -168,24 +168,36 @@ def get_diagnoses():
 
     return diagnoses
 
-def get_active_imagings():
+def get_active_imaging_visits():
   """Retrieves data from imaging table in the database and returns a list of dictionaries correspondng to the row data"""
   
+  visits = []
+
   with Session(database_engine) as session:
-    db_visits:list[Visit] = list(session.exec(select(Visit)).all())
-    _imaging_visits = [unmodel_visit(db_visit) for db_visit in db_visits if db_visit.imagings and db_visit.is_active]
-    imaging_visits = [
-      {
-        "client_id":visit["client_id"],
-        "visit_id":visit["visit_id"],
-        "client_name":visit["client_name"],
-        "client_age":format_age(visit["client_birthdate"]),
-        "client_gender":visit["client_gender"],
-        "client_address":visit["client_address"],
-        "request_mode":"Consulted" if visit["consultations"] else "Direct",
-        "imagings":visit["imagings"]
-      } for visit in _imaging_visits]
-    return imaging_visits
+    db_visits = session.exec(select(Visit).where(Visit.active)).all()
+    if db_visits:
+      _imaging_visits = [unmodel_visit(db_visit) for db_visit in db_visits if db_visit.imagings]
+      for _visit in _imaging_visits:
+        mod_visit = {
+          "client_id":_visit.client_id,
+          "visit_id":_visit.visit_id,
+          "client_name":_visit.client_name,
+          "client_birthdate":_visit.client_birthdate,
+          "client_gender":_visit.client_gender,
+          "client_address":_visit.client_address,
+          "request_mode":"Consulted" if _visit.consultations else "Direct",
+          "imagings":[]
+        }
+
+        for imaging in _visit.imagings:
+          imaging = imaging._asdict()
+          imaging["payment"] = imaging["payment"]._asdict()
+          mod_visit["imagings"].append(imaging)
+
+        visits.append(mod_visit)
+      
+    
+  return visits
     
 def get_imagings():
 

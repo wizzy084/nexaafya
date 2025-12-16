@@ -17,7 +17,7 @@ from ..tools._snippets import *
 
 
 #WIDGETS
-class StudiesManagementDisplay():
+class ImagingStudiesManager():
   """A class to display UI for managing studies"""
 
   def __init__(self,user):

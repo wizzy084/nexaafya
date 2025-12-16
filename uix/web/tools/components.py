@@ -58,9 +58,9 @@ def GenderAge(data:dict):
     return f"<span class='fa-solid fa-{genders[data['gender'].lower()]} text-{colors[data['gender'].lower()]}'></span>"
   
   age = f"<span class='ml-1'>{data['age'].split(' ')[0]} {data['age'].split(' ')[1][0].upper()}</span>"
-  gender = GenderIcon(visit)
+  gender = GenderIcon(data)
 
-  return f"<span class='h-full'>{gender}{age}</span>"
+  return f"<span class='h-full'>{gender} {age}</span>"
 
 def StatusDot(active:bool=True):
   """A function to return a styled icon based on value of active"""
@@ -72,12 +72,12 @@ def PageLoading(lg:bool=False):
 
   with html.div().classes(add=f"{'w-[200px] h-[200px]'} grid grid-cols-1 gap-1"):
     #Logo
-    with html.div().classes(add="w-full"):
-      ui.image("uix/web/assets/images/bgs/nexasoft1.png").classes(add="w-full h-full fa-fade")
+    with html.div().classes(add="w-full flex flex-row justify-center items-center"):
+      ui.image("/images/bgs/nexasoft1.png").classes(add="w-[75%] h-[75%] lg:w-full lg:h-full fa-fade")
     
     #Loading
     with html.div().classes(add="w-full flex flex-row justify-center items-center gap-3"):
-      ui.label("Please wait").classes(add=f"{'text-3xl' if lg else 'text-xl'} text-bold text-sky-600")
+      ui.label("Please wait").classes(add=f"{'text-xl lg:text-3xl' if lg else 'text-xl'} text-bold text-sky-600")
       ui.spinner(type="dots",size="md")
 
 ###
