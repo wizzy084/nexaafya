@@ -20,7 +20,12 @@ if __name__ in {"__main__", "__mp_main__"}:
   populate_db()
 
   #MAIN THREAD
-  ui.run(favicon="uix/web/assets/icons/favicons/nexasoft5.ico",storage_secret='xxx',host='0.0.0.0')
+  ui.run(
+    favicon="uix/web/assets/icons/favicons/nexasoft5.ico",
+    storage_secret='xxx',
+    host='0.0.0.0',
+    viewport = "width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"
+  )
   
   #BG THREAD
   visits_thread = threading.Thread(target=expire_sessions)
