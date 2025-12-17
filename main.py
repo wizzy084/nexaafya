@@ -24,7 +24,10 @@ if __name__ in {"__main__", "__mp_main__"}:
     favicon="uix/web/assets/icons/favicons/nexasoft5.ico",
     storage_secret='xxx',
     host='0.0.0.0',
-    viewport = "width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"
+    viewport = "width=device-width,initial-scale=1.0,maximum-scale=1.0",
+    reload = False,
+    reconnect_timeout=10.0,
+    dark = False
   )
   
   #BG THREAD

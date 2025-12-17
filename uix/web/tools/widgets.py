@@ -129,25 +129,25 @@ class Login():
       ui.space()
 
       #Header
-      ui.label("STAFF LOGIN").style(add="").classes(add="select-none text-2xl lg:text-5xl text-sky-200 font-bold lg:text-3xl")
+      ui.label("STAFF LOGIN").style(add="").classes(add="select-none text-2xl text-sky-200 font-bold lg:text-3xl")
 
       #Login Form
       with html.form().props(add="onsubmit='event.preventDefault();'").classes(add="w-full rounded-sm flex flex-col items-center content-center gap-5 py-5"):
         #Username Input
-        with ui.input(label="USERNAME").props(add="hide-bottom-space required stack-label standout outlined label-color='#07004d' bg-color='light-blue-1' input-class='text-base lg:text-xl text-blue-10 font-medium italic' type='text' id='username' name='username'").classes(add="w-52 lg:w-68").bind_value(credentials,"username",forward=lambda username:username.strip() if username else "") as username_input:
+        with ui.input(label="USERNAME").props(add="hide-bottom-space required stack-label standout outlined label-color='#07004d' bg-color='light-blue-1' input-class='text-base lg:text-xl text-blue-10 font-medium italic' type='text' id='username' name='username'").classes(add="w-52").bind_value(credentials,"username",forward=lambda username:username.strip() if username else "") as username_input:
           with username_input.add_slot("prepend"):
             ui.icon(name="fa-solid fa-user fa-sm").classes(add="m-0 mr-2 text-harmony")
             ui.separator().props(add="vertical")
 
         #Password Input
-        with ui.input(label="PASSWORD",password_toggle_button=True).props(add=f"{ password_input_autofocus()} hide-bottom-space required stack-label standout outlined label-color='#07004d' color='light-blue-9' bg-color='light-blue-1' input-class='text-base lg:text-xl text-blue-10 font-medium italic' type='password' id='password' name='password'").classes(add="w-52 lg:w-68").bind_value(credentials,"password",forward=lambda password:password.strip() if password else "") as password_input:
+        with ui.input(label="PASSWORD",password_toggle_button=True).props(add=f"{ password_input_autofocus()} hide-bottom-space required stack-label standout outlined label-color='#07004d' color='light-blue-9' bg-color='light-blue-1' input-class='text-base lg:text-xl text-blue-10 font-medium italic' type='password' id='password' name='password'").classes(add="w-52").bind_value(credentials,"password",forward=lambda password:password.strip() if password else "") as password_input:
           with password_input.add_slot("prepend"):
             ui.icon(name="fa-solid fa-user-lock fa-sm").classes(add="m-0 mr-2 text-harmony")
             ui.separator().props(add="vertical")
 
         #Submit button
         with html.span():
-          ui.button(text="log in",color="",on_click=lambda e:self.login(credentials)).props(add="dense glossy padding='sm' type='submit'").classes(add="w-32 lg:w-40 bg-harmony shadow-sm shadow-blue-500 text-2xl text-sky-200")
+          ui.button(text="log in",color="",on_click=lambda e:self.login(credentials)).props(add="dense glossy padding='sm' type='submit'").classes(add="w-32 bg-harmony shadow-sm shadow-blue-500 text-2xl text-sky-200")
         
       #Company name
       with html.section().classes(add="w-full px-1 flex flex-row justify-between items-center"):
@@ -3460,7 +3460,7 @@ class ConsultationsManager():
       return anthrops, vitals
     
     # Show loading while fetching
-    with html.div().classes(add="w-full grow flex flex-col justify-center items-center") as main_active_display:
+    with html.div().classes(add="w-full grow flex flex-col justify-center items-center gap-1") as main_active_display:
       loading = ui.spinner(size='lg',type="puff")
       
       async def render():
@@ -3537,8 +3537,8 @@ class ConsultationsManager():
         with ui.chip(text="O₂",text_color="yellow-8",color="").classes(add="bg-inherit m-0 p-0 rounded text-base text-bold"):
           ui.badge(text=f"{vitals.o2sat if vitals.o2sat else '---'} {'%' if vitals.o2sat else ''}",color="").classes(add=f"bg-inherit m-0 ml-0.5 p-0 text-base text-bold text-{'sky-300' if (not vitals.o2sat) else 'green-400' if self.normal(osat=vitals.o2sat) else 'red-600'}")
     
-    
-    with html.section().classes(add="grow w-full flex flex-col"):
+    #Small Screen
+    with html.section().classes(add="lg:hidden grow w-full flex flex-col"):
       # Use lazy tabs
       with html.div().classes(add="order-last w-full p-0 rounded-b shadow-sm shadow-[#07004d]"):
         with ui.tabs(value=clerkship_sections_titles[0]).props(add='''dense inline-label mobile-arrows outside-arrows active-class="text-sky-500"''').classes(add="w-full rounded-b bg-harmony py-1 text-yellow-500 font-bold") as clerkship_tabs:
@@ -3546,6 +3546,20 @@ class ConsultationsManager():
             ui.tab(section_title)
       
       with ui.tab_panels(clerkship_tabs,value=clerkship_sections_titles[0],on_change=lambda e:render_display(e)).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='700'").classes(add="bg-inherit grow w-full grid grid-cols-1 animate__animated aimate__fadeIn") as xtabs:
+        for section_title,section_func in clerkship_sections.items():
+          with ui.tab_panel(section_title).props(add="keep-alive").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col"):
+            with html.div().classes(add="grow w-full flex flex-col justify-center items-center"):
+              section_func[0](consultation=visit.consultations[0],visit=visit,attendee_id=self.user.username,parent=self)
+    
+    #Large Screen
+    with html.section().classes(add="grow w-full lg-flex flex-row gap-1"):
+      # Use lazy tabs
+      with html.div().classes(add="p-0 rounded-b shadow-sm shadow-[#07004d]"):
+        with ui.tabs(value=clerkship_sections_titles[0]).props(add='''dense inline-label mobile-arrows outside-arrows vertical active-class="text-sky-500"''').classes(add="w-full rounded-b bg-harmony py-1 text-yellow-500 font-bold") as clerkship_tabs:
+          for section_title in clerkship_sections_titles:
+            ui.tab(section_title)
+      
+      with ui.tab_panels(clerkship_tabs,value=clerkship_sections_titles[0],on_change=lambda e:render_display(e)).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='700'").classes(add="bg-inherit grow grid grid-cols-1 animate__animated aimate__fadeIn") as xtabs:
         for section_title,section_func in clerkship_sections.items():
           with ui.tab_panel(section_title).props(add="keep-alive").classes(add="w-full h-full p-0.5 rounded-0 flex flex-col"):
             with html.div().classes(add="grow w-full flex flex-col justify-center items-center"):
@@ -3982,12 +3996,12 @@ class ConsultationsManager():
         return
 
     #UI
-    with html.div().classes(add="grow w-full p-1 flex flex-col justify-between lg:flex-row gap-1"):
+    with html.div().classes(add="w-full p-1 flex flex-col justify-between lg:flex-row gap-1"):
       #GE
-      ui.textarea(label="GENERAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[300px]' label-color='#07004d'").classes(add="lg:w-[30%] shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(ge,"notes")
+      ui.textarea(label="GENERAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[250px]' label-color='#07004d'").classes(add="grow shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(ge,"notes")
       #ODE
-      ui.textarea(label="EXTRAORAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[300px]' label-color='#07004d'").classes(add="lg:w-[30%] shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(orodental,"extraoral")
-      ui.textarea(label="INTRAORAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[300px]' label-color='#07004d'").classes(add="lg:w-[30%] shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(orodental,"intraoral")
+      ui.textarea(label="EXTRAORAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[250px]' label-color='#07004d'").classes(add="grow shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(orodental,"extraoral")
+      ui.textarea(label="INTRAORAL EXAMINATION").props(add="clearable stack-label input-class='lg:h-[250px]' label-color='#07004d'").classes(add="grow shadow-sm shadow-[#07004d] bg-white rounded px-3 text-lg").bind_value(orodental,"intraoral")
       
     #BUTTONS
     with html.div().classes(add="w-full py-1 flex flex-row justify-center"):
