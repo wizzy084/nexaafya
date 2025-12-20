@@ -5,9 +5,9 @@ import threading
 from nicegui import app,ui
 
 #PROJECT IMPORTS
-from services.background_tasks import expire_sessions
-from services.provider.ui import populate_db
-from uix.web.pages import router as web_router
+from backend.background_tasks import expire_sessions
+from backend.admin.db import populate_db
+from uix.pages import router as web_router
 
 
 #ROUTING
@@ -21,11 +21,11 @@ if __name__ in {"__main__", "__mp_main__"}:
 
   #MAIN THREAD
   ui.run(
-    favicon="uix/web/assets/icons/favicons/nexasoft5.ico",
+    favicon="uix/assets/icons/favicons/nexasoft5.ico",
     storage_secret='xxx',
     host='0.0.0.0',
     viewport = "width=device-width,initial-scale=1.0,maximum-scale=1.0",
-    reload = False,
+    reload = True,
     reconnect_timeout=10.0,
     dark = False
   )
