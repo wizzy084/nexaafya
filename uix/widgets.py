@@ -1616,8 +1616,7 @@ class AppointmentsManager():
           {"headerName":"APPOINTMENT DATE","field":"appt_date"},
           {"headerName":"STATUS","field":"status","cellClassRules":{
             "text-green-600 text-bold":"x == 'Active'",
-            "text-yellow-600 text-bold":"x == 'Completed'",              "text-red-600 text-bold":"x == 'Cancelled'"
-          }}
+            "text-yellow-600 text-bold":"x == 'Completed'","text-red-600 text-bold":"x == 'Cancelled'"}}
         ] ,
         "rowData":[{
           "sno":appointments.index(appointment) + 1,
@@ -1663,7 +1662,7 @@ class AppointmentsManager():
     
     details = {
       "name":appointment["client_name"],
-      "short_name":f"{appointment['client_name'].split(' ')[0]} {appointment['client_name'].split(' ')[1] if len(appointment['client_name'].split(' ')) > 2 else ''} {appointment['client_name'].split(' ')[2]}".title(),
+      "short_name":f"{appointment['client_name'].split(' ')[0]} {appointment['client_name'].split(' ')[-1]}".title(),
       "age":format_age(appointment["client_birthdate"]),
       "gender":appointment["client_gender"],
       "address":appointment["client_address"]
