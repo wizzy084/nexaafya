@@ -43,8 +43,9 @@ class Facility(SQLModel,table=True,extend_existing=True):
   years_of_existence:str|None = None
   active_payment_modes:str = '["cash","nhif"]'
   payment_packages:str = '["standard","priority"]'
-
+  
   subscriptions:list["FacilitySubscription"] = Relationship(back_populates="facility",sa_relationship_kwargs={"cascade":"all,delete"})
+  departments:list["Department"] = Relationship(back_populates="facility",sa_relationship_kwargs={"cascade":"all,delete"})
 
 class FacilitySubscription(SQLModel,table=True,extend_existing=True):
   """A model class for facility subscription details"""
@@ -268,6 +269,92 @@ class ICD11Diagnosis(SQLModel,table=True,extend_existing=True):
   code:str|None = None
   name:str|None = None
 
+class Department(SQLModel,table=True,extend_existing=True):
+  """Models details of facility department"""
+
+  id:int|None = Field(default=None,primary_key=True)
+  department_id:str|None = Field(default=None,unique=True)
+  facility_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("facility.facility_id",ondelete="CASCADE")))
+
+  name:str|None = None
+  active:bool = True
+  clinical:bool = False
+  head_of_department:str|None = None
+
+  facility:Facility|None = Relationship(back_populates="departments")
+
+  sections:list["DepartmentSection"] = Relationship(back_populates="department",sa_relationship_kwargs={"cascade":"all,delete"})
+
+class DepartmentSection(SQLModel,table=True,extend_existing=True):
+  """Models details of department section"""
+
+  id:int|None = Field(default=None,primary_key=True)
+  section_id:str|None = Field(default=None,unique=True)
+  department_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("department.department_id",ondelete="CASCADE")))
+
+  name:str|None = None
+  active:bool = True
+  head_of_section:str|None = None
+
+  department:Department|None = Relationship(back_populates="sections")
+  
+  consultation_rooms:list["ConsultationRoom"] = Relationship(back_populates="section",sa_relationship_kwargs={"cascade":"all,delete"})
+  wards:list["Ward"] = Relationship(back_populates="section",sa_relationship_kwargs={"cascade":"all,delete"})
+
+class ConsultationRoom(SQLModel,table=True,extend_existing=True):
+  """Models details of consultation room"""
+
+  id:int|None = Field(default=None,primary_key=True)
+  room_id:str|None = Field(default=None,unique=True)
+  section_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("departmentsection.section_id",ondelete="CASCADE")))
+  
+  room_no:int|None = None
+  name:str|None = None
+  operational:bool = True
+  for_priority_clients:bool = False
+
+  occupied:bool = False
+  occupied_by:str|None = None
+
+  section:DepartmentSection|None = Relationship(back_populates="consultation_rooms")
+
+  assets:list["Asset"] = Relationship(back_populates="consultation_room",sa_relationship_kwargs={"cascade":"all,delete"})
+  
+class Ward(SQLModel,table=True,extend_existing=True):
+  """Models details of clinical ward"""
+
+  id:int|None = Field(default=None,primary_key=True)
+  ward_id:str|None = Field(default=None,unique=True)
+  section_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("departmentsection.section_id",ondelete="CASCADE")))
+
+  ward_no:int|None = None
+  name:str|None = None
+  ward_in_charge:str|None = None
+
+  icu:bool = False
+  sub_icu:bool = False
+  hdu:bool = False
+  isolation:bool = False
+  general:bool = True
+
+  section:DepartmentSection|None = Relationship(back_populates="wards")
+
+  assets:list["Asset"] = Relationship(back_populates="ward",sa_relationship_kwargs={"cascade":"all,delete"})
+
+class Asset(SQLModel,table=True,extend_existing=True):
+  """Models details of asset"""
+
+  id:int|None = Field(default=None,primary_key=True)
+  asset_id:str|None = Field(default=None,unique=True)
+  facility_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("facility.facility_id",ondelete="CASCADE")))
+  department_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("department.department_id",ondelete="CASCADE")))
+  ward_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("ward.ward_id",ondelete="CASCADE")))
+  room_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("consultationroom.room_id",ondelete="CASCADE")))
+
+  name:str|None = None
+
+  consultation_room:ConsultationRoom|None = Relationship(back_populates="assets")
+  ward:Ward|None = Relationship(back_populates="assets")
 
 
 

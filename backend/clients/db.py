@@ -645,8 +645,7 @@ def register_triage(triage:dict,initial:bool=False):
           else:
             feed_anthropometrics(triage["anthropometrics"])
             feed_payment(payment=triage["anthropometrics"]["payment"],anthropometrics_id=triage["anthropometrics"]["anthropometrics_id"])
-        
-        
+          
 def register_vitals(vitals:dict):
   """"""
 
@@ -1018,6 +1017,77 @@ def register_nonpharmacological(nonpharmacological:dict):
   else:
     pass
 
+def register_treatment_log(log:dict):
+
+  db_log = TreatmentLog(
+    visit_id = log["visit_id"],
+    treatment_log_id = f"rx{str(uuid.uuid4()).split('-')[1]}",
+    medication = log["medication"] if "medication" in log else None,
+    dosage = log["dosage"] if "dosage" in log else None,
+    procedure = log["procedure"] if "procedure" in log else None,
+    surgery = log["surgery"] if "surgery" in log else None,
+    logger = log["logger"],
+    remarks = log["remarks"] if "remarks" in log else None
+  )
+
+  with Session(database_engine) as session:
+    session.add(db_log)
+    session.commit()
+
+    return {"success":True,"message":"Treatment log successfully updated!","type":"positive"}
+
+def register_admission(admission:dict,from_bedrest:bool=False):
+
+  db_admission = Admission(
+    admission_id = f"adm{str(uuid.uuid4()).split('-')[1]}",
+    visit_id = admission["visit_id"],
+    admitted_by = admission["admitted_by"],
+    indications = json.dumps(admission["indications"]) if "indications" in admission else None,
+    department = admission["department"],
+    section = admission["section"],
+    ward_no = admission["ward_no"],
+    ward_name = admission["ward_name"],
+    bed_no = admission["bed_no"],
+    from_bedrest = from_bedrest,
+    new = False if from_bedrest else True
+  )
+
+  with Session(database_engine) as session:
+    if session.exec(select(Admission).where(Admission.visit_id == admission["visit_id"])):
+      return {"success":False,"message":"Client is already admitted!","type":"warning"}
+    else:
+      session.add(db_admission)
+      session.commit()
+
+      return {"success":True,"message":"Client successfully admitted!","type":"positive"}
+
+def register_bedrest(bedrest:dict,from_admission:bool=False):
+
+  db_bedrest = Bedrest(
+    bedrest_id = f"bedr{str(uuid.uuid4()).split('-')[1]}",
+    visit_id = bedrest["visit_id"],
+    attendee_id = bedrest["attendee_id"],
+    indications = json.dumps(bedrest["indications"]) if "indications" in bedrest else None,
+    department = bedrest["department"],
+    section = bedrest["section"],
+    ward_no = bedrest["ward_no"],
+    ward_name = bedrest["ward_name"],
+    bed_no = bedrest["bed_no"],
+    from_admission = from_admission,
+    new = False if from_admission else True
+  )
+
+  with Session(database_engine) as session:
+    if session.exec(select(Bedrest).where(Bedrest.visit_id == bedrest["visit_id"])):
+      return {"success":False,"message":"Client is already bedrested!","type":"warning"}
+    else:
+      session.add(db_bedrest)
+      session.commit()
+
+      return {"success":True,"message":"Client's bedrest successfully initiated!","type":"positive"}
+
+
+
 #UPDATE FUNCTIONS
 def update_client(client:dict):
   """A function that retrieves a row in client table and modifies value(s) of its column(s)"""
@@ -1059,7 +1129,6 @@ def update_diagnosis(diagnosis:dict):
 
       session.commit()
       return {"status":True,"message":"Definitive Diagnosis saved!","type":"positive","position":"top"}
-
 
 def update_visit(visit:dict,close:bool=True):
   """A function that retrieves a row in visit table and modifies value(s) of its column(s)"""
@@ -1331,6 +1400,60 @@ def update_medicine(medicine:dict):
   
   except:
     return {"message":"Medicine not dispensed!","type":"negative","position":"center"}
+
+def update_admission(admission:dict,transfer:bool=False,discharge:bool=False,bedrest:bool=False):
+
+  with Session(database_engine) as session:
+    db_admission:Admission|None = session.exec(select(Admission).where(Admission.admission_id == admission["admission_id"])).first()
+
+    if db_admission:
+      if transfer:
+        db_admission.department = admission["department"]
+        db_admission.section = admission["section"]
+        db_admission.ward_no = admission["ward_no"]
+        db_admission.ward_name = admission["ward_name"]
+        db_admission.bed_no = admission["bed_no"]
+
+      if bedrest:
+        db_admission.active = False
+        db_admission.cancelled = True
+
+      if discharge:
+        db_admission.discharge_time = datetime.now()
+        db_admission.discharged_by = admission["discharged_by"]
+        db_admission.active = False
+      
+      session.commit()
+    else:
+      return {"success":False,"message":"Client is not admitted","type":"warning"}
+
+def update_bedrest(bedrest:dict,transfer:bool=False,discharge:bool=False,admit:bool=False):
+
+  with Session(database_engine) as session:
+    db_bedrest:Bedrest|None = session.exec(select(Bedrest).where(Bedrest.bedrest_id == bedrest["bedrest_id"])).first()
+
+    if db_bedrest:
+      if transfer:
+        db_bedrest.department = bedrest["department"]
+        db_bedrest.section = bedrest["section"]
+        db_bedrest.ward_no = bedrest["ward_no"]
+        db_bedrest.ward_name = bedrest["ward_name"]
+        db_bedrest.bed_no = bedrest["bed_no"]
+
+      if admit:
+        db_bedrest.active = False
+        db_bedrest.cancelled = True
+
+      if discharge:
+        db_bedrest.discharge_time = datetime.now()
+        db_bedrest.discharged_by = bedrest["discharged_by"]
+        db_bedrest.active = False
+      
+      session.commit()
+    else:
+      return {"success":False,"message":"Client is not admitted","type":"warning"}
+
+
 
 #TERMINATE FUNCTIONS
 def cancel_payment(payment_id):

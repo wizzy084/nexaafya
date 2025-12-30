@@ -106,6 +106,111 @@ def register_facility_subscription(subscription:dict):
       session.add(db_facility_subscription)
       session.commit()
 
+def register_department(department:dict):
+  """Adds a row in department database table with details from 'department' dictionary"""
+
+  db_department = Department(
+    department_id = department["department_id"],
+    facility_id = department["facility_id"],
+    name = department["name"],
+    clinical = department["clinical"],
+    head_of_department = department["head_of_department"]
+  )
+
+  with Session(database_engine) as session:
+    if session.exec(select(Department).where(Department.department_id == department["department_id"])):
+      return {"success":False,"message":"Department is already registered!","type":"warning"}
+    else:
+      session.add(db_department)
+      session.commit()
+
+      return {"success":True,"message":"Department successfully registered!","type":"positive"}
+
+def register_department_section(section:dict):
+  """Adds a row in departmentsection database table from data in 'section' dictionary"""
+
+  db_section = DepartmentSection(
+    section_id = section["section_id"],
+    department_id = section["department_id"],
+    name = section["name"],
+    head_of_section = section["head_of_section"]
+  )
+
+  with Session(database_engine) as session:
+    if session.exec(select(DepartmentSection).where(DepartmentSection.section_id == section["section_id"])):
+      return {"success":False,"message":"Department section is already registered!","type":"warning"}
+    else:
+      session.add(db_section)
+      session.commit()
+
+      return {"success":True,"message":"Department section successfully registered!","type":"positive"}
+
+def register_ward(ward:dict):
+  """Adds a row in ward database table from 'ward' dictionary"""
+
+  db_ward = Ward(
+    ward_id = ward["ward_id"],
+    section_id = ward["section_id"],
+    ward_no = ward["ward_no"],
+    name = ward["name"],
+    ward_in_charge = ward["ward_in_charge"],
+    icu = ward["icu"],
+    sub_icu = ward["sub_icu"],
+    hdu = ward["hdu"],
+    isolation = ward["isolation"],
+    general = ward["general"]
+  )
+
+  with Session(database_engine) as session:
+    if session.exec(select(Ward).where(Ward.ward_id == ward["ward_id"])):
+      return {"success":False,"message":"Ward is already registered!","type":"warning"}
+    else:
+      session.add(db_ward)
+      session.commit()
+
+      return {"success":True,"message":"Ward successfully registered!","type":"positive"}
+
+def register_consultation_room(room:dict):
+  """Adds a row in ward database table from 'ward' dictionary"""
+
+  db_room = ConsultationRoom(
+    room_id = room["room_id"],
+    section_id = room["section_id"],
+    room_no = room["room_no"],
+    name = room["name"],
+    for_priority_clients = room["for_priority_clients"]
+  )
+
+  with Session(database_engine) as session:
+    if session.exec(select(ConsultationRoom).where(ConsultationRoom.ward_id == room["room_id"])):
+      return {"success":False,"message":"Consultation Room is already registered!","type":"warning"}
+    else:
+      session.add(db_room)
+      session.commit()
+
+      return {"success":True,"message":"Consultation Room successfully registered!","type":"positive"}
+
+def register_asset(asset:dict):
+  """Adds a row in ward database table from 'ward' dictionary"""
+
+  db_asset = Asset(
+    asset_id = asset["asset_id"],
+    facility_id = asset["facility_id"],
+    department_id = asset["department_id"] if "department_id" in asset else None,
+    ward_id = asset["ward_id"] if "ward_id" in asset else None,
+    room_id = asset["room_id"] if "room_id" in asset else None,
+    name = asset["name"]
+  )
+
+  with Session(database_engine) as session:
+    if session.exec(select(Asset).where(Asset.asset_id == asset["asset_id"])):
+      return {"success":False,"message":"Asset is already registered!","type":"warning"}
+    else:
+      session.add(db_asset)
+      session.commit()
+
+      return {"success":True,"message":"Asset successfully registered!","type":"positive"}
+
 def register_staff(staff:dict):
   """A function to add a new row in users table and populate it with data from 'staff' dictionary"""
 

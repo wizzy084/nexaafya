@@ -37,6 +37,21 @@ def subscription_countdown():
     else:
       return -(now - subscription.end_time).days
 
+
+#Departments & Sections & Wards +/- ConsultationRooms
+def get_departments():
+  departments = []
+
+  opd = {
+    "department_id":"opd",
+    "name":"outpatient department"
+  }
+  
+  departments.append(opd)
+  
+  return departments
+
+
 #Staff
 def get_staffs(private:bool=False,short:bool=False):
   """Retrieves rows data from 'users' table and format them into a list of dictionaries"""

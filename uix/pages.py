@@ -49,6 +49,9 @@ class Page():
     ui.timer(0.1,self.load_page_with_credentials,once=True)
       
   def initial_data(self,user:dict):
+    #FACILITY DATA
+    self.basics = admin_processor.get_facility_data()
+
     #USER INITIALIZATION
     self.user = User(
       username = user["username"],
@@ -269,9 +272,11 @@ class Page():
 
   def SiteTitle(self):
     """A function to construct a VERO title for the admin panel"""
+    #DATA
+    facility_title = [part.capitalize() for part in self.basics.name.split(" ")]
 
     with html.strong().props(add="style='font-family:Helvetica'").classes(add="small-caps text-2xl lg:text-4xl text-bold text-yellow-500"):
-      for letter in ["Future","Specialized","Dental","Clinic"]:
+      for letter in facility_title:
         ui.label(text=letter).style(add="text-shadow:2px 2px #505050;").classes("inline mr-2 ")
 
 

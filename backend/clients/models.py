@@ -92,6 +92,9 @@ class Visit(SQLModel,table=True,extend_existing=True):
     medications:list["Medication"] = Relationship(back_populates="visit",sa_relationship_kwargs={"cascade":"all,delete"})
     medical_items:list["MedicalItem"] = Relationship(back_populates="visit",sa_relationship_kwargs={"cascade":"all,delete"})
     non_pharmacologicals:list["NonPharmacological"] = Relationship(back_populates="visit",sa_relationship_kwargs={"cascade":"all,delete"})
+    treatment_logs:list["TreatmentLog"] = Relationship(back_populates="visit",sa_relationship_kwargs={"cascade":"all,delete"})
+    bedrest:Optional["Bedrest"] = Relationship(back_populates="visit",sa_relationship_kwargs={"cascade":"all,delete"})
+    admission:Optional["Admission"] = Relationship(back_populates="visit",sa_relationship_kwargs={"cascade":"all,delete"})
 
 class Payment(SQLModel,table=True,extend_existing=True):
     """A model to store and retrieve data from 'payment' table in database"""
@@ -108,6 +111,9 @@ class Payment(SQLModel,table=True,extend_existing=True):
     medication_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("medication.medication_id",ondelete="CASCADE")))
     medical_item_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("medicalitem.medical_item_id",ondelete="CASCADE")))
     nonpharmacological_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("nonpharmacological.nonpharmacological_id",ondelete="CASCADE")))
+    bedrest_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("bedrest.bedrest_id",ondelete="CASCADE")))
+    admission_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("admission.admission_id",ondelete="CASCADE")))
+
     payment_id:str|None = Field(default=None,unique=True)
     created_on:datetime|None = None
 
@@ -133,12 +139,14 @@ class Payment(SQLModel,table=True,extend_existing=True):
     anthropometrics:Optional["Anthropometrics"] = Relationship(back_populates="payment")
     vitalsigns:Optional["VitalSigns"] = Relationship(back_populates="payment")
     laboratory:Optional["Laboratory"] = Relationship(back_populates="payment")
-    imaging:Optional["Imaging"] = Relationship(back_populates="payments")
+    imaging:Optional["Imaging"] = Relationship(back_populates="payment")
     procedure:Optional["Procedure"] = Relationship(back_populates="payment")
     surgery:Optional["Surgery"] = Relationship(back_populates="payment")
     medication:Optional["Medication"] = Relationship(back_populates="payment")
     medical_item:Optional["MedicalItem"] = Relationship(back_populates="payment")
     nonpharmacological:Optional["NonPharmacological"] = Relationship(back_populates="payment")
+    bedrest:Optional["Bedrest"] = Relationship(back_populates="payment")
+    admission:Optional["Admission"] = Relationship(back_populates="payment")
 
 class Anthropometrics(SQLModel,table=True,extend_existing=True):
     """Model to store anthropometrics of client in each visit"""
@@ -236,7 +244,7 @@ class Imaging(SQLModel,table=True,extend_existing=True):
 
     visit:Visit|None = Relationship(back_populates="imagings")
 
-    payments:list[Payment]|None = Relationship(back_populates="imaging")
+    payment:Payment|None = Relationship(back_populates="imaging")
 
 class Procedure(SQLModel,table=True,extend_existing=True):
     """A model to store and retrieve data from 'cns_exams' table in database"""
@@ -278,8 +286,8 @@ class Surgery(SQLModel,table=True,extend_existing=True):
     count:int = 0
     planned_on:datetime|None = None
     done:bool = False
-    operation_date:date|None = None
-    time_in:time|None = None
+    operation_time:datetime|None = None
+    time_in:datetime|None = None
     time_out:time|None = None
     surgeon:str|None = None
     assistant_surgeon:str|None = None
@@ -627,3 +635,76 @@ class Diagnosis(SQLModel,table=True,extend_existing=True):
     definitive_icd:str|None = None
 
     consultation:Consultation|None = Relationship(back_populates="diagnoses")
+
+class Bedrest(SQLModel,table=True,extend_existing=True):
+    """A model to store and retrieve data from 'bedrest' table in database"""
+
+    id:int|None = Field(default=None,primary_key=True)
+    bedrest_id:str|None = Field(default=None,unique=True)
+    visit_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("visit.visit_id",ondelete="CASCADE")))
+
+    bedrest_time:datetime|None = datetime.now()
+    bedrested_by:str|None = None
+    discharge_time:datetime|None = None
+    discharged_by:str|None = None
+    active:bool = True
+    cancelled:bool = False
+    indications:str|None = None
+
+    department:str|None = None
+    section:str|None = None
+    ward_no:int|None = None
+    ward_name:str|None = None
+    bed_no:int|None = None
+    new:bool = True
+    from_admission:bool = False
+
+    visit:Visit|None = Relationship(back_populates="bedrest")
+
+    payment:Payment|None = Relationship(back_populates="bedrest",sa_relationship_kwargs={"cascade":"all,delete"})
+
+class Admission(SQLModel,table=True,extend_existing=True):
+    """A model to store and retrieve data from 'admission' table in database"""
+
+    id:int|None = Field(default=None,primary_key=True)
+    admission_id:str|None = Field(default=None,unique=True)
+    visit_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("visit.visit_id",ondelete="CASCADE")))
+
+    admission_time:datetime|None = datetime.now()
+    admitted_by:str|None = None
+    discharge_time:datetime|None = None
+    discharged_by:str|None = None
+    active:bool = True
+    cancelled:bool = False
+    indications:str|None = None
+
+    department:str|None = None
+    section:str|None = None
+    ward_no:int|None = None
+    ward_name:str|None = None
+    bed_no:int|None = None
+    new:bool = True
+    from_bedrest:bool = False
+
+    visit:Visit|None = Relationship(back_populates="admission")
+
+    payment:Payment|None = Relationship(back_populates="admission",sa_relationship_kwargs={"cascade":"all,delete"})
+
+class TreatmentLog(SQLModel,table=True,extend_existing=True):
+    """A model to store and retrieve data from 'treatmentlog' table in database"""
+
+    id:int|None = Field(default=None,primary_key=True)
+    treatment_log_id:str|None = Field(default=None,unique=True)
+    visit_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("visit.visit_id",ondelete="CASCADE")))
+    
+    medication:str|None = None
+    dosage:str|None = None
+    procedure:str|None = None
+    surgery:str|None = None
+    time:datetime = datetime.now()
+    logger:str|None = None
+    remarks:str|None = None
+    
+    visit:Visit|None = Relationship(back_populates="treatment_logs")
+
+
