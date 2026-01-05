@@ -1,4 +1,4 @@
-from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Image,ImageAndFlowables,Table,TableStyle,Flowable
+from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Image,ImageAndFlowables,ListItem,ListFlowable,Table,TableStyle,Flowable
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib import pagesizes
@@ -188,7 +188,8 @@ class NexaDoc(SimpleDocTemplate):
     
     demographics = [
       Paragraph(
-        f'''<font>REG No.</font><font size=1 color='white'>nsbp;</font><font color='blue'>{self.client['reg_no']}</font>
+        f'''<font size=10>CLIENT DETAILS</font><br/>
+        <font>REG No.</font><font size=1 color='white'>nsbp;</font><font color='blue'>{self.client['reg_no']}</font>
         <font size=5 color='white'>nsbp;</font>
         <font>NAME</font><font size=1 color='white'>nsbp;</font><font color='blue'>{self.client['name']}</font>
         <font size=5 color='white'>nsbp;</font>
@@ -226,26 +227,35 @@ class NexaDoc(SimpleDocTemplate):
         ParagraphStyle(name="DetailsStyle",fontSize=8,alignment=TA_LEFT)
       )
     ]
+    
+    procedures = [ListFlowable([
+      ListItem(Paragraph('niponipo')),
+      ListFlowable([
+        Paragraph('uo')
+      ])
+    ])]
 
     medicines = [Table(
       data=[
+        ["MEDICATIONS"],
         ["","NAME","DOSAGE","QTY"],
       ] + _meds,
       colWidths=[self.grid_width*0.07,self.grid_width*0.35,self.grid_width*0.35,self.grid_width*0.1],
       style=TableStyle([
-        ("GRID",(0,0),(-1,-1),0.5,colors.lightgrey),
+        ("GRID",(0,0),(-1,-1),0.5,colors.slategrey),
         ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
         ("ALIGN",(-1,0),(-1,-1),"RIGHT"),
-        ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
-        ("FONTNAME",(0,1),(-1,-1),"Helvetica"),
+        ("SPAN",(0,0),(-1,0)),
+        ("FONTNAME",(0,0),(-1,1),"Helvetica-Bold"),
+        ("FONTNAME",(0,2),(-1,-1),"Helvetica"),
         ("FONTSIZE",(0,0),(-1,0),10),
         ("FONTSIZE",(0,1),(-1,-1),9),
-        ("BACKGROUND",(0,0),(-1,0),colors.lightgrey),
+        ("BACKGROUND",(0,0),(-1,1),colors.lightgrey),
       ])
     )]
 
     main_content_table = Table(
-      data=[demographics,medicines,prescriber,dispenser],
+      data=[demographics,procedures,medicines,prescriber,dispenser],
       colWidths=[self.grid_width],
       style=self.main_content_table_styles
     )
@@ -319,16 +329,6 @@ data = {
       "name":"ibuprofen 400mg tab",
       "dosage":"400mg po tds for 5 days",
       "qty":f"{1308:,.0f}"
-    },
-    {
-      "name":"omeprazole 20mg cap",
-      "dosage":"20mg po od for 14 days",
-      "qty":f"{14:,.0f}"
-    },
-    {
-      "name":"salbutamol 100mcg inh",
-      "dosage":"2 puffs po qid as needed",
-      "qty":f"{1:,.0f}"
     }
   ]
 }

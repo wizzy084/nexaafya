@@ -42,10 +42,10 @@
   overflow-y: hidden;
 }
 
-.dark-blur {
-  background-color: rgba(30,30, 30, 0.2);
-  -webkit-backdrop-filter: blur(1px);
-  backdrop-filter: blur(1px);
+.morph-bg {
+  background-color: #07004d !important;
+  -webkit-backdrop-filter: blur(1px) !important;
+  backdrop-filter: blur(1px) !important;
 }
 
 

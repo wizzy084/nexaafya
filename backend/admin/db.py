@@ -27,6 +27,23 @@ def populate_db():
   
   with Session(database_engine) as session:
     register_facility_subscription(template.default_subscription)
+  
+  #Departments & Sections
+  for department in template.departments:
+    
+    register_department(department)
+    
+    for section in department["sections"]:
+      register_department_section(section)
+
+      if "wards" in section:
+        for ward in section["wards"]:
+          register_ward(ward)
+      
+      if "rooms" in section:
+        for room in section["rooms"]:
+          register_consultation_room(room)
+
 
   #Users
   with Session(database_engine) as session:
@@ -65,6 +82,7 @@ def register_facility(facility:dict):
   db_facility = Facility(
     facility_id = facility["facility_id"],
     name = facility["name"],
+    short_name = facility["short_name"],
     tag = facility["tag"],
     postcode = facility["postcode"],
     category = facility["category"],
@@ -108,18 +126,21 @@ def register_facility_subscription(subscription:dict):
 
 def register_department(department:dict):
   """Adds a row in department database table with details from 'department' dictionary"""
-
+  
   db_department = Department(
     department_id = department["department_id"],
     facility_id = department["facility_id"],
     name = department["name"],
-    clinical = department["clinical"],
-    head_of_department = department["head_of_department"]
+    display_name = department["display_name"] if "display_name" in department else department["name"],
+    display_icon = department["display_icon"],
+    clinical = department["clinical"] if "clinical" in department else False,
+    head_of_department = department["head_of_department"] if "head_of_department" in department else None
   )
-
+  
   with Session(database_engine) as session:
-    if session.exec(select(Department).where(Department.department_id == department["department_id"])):
+    if session.exec(select(Department).where(Department.department_id == department["department_id"])).first():
       return {"success":False,"message":"Department is already registered!","type":"warning"}
+    
     else:
       session.add(db_department)
       session.commit()
@@ -133,11 +154,13 @@ def register_department_section(section:dict):
     section_id = section["section_id"],
     department_id = section["department_id"],
     name = section["name"],
-    head_of_section = section["head_of_section"]
+    display_name = section["display_name"] if "display_name" in section else section["name"],
+    display_icon = section["display_icon"],
+    head_of_section = section["head_of_section"] if "head_of_section" in section else None
   )
 
   with Session(database_engine) as session:
-    if session.exec(select(DepartmentSection).where(DepartmentSection.section_id == section["section_id"])):
+    if session.exec(select(DepartmentSection).where(DepartmentSection.section_id == section["section_id"])).first():
       return {"success":False,"message":"Department section is already registered!","type":"warning"}
     else:
       session.add(db_section)
@@ -153,16 +176,16 @@ def register_ward(ward:dict):
     section_id = ward["section_id"],
     ward_no = ward["ward_no"],
     name = ward["name"],
-    ward_in_charge = ward["ward_in_charge"],
-    icu = ward["icu"],
-    sub_icu = ward["sub_icu"],
-    hdu = ward["hdu"],
-    isolation = ward["isolation"],
-    general = ward["general"]
+    ward_in_charge = ward["ward_in_charge"] if "ward_in_charge" in ward else None,
+    icu = ward["icu"] if "icu" in ward else False,
+    sub_icu = ward["sub_icu"] if "sub_icu" in ward else False,
+    hdu = ward["hdu"] if "hdu" in ward else False,
+    isolation = ward["solation"] if "isolation" in ward else False,
+    general = ward["general"] if "general" in ward else False
   )
 
   with Session(database_engine) as session:
-    if session.exec(select(Ward).where(Ward.ward_id == ward["ward_id"])):
+    if session.exec(select(Ward).where(Ward.ward_id == ward["ward_id"])).first():
       return {"success":False,"message":"Ward is already registered!","type":"warning"}
     else:
       session.add(db_ward)
@@ -182,7 +205,7 @@ def register_consultation_room(room:dict):
   )
 
   with Session(database_engine) as session:
-    if session.exec(select(ConsultationRoom).where(ConsultationRoom.ward_id == room["room_id"])):
+    if session.exec(select(ConsultationRoom).where(ConsultationRoom.room_id == room["room_id"])).first():
       return {"success":False,"message":"Consultation Room is already registered!","type":"warning"}
     else:
       session.add(db_room)
@@ -226,6 +249,7 @@ def register_staff(staff:dict):
     gender = staff["gender"],
     password = staff["password"] if "password" in staff else "1234",
     is_super = True if "super" in staff["roles"] else False,
+    access = json.dumps(staff["access"]) if staff["access"] else None,
     roles = json.dumps(staff["roles"]),
     registered_on = datetime.now()
   )

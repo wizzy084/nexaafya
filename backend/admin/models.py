@@ -14,6 +14,7 @@ class Facility(SQLModel,table=True,extend_existing=True):
   
   #General
   name:str|None = None
+  short_name:str|None = None
   tag:str|None = None
   postcode:int|None = None
   registration_time:datetime = datetime.now()
@@ -83,6 +84,7 @@ class User(SQLModel,table=True,extend_existing=True):
   mobile:str|None = None
   password:str|None = None
   photo:str|None = None
+  access:str|None = None
   roles:str|None = None
   is_super:bool = False
   registered_on:datetime|None = None
@@ -277,6 +279,8 @@ class Department(SQLModel,table=True,extend_existing=True):
   facility_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("facility.facility_id",ondelete="CASCADE")))
 
   name:str|None = None
+  display_name:str|None = None
+  display_icon:str|None = None
   active:bool = True
   clinical:bool = False
   head_of_department:str|None = None
@@ -293,6 +297,8 @@ class DepartmentSection(SQLModel,table=True,extend_existing=True):
   department_id:str|None = Field(default=None,sa_column=Column(String,ForeignKey("department.department_id",ondelete="CASCADE")))
 
   name:str|None = None
+  display_name:str|None = None
+  display_icon:str|None = None
   active:bool = True
   head_of_section:str|None = None
 

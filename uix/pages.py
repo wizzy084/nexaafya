@@ -51,7 +51,7 @@ class Page():
   def initial_data(self,user:dict):
     #FACILITY DATA
     self.basics = admin_processor.get_facility_data()
-
+    
     #USER INITIALIZATION
     self.user = User(
       username = user["username"],
@@ -65,22 +65,41 @@ class Page():
       gender = user["gender"],
       password = user["password"],
       is_super = user["is_super"],
+      access = user["access"],
       roles = user["roles"],
       registered_on = user["registered_on"]
     )
     
+    #DEPARTMENT VIEWS
+    self.views = {dept:DepartmentDisplay for dept in list(self.user.access.keys())}
+
     #MAIN PAGE OPTIONS
+    self.sections = {}
+    
+    #
+
     if self.user:
-      if "director" in self.user.roles:
-        self.sections = {"services":["fa-solid fa-stethoscope",ClinicianServicesManager,ClinicianServicesManager],"management":["fa-solid fa-briefcase",self.DummyDisplay,FacilityManager]}
-      elif "receptionist" in self.user.roles:
-        self.sections = {"clients":["fa-solid fa-users-rectangle",ReceptionManager,ReceptionManager],"services":["fa-solid fa-heart-pulse",NursingManager,NursingManager],"inventory":["fa-solid fa-house-medical",self.DummyDisplay,InventoryManager]}
-      elif "doctor" in self.user.roles:
-        self.sections = {"services":["fa-solid fa-stethoscope",ClinicianServicesManager,ClinicianServicesManager]}
-      elif "nurse" in self.user.roles:
-        self.sections = {"services":["fa-solid fa-heart-pulse",NursingManager,NursingManager]}
-      elif "radiographer" in self.user.roles or "radiologist" in self.user.roles:
-        self.sections = {"studies":["fa-solid fa-x-ray",self.DummyDisplay,self.DummyDisplay]}
+      #Superuser access
+      if self.user.is_super:
+        pass
+      
+      elif self.user.access:
+        for dept_index,department_id in enumerate(self.user.access):
+          user_sections = self.user.access.get(department_id)
+
+          dept = [dept._asdict() for dept in self.basics.departments if dept.department_id == department_id][0]
+          dept_sections = [SectionView(icon=section.display_icon,section_id=section.section_id,name=section.display_name) for section in list(filter(lambda sect:sect.section_id in user_sections,dept["sections"]))]
+          
+          self.sections[dept["display_name"]] = DepartmentView(
+            id = department_id,
+            icon = dept["display_icon"],
+            default_view = self.DummyDisplay if dept_index > 0 else self.views[department_id],
+            active_view = self.views[department_id],
+            sections = dept_sections
+          )
+          
+      else:
+        pass
 
   def Metadata(self,default:bool=False):
     """Inserts meta tags in the head of HTML document rendered by this class"""
@@ -99,7 +118,7 @@ class Page():
   
   async def load_page_with_credentials(self):
     """Loads page after validation"""
-
+    
     self.main_panel.clear()
     if app.storage.user:
       user = app.storage.user["credentials"]["user"]
@@ -138,9 +157,23 @@ class Page():
       UserProfileManager(user=self.user,parent=self.user_profile_dialog)
     
     self.user_profile_dialog.open()
+  
+  async def display_tab_panel(self,tab_change=None,department=None,section=None):
+    """Loads a tab panel with its contents based on inputs"""
+    #DATA
+    if tab_change:
+      department = tab_change.value
+
+    #UI
+    for tab in self.page_tab_panels.slots['default'].children:
+      if tab.props['name'] == department:
+        tab.clear()
+        with tab:
+          self.sections[department].active_view(user=self.user,parent=self,default_section=section)
+
 
   #DISPLAYS
-  def DummyDisplay(self,user=None):
+  def DummyDisplay(self,user=None,parent=None,default_section=None):
     pass
 
   def PageHeader(self):
@@ -148,27 +181,16 @@ class Page():
   
     with ui.header().classes(add="p-0 gap-0 bg-[#07004d]"):
       #Site header
-      with html.div().classes("w-full flex flex-row justify-between items-center pl-0 pr-1 py-0 gap-0"):
+      with html.div().classes("w-full flex flex-row justify-between items-center pl-0.5 pr-1 py-1 gap-0"):
         #Logo
         with html.div().classes(add=""):
           ui.image(source="/images/logos/future1.PNG").classes(add="size-12 md:size-16")
+
         #Site title
         with html.div().classes(add="grow flex flex-row justify-center items-center"):
           self.SiteTitle()
 
-      #Separator
-      with html.div().classes(add="w-full pb-0.5 pr-1.5 flex flex-row justify-center"):
-        ui.separator().classes(add="w-full bg-[#09026f]")
-
-      #Page Navigation
-      with html.div().classes(add="w-full p-1 flex flex-row justify-between"):
-        #Tabs
-        with html.div().classes(add="grow flex flex-row justify-between lg:justify-center"):
-          with ui.tabs().props(add="inline-label dense narrow-indicator align='center'").classes(add="w-fit text-yellow-500 text-bold") as self.page_tabs:
-            for title,content in self.sections.items():
-              ui.tab(title,icon=content[0]).props(add="").classes(add="hover:scale-[1.1]")
-            
-        #User Profile
+         #User Profile
         with html.div().classes(add=""):
           self.AdminProfile(user=self.user)
 
@@ -176,31 +198,46 @@ class Page():
       with html.div().classes(add="w-full pb-0.5 pr-1.5 flex flex-row justify-center"):
         ui.separator().classes(add="w-full bg-[#09026f]")
 
+      #Page Navigation
+      with html.div().classes(add="w-full p-0.5 flex flex-row justify-between"):
+        #Tabs
+        with html.div().classes(add="grow flex flex-row justify-center"):
+          with ui.tabs(value=list(self.sections.keys())[0]).props(add="dense inline-label mobile-arrows outside-arrows active-class='bg-harmony text-green-500 font-bold' align='center'").classes(add="w-full p-0 text-sky-300 text-bold") as self.page_tabs:
+            for title,content in self.sections.items():
+              with ui.tab(name=title,label="").props(add="").classes(add="m-0 p-0"):
+                with ui.dropdown_button(text=title,icon=content.icon,color="").props(
+                  add="flat menu-anchor='bottom middle' menu-self='top middle' transition-show='jump-down' transition-hide='jump-up' transition-duration=500"
+                  ).classes(add="bg-inherit p-1") as selections_dropdown:
+                  with selections_dropdown.add_slot("default"):
+                    with html.div().classes(add="p-2 bg-[#09026f]").on("mouseleave",lambda:selections_dropdown.run_method("hide")):
+                      self.sections_toggle = ui.toggle(
+                        options = {section.section_id:section.name for section in content.sections},
+                        on_change = lambda e:self.display_tab_panel(
+                          department=e.sender.props["id"],
+                          section=e.value
+                        )
+                      ).props(add=f"stack unelevated id='{title}' color='' toggle-color='' text-color='sky-200' toggle-text-color='green-500'").classes(add="text-bold")
+                  
+                
+                
+            
+      #Separator
+      with html.div().classes(add="w-full pb-0.5 pr-1.5 flex flex-row justify-center"):
+        for i in range(2):
+          ui.separator().classes(add="w-full bg-[#09026f]")
+  
   def MainPageContent(self):
     """Returns display for page navigation"""
-
-    #Async tab display
-    async def render_tab_display(e):
-      for tab in e.sender.slots['default'].children:
-        if tab.props['name'] == e.value:
-          tab.clear()
-          with tab:
-            with html.div().classes(add="grow w-full p-1 flex flex-col justify-between gap-2"):
-              self.sections[e.value][2](user=self.user)
-
     
     #Main Page Content
     with html.div().classes(add="grow w-full overflow-hidden flex flex-col"):
-      #Separator
-      ui.separator().classes(add="w-full bg-[#09026f]")
-
       #Page Tab Panels
-      with ui.tab_panels(tabs=self.page_tabs,value=list(self.sections.keys())[0],on_change=lambda e:render_tab_display(e)).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='300'").classes(add="grow w-full bg-inherit grid grid-cols-1"):
+      with ui.tab_panels(tabs=self.page_tabs,value=list(self.sections.keys())[0],on_change=lambda e:self.display_tab_panel(tab_change=e)).props(add="animated infinite transition-prev='jump-right' transition-next='jump-left' transition-duration='300'").classes(add="grow w-full bg-inherit grid grid-cols-1") as self.page_tab_panels:
         #Director
         
         for title,content in self.sections.items():
-          with ui.tab_panel(name=title).classes(add="h-full w-full p-0 bg-inherit"):
-            content[1](user=self.user)
+          with ui.tab_panel(name=title).classes(add="h-full w-full p-0 bg-inherith bg-pink"):
+              content.default_view(user=self.user,parent=self)
     
   def AdminProfile(self,user):
     """A function to construct a widget to notify Admin Profile"""
@@ -234,10 +271,10 @@ class Page():
 
 
     #DROPDOWN BUTTON ON THE PAGE
-    with ui.dropdown_button(color="#152046").props(add=f"glossy transition-show='jump-left' transition-hide='jump-right' transition-duration='500'" if user else "disable-dropdown").classes("p-0 rounded ring-1 ring-yellow-400 hover:shadow-sm hover:shadow-yellow-500 text-yellow-500") as profile_dropdown:
+    with ui.dropdown_button(color="#152046").props(add=f"glossy transition-show='jump-left' transition-hide='jump-right' transition-duration='500'").classes("p-0 rounded ring-1 ring-green-400 hover:shadow-sm hover:shadow-green-300 text-sky-500") as profile_dropdown:
       #Label
       with profile_dropdown.add_slot("label"):
-        with html.div().classes(add="rounded-l-full flex flex-row gap-x-2 text-yellow-500"):
+        with html.div().classes(add="rounded-l-full flex flex-row gap-x-2 text-sky-400"):
           #Icon/Image
           with html.div().classes(add="flex flex-col justify-center p-1 "):
             html.span().classes(add=f"fas fa-{user_icon()} fa-xl md:fa-2xl")
@@ -246,7 +283,7 @@ class Page():
             with html.div().classes(add="w-full text-md text-bold uppercase"):
               ui.label(f"{user.title} {user.last_name}").classes(add="w-full text-center")
             #Allocation/department
-            with html.div().classes(add="w-full text-xs uppercase italic text-yellow-200"):
+            with html.div().classes(add="w-full text-xs uppercase italic text-green-400"):
               ui.label(department()).classes(add="w-full text-center")
 
       #User details
@@ -274,12 +311,39 @@ class Page():
     """A function to construct a VERO title for the admin panel"""
     #DATA
     facility_title = [part.capitalize() for part in self.basics.name.split(" ")]
-
-    with html.strong().props(add="style='font-family:Helvetica'").classes(add="small-caps text-2xl lg:text-4xl text-bold text-yellow-500"):
+    short_facility_title = [part.capitalize() for part in self.basics.short_name.split(" ")]
+    
+    #LARGE SCREEN
+    with html.strong().props(add="style='font-family:Helvetica'").classes(add="lg-show small-caps text-4xl text-bold text-sky-500"):
       for letter in facility_title:
         ui.label(text=letter).style(add="text-shadow:2px 2px #505050;").classes("inline mr-2 ")
+    
+    #SMALL SCREEN
+    with html.strong().props(add="style='font-family:Helvetica'").classes(add="lg:hidden small-caps text-2xl text-bold text-sky-500"):
+      for short_letter in short_facility_title:
+        ui.label(text=short_letter).style(add="text-shadow:2px 2px #505050;").classes("inline mr-2 ")
 
 
+##DEPARTMENTS
+class DepartmentDisplay():
+  """Docstring for OutpatientDepartmentView"""
+
+  def __init__(self,user,parent,default_section=None):
+    #DATA
+    self.user,self.parent,self.default_section = user,parent,default_section
+    
+    #UI
+    with ui.carousel(value=self.default_section).props(add="").classes(add="w-full h-full bg-orange").bind_value(self.parent.sections_toggle):
+      #Sections
+      with ui.carousel_slide(name="opd-injections"):
+        ui.label('injections')
+      
+      with ui.carousel_slide(name='opd-consults'):
+        ui.label('consults')
+      
+      with ui.carousel_slide(name='opd-observations'):
+        ui.label('ona sasa onaaaaaaaa')
+    
 
 #RECEPTION WIDGETS
 class ReceptionManager():
