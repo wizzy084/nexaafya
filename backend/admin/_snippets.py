@@ -12,31 +12,15 @@ from .models import *
 
 
 #UNMODELS
-def unmodel_facility_subscription(db_facility_subscription:FacilitySubscription):
-  """A function to convert FacilitySubscription model details into a namedtuple"""
-
-  Subscription = namedtuple("Subscription",["facility_id","receipt","tier","active","cost","paid_amount","pending_amount","start_time","end_time"])
-
-  return Subscription(
-    facility_id = db_facility_subscription.facility_id,
-    receipt = db_facility_subscription.receipt,
-    tier = db_facility_subscription.tier,
-    active = db_facility_subscription.active,
-    cost = db_facility_subscription.cost,
-    paid_amount = db_facility_subscription.paid_amount,
-    pending_amount = db_facility_subscription.pending_amount,
-    start_time = db_facility_subscription.start_time,
-    end_time = db_facility_subscription.end_time
-  )
-
 def unmodel_facility(db_facility:Facility):
   """A function to convert Facility model details into a namedtuple"""
 
-  Facility = namedtuple("Facility",["facility_id","name","tag","postcode","registration_time","category","level","certifications","designations","primary_roles","secondary_roles","services","medicine_types","vendors","mos","titles","marital_statuses","occupations","relationships","id_number_types","years_of_existence","active_payment_modes","payment_packages","subscriptions"])
+  Facility = namedtuple("Facility",["facility_id","name","short_name","tag","postcode","registration_time","category","level","certifications","designations","primary_roles","secondary_roles","services","medicine_types","vendors","mos","titles","marital_statuses","occupations","relationships","id_number_types","years_of_existence","active_payment_modes","payment_packages","subscriptions","departments"])
 
   return Facility(
     facility_id = db_facility.facility_id,
     name = db_facility.name,
+    short_name = db_facility.short_name,
     tag = db_facility.tag,
     postcode = db_facility.postcode,
     registration_time = db_facility.registration_time,
@@ -58,9 +42,27 @@ def unmodel_facility(db_facility:Facility):
     years_of_existence = db_facility.years_of_existence,
     active_payment_modes = db_facility.active_payment_modes,
     payment_packages = db_facility.payment_packages,
+    departments = [unmodel_department(db_department) for db_department in db_facility.departments],
     subscriptions = [unmodel_facility_subscription(db_facility_subscription) for db_facility_subscription in db_facility.subscriptions]
   )
-  
+
+def unmodel_facility_subscription(db_facility_subscription:FacilitySubscription):
+  """A function to convert FacilitySubscription model details into a namedtuple"""
+
+  Subscription = namedtuple("Subscription",["facility_id","receipt","tier","active","cost","paid_amount","pending_amount","start_time","end_time"])
+
+  return Subscription(
+    facility_id = db_facility_subscription.facility_id,
+    receipt = db_facility_subscription.receipt,
+    tier = db_facility_subscription.tier,
+    active = db_facility_subscription.active,
+    cost = db_facility_subscription.cost,
+    paid_amount = db_facility_subscription.paid_amount,
+    pending_amount = db_facility_subscription.pending_amount,
+    start_time = db_facility_subscription.start_time,
+    end_time = db_facility_subscription.end_time
+  )
+
 def unmodel_login(db_login:Login):
   """A function to convert a Login model instance into a dictionary"""
 
@@ -79,8 +81,7 @@ def unmodel_login(db_login:Login):
 def unmodel_user(db_user:User):
   """A function to convert a User model instance into a dictionary"""
 
-  _User = namedtuple("_User",["username","title","qualification","designation","first_name","middle_name","last_name","birthdate","gender","email",
-  "mobile","password","photo","is_super","registered_on","roles","active","logins"])
+  _User = namedtuple("_User",["username","title","qualification","designation","first_name","middle_name","last_name","birthdate","gender","email","mobile","password","photo","is_super","registered_on","access","roles","active","logins"])
 
   return _User(
     username = db_user.username,
@@ -98,6 +99,7 @@ def unmodel_user(db_user:User):
     photo = db_user.photo,
     is_super = db_user.is_super,
     registered_on = db_user.registered_on,
+    access = json.loads(db_user.access) if db_user.access else None,
     roles = json.loads(db_user.roles) if db_user.roles else [],
     active = db_user.active,
     logins = sorted([unmodel_login(db_login) for db_login in db_user.logins],key=lambda login:login.login_time,reverse=True) if db_user.logins else []
@@ -262,4 +264,85 @@ def unmodel_icd11_diagnosis(db_diagnosis:ICD11Diagnosis):
     "code":db_diagnosis.code,
     "name":db_diagnosis.name
   }
+
+def unmodel_department(db_department:Department):
+  
+  _Department = namedtuple("_Department",["department_id","facility_id","name","display_name","display_icon","active","clinical","head_of_department","sections"])
+  
+  return _Department(
+    department_id = db_department.department_id,
+    facility_id = db_department.facility_id,
+    name = db_department.name,
+    display_name = db_department.display_name,
+    display_icon = db_department.display_icon,
+    active = db_department.active,
+    clinical = db_department.clinical,
+    head_of_department = db_department.head_of_department,
+    sections = [unmodel_department_section(db_section) for db_section in db_department.sections]
+  )
+
+def unmodel_department_section(db_section:DepartmentSection):
+
+  _DepartmentSection =  namedtuple("_DepartmentSection",["section_id","department_id","name","display_name","display_icon","active","head_of_section","consultation_rooms","wards"])
+
+  return _DepartmentSection(
+    section_id = db_section.section_id,
+    department_id = db_section.department_id,
+    name = db_section.name,
+    display_name = db_section.display_name,
+    display_icon = db_section.display_icon,
+    active = db_section.active,
+    head_of_section = db_section.head_of_section,
+    consultation_rooms = [unmodel_consultation_room(db_room) for db_room in db_section.consultation_rooms],
+    wards = [unmodel_ward(db_ward) for db_ward in db_section.wards]
+  )
+
+def unmodel_ward(db_ward:Ward):
+
+  _Ward = namedtuple("_Ward",["ward_id","section_id","ward_no","name","ward_in_charge","icu","sub_icu","hdu","isolation","general","assets"])
+
+  return _Ward(
+    ward_id = db_ward.ward_id,
+    section_id = db_ward.section_id,
+    ward_no = db_ward.ward_no,
+    name = db_ward.name,
+    ward_in_charge = db_ward.ward_in_charge,
+    icu = db_ward.icu,
+    sub_icu = db_ward.sub_icu,
+    hdu = db_ward.hdu,
+    isolation = db_ward.isolation,
+    general = db_ward.general,
+    assets = [unmodel_asset(db_asset) for db_asset in db_ward.assets]
+  )
+
+def unmodel_consultation_room(db_room:ConsultationRoom):
+
+  _ConsultationRoom = namedtuple("_ConsultationRoom",["room_id","section_id","room_no","name","operational","for_priority_clients","occupied","occupied_by","assets"])
+
+  return _ConsultationRoom(
+    room_id = db_room.room_id,
+    section_id = db_room.section_id,
+    room_no = db_room.room_no,
+    name = db_room.name,
+    operational = db_room.operational,
+    for_priority_clients = db_room.for_priority_clients,
+    occupied = db_room.occupied,
+    occupied_by = db_room.occupied_by,
+    assets = [unmodel_asset(db_asset) for db_asset in db_room.assets]
+  )
+
+def unmodel_asset(db_asset:Asset):
+
+  _Asset = namedtuple("_Asset",["asset_id","facility_id","department_id","ward_id","room_id","name"])
+
+  return _Asset(
+    asset_id = db_asset.asset_id,
+    facility_id = db_asset.facility_id,
+    department_id = db_asset.department_id,
+    ward_id = db_asset.ward_id,
+    room_id = db_asset.room_id,
+    name = db_asset.name
+  )
+
+
 

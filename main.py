@@ -26,7 +26,6 @@ if __name__ in {"__main__", "__mp_main__"}:
     host='0.0.0.0',
     viewport = "width=device-width,initial-scale=1.0,maximum-scale=1.0",
     reload = True,
-    reconnect_timeout=10.0,
     dark = False
   )
   

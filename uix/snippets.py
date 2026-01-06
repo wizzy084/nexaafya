@@ -10,6 +10,9 @@ from math import ceil
 ###Objects
 Complaints = namedtuple("Complaints",["count","first","second","third"])
 
+DepartmentView = namedtuple("DepartmentView",["id","icon","default_view","active_view","sections"])
+SectionView = namedtuple("SectionView",["icon","section_id","name"])
+
   
 ###functions
 def calculate_age(birthdate:str,days:bool=False,months:bool=False):

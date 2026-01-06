@@ -1,358 +1,339 @@
-from fpdf import FPDF
-
-
-
-from fpdf import FPDF
+from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Image,ImageAndFlowables,ListItem,ListFlowable,Table,TableStyle,Flowable
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib import pagesizes
+from reportlab.rl_config import defaultPageSize
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT, TA_JUSTIFY
+from fontawesome import icons
 from datetime import datetime
 
-class PrescriptionPDF(FPDF):
-  def __init__(self, hospital_name="GENERAL HOSPITAL"):
-      super().__init__()
-      self.hospital_name = hospital_name
-      self.left_margin = 15
-      self.right_margin = 15
-      self.top_margin = 15
-      
-  def header(self):
-      # Hospital header with logo area
-      self.set_font('Arial', 'B', 16)
-      self.set_text_color(13, 71, 161)  # Blue color
-      
-      # Hospital name and title
-      self.cell(0, 10, self.hospital_name.upper(), 0, 1, 'C')
-      self.set_font('Arial', 'B', 12)
-      self.set_text_color(0, 0, 0)
-      self.cell(0, 8, 'MEDICAL PRESCRIPTION', 0, 1, 'C')
-      
-      # Separator line
-      self.set_line_width(0.5)
-      self.set_draw_color(13, 71, 161)
-      self.line(self.left_margin, self.get_y(), 200-self.right_margin, self.get_y())
-      self.ln(5)
-      
-  def footer(self):
-      # Page footer
-      self.set_y(-15)
-      self.set_font('Arial', 'I', 8)
-      self.set_text_color(128, 128, 128)
-      
-      # Footer text
-      footer_text = "This prescription is valid for 30 days from date of issue. Not for controlled substances."
-      self.cell(0, 10, footer_text, 0, 0, 'C')
-      
-      # Page number
-      self.set_y(-10)
-      self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+#REGISTERING FONTAWESOME ICONS
+pdfmetrics.registerFont(TTFont("FontAwesome-Solid","uix/assets/icons/webfonts/fa-solid-900.ttf"))
+pdfmetrics.registerFont(TTFont("FontAwesome-Brands","uix/assets/icons/webfonts/fa-brands-400.ttf"))
+pdfmetrics.registerFont(TTFont("FontAwesome-Regular","uix/assets/icons/webfonts/fa-regular-400.ttf"))
+
+
+
+###
+
+class NexaDoc(SimpleDocTemplate):
+  """Generates a PDF document for Prescription Form"""
+
+  def __init__(self,data):
+    """Initializes the document with configurations and styles."""
+    
+    self.facility,self.contacts,self.client,self.medicines,self.prescriber,self.dispenser = data['facility'],data['contacts'],data['client'],data['medicines'],data["prescriber"],data["dispenser"]
+    
+    super().__init__(filename=data["filename"])
+    self.configs()
+    self.styles()
+    
+    self.story:list[Flowable] = [Spacer(0,0)]
+
+    self.build(self.story,onFirstPage=self.main_page)
+
+  def main_page(self,canvas,doc):
+    """Displays the page"""
+
+    page_data = [
+      self.header(),
+      [Paragraph("<hr>",style=ParagraphStyle(name="HRStyle",alignment=TA_CENTER,borderWidth=1,borderColor=colors.darkgrey))],
+      self.page_details(),
+      [Paragraph("<hr>",style=ParagraphStyle(name="HRStyle",alignment=TA_CENTER,borderWidth=1,borderColor=colors.darkgrey))],
+      self.footer()
+    ]
+
+    canvas.saveState()
+    canvas.restoreState()
+
+    main_grid = Table(
+      data=page_data,
+      rowHeights=self.rowHeights,
+      colWidths=[self.grid_width],
+      style=self.main_grid_styles
+    )
+
+    self.story.append(main_grid)
   
-  def add_patient_info_section(self, patient_data):
-      """Add patient information section"""
-      self.set_font('Arial', 'B', 12)
-      self.set_text_color(0, 0, 0)
-      self.set_fill_color(240, 248, 255)  # Light blue background
-      self.cell(0, 8, 'PATIENT INFORMATION', ln=1, fill=True)
-      
-      self.set_font('Arial', '', 10)
-      self.set_text_color(0, 0, 0)
-      
-      # Patient details in two columns
-      col_width = 85
-      y_start = self.get_y()
-      
-      # Left column
-      self.set_xy(self.left_margin, y_start)
-      self.cell(col_width, 6, f"Name: {patient_data.get('name', '')}")
-      self.ln(6)
-      self.cell(col_width, 6, f"Date of Birth: {patient_data.get('dob', '')}")
-      self.ln(6)
-      self.cell(col_width, 6, f"Gender: {patient_data.get('gender', '')}")
-      self.ln(6)
-      
-      # Right column
-      self.set_xy(self.left_margin + col_width, y_start)
-      self.cell(col_width, 6, f"Patient ID: {patient_data.get('patient_id', '')}")
-      self.ln(6)
-      self.cell(col_width, 6, f"Date: {patient_data.get('date', datetime.now().strftime('%Y-%m-%d'))}")
-      self.ln(6)
-      self.cell(col_width, 6, f"Allergies: {patient_data.get('allergies', 'None known')}")
-      
-      self.ln(10)
-      
-  def add_prescriber_info_section(self, doctor_data):
-      """Add prescriber information section"""
-      self.set_font('Arial', 'B', 12)
-      self.set_fill_color(240, 248, 255)
-      self.cell(0, 8, 'PRESCRIBER INFORMATION', ln=1, fill=True)
-      
-      self.set_font('Arial', '', 10)
-      
-      col_width = 85
-      y_start = self.get_y()
-      
-      # Left column
-      self.set_xy(self.left_margin, y_start)
-      self.cell(col_width, 6, f"Doctor: Dr. {doctor_data.get('name', '')}")
-      self.ln(6)
-      self.cell(col_width, 6, f"Specialty: {doctor_data.get('specialty', 'General Medicine')}")
-      self.ln(6)
-      
-      # Right column
-      self.set_xy(self.left_margin + col_width, y_start)
-      self.cell(col_width, 6, f"License No: {doctor_data.get('license', '')}")
-      self.ln(6)
-      self.cell(col_width, 6, f"Contact: {doctor_data.get('contact', '')}")
-      
-      self.ln(10)
-      
-  def add_prescription_table(self, medications):
-      """Add prescription medications table"""
-      self.set_font('Arial', 'B', 12)
-      self.set_fill_color(240, 248, 255)
-      self.cell(0, 8, 'PRESCRIPTION DETAILS', ln=1, fill=True)
-      
-      # Table headers
-      self.set_font('Arial', 'B', 10)
-      self.set_fill_color(220, 230, 242)
-      
-      headers = ['Medication', 'Dosage', 'Frequency', 'Duration', 'Instructions']
-      col_widths = [40, 30, 30, 30, 50]
-      
-      # Draw header cells
-      x = self.left_margin
-      for i, header in enumerate(headers):
-          self.set_xy(x, self.get_y())
-          self.cell(col_widths[i], 8, header, border=1, align='C', fill=True)
-          x += col_widths[i]
-      
-      self.ln(8)
-      
-      # Table rows
-      self.set_font('Arial', '', 9)
-      self.set_fill_color(255, 255, 255)
-      
-      for med in medications:
-          x = self.left_margin
-          row_height = 8
-          
-          # Check if we need a new page
-          if self.get_y() > 250:
-              self.add_page()
-              self.set_font('Arial', '', 9)
-              x = self.left_margin
-          
-          # Draw medication row
-          self.set_xy(x, self.get_y())
-          self.multi_cell(col_widths[0], row_height, med.get('name', ''), border=1, align='L')
-          
-          x += col_widths[0]
-          self.set_xy(x, self.get_y() - row_height)  # Reset y position
-          self.cell(col_widths[1], row_height, med.get('dosage', ''), border=1, align='C')
-          
-          x += col_widths[1]
-          self.set_xy(x, self.get_y())
-          self.cell(col_widths[2], row_height, med.get('frequency', ''), border=1, align='C')
-          
-          x += col_widths[2]
-          self.set_xy(x, self.get_y())
-          self.cell(col_widths[3], row_height, med.get('duration', ''), border=1, align='C')
-          
-          x += col_widths[3]
-          self.set_xy(x, self.get_y())
-          self.multi_cell(col_widths[4], row_height, med.get('instructions', ''), border=1, align='L')
-          
-          self.ln(row_height)
-      
-      self.ln(10)
-      
-  def add_signature_section(self):
-      """Add signature and stamp area"""
-      self.set_font('Arial', 'B', 12)
-      self.set_fill_color(240, 248, 255)
-      self.cell(0, 8, 'AUTHORIZATION', ln=1, fill=True)
-      
-      self.set_font('Arial', '', 10)
-      
-      # Signature area
-      self.ln(15)
-      self.cell(80, 6, "Doctor's Signature: _________________________")
-      self.cell(80, 6, "Date: _________________________", ln=1)
-      
-      self.ln(10)
-      
-      # Stamp area
-      self.set_font('Arial', 'B', 10)
-      self.cell(0, 6, "HOSPITAL STAMP", ln=1, align='C')
-      
-      # Draw stamp box
-      stamp_y = self.get_y()
-      self.rect(self.left_margin + 70, stamp_y, 60, 30)
-      
-      # Add text inside stamp
-      self.set_font('Arial', 'I', 8)
-      self.set_xy(self.left_margin + 75, stamp_y + 12)
-      self.cell(50, 5, "Authorized Prescriber", align='C')
-      
-      self.set_xy(self.left_margin + 75, stamp_y + 18)
-      self.cell(50, 5, self.hospital_name, align='C')
-      
-      self.ln(35)
-      
-  def add_notes_section(self, notes):
-      """Add additional notes section"""
-      if notes:
-          self.set_font('Arial', 'B', 12)
-          self.set_fill_color(240, 248, 255)
-          self.cell(0, 8, 'ADDITIONAL NOTES', ln=1, fill=True)
-          
-          self.set_font('Arial', '', 10)
-          self.multi_cell(0, 6, notes)
-          self.ln(10)
-          
-  def add_warning_section(self):
-      """Add prescription warnings"""
-      self.set_font('Arial', 'I', 8)
-      self.set_text_color(139, 0, 0)  # Dark red
-      
-      warnings = [
-          "IMPORTANT: This prescription is for the above-named patient only.",
-          "Do not share medication with others.",
-          "Complete the full course of treatment unless otherwise directed.",
-          "Contact your doctor if symptoms worsen or side effects occur.",
-          "Keep all medications out of reach of children."
-      ]
-      
-      for warning in warnings:
-          self.cell(0, 4, f"• {warning}", ln=1)
-      
-      self.ln(5)
+  def configs(self):
+    """general configurations for document"""
+    
+    #Document
+    self.title = "Prescription Form"
+    self.author = self.facility['name']
+    self.pagesize = pagesizes.portrait(pagesizes.A6)
+    self.leftMargin = self.rightMargin = self.topMargin = self.bottomMargin = 1.5
 
-def generate_prescription(output_path="prescription.pdf"):
-    """Generate a sample prescription"""
+    #Main grid
+    grid_height = self.pagesize[1] - self.topMargin - self.bottomMargin
+    header_height = grid_height * 0.1
+    self.main_content_height = grid_height * 0.75
+    footer_height = grid_height * 0.05
+    separator_height = grid_height * 0.02
+    self.rowHeights = [header_height,separator_height,self.main_content_height,separator_height,footer_height]
+    self.grid_width = self.pagesize[0] - self.leftMargin - self.rightMargin
+
+    #Social media tags
+    self.socials_str = ""
+    socials_colors = {"instagram":"red","facebook":"blue","whatsapp":"darkgreen","x":"black"}
+    for i,social in enumerate(self.contacts['socials'][1]):
+      try:
+        self.socials_str += f"<font name='FontAwesome-Brands' color='{socials_colors[social]}'>{icons[social]}</font>"
+      except:
+        if social == "x":
+          self.socials_str += "<font name='FontAwesome-Brands' color='black'>\ue61b</font>"  #X icon code
+      finally:
+        self.socials_str +="<font size=5 color='black'>&nbsp;&nbsp;</font>"
+
+  def styles(self):
+    """defines styles used in document"""
+
+    #Main Grid
+    self.main_grid_styles = TableStyle([
+      ("VALIGN",(0,0),(-1,-1),"TOP"),
+      
+      #Footer
+      ("VALIGN",(0,-1),(-1,-1),"MIDDLE"),
+      ("TOPPADDING",(0,-1),(-1,-1),3),
+      ("BOTTOMPADDING",(0,-1),(-1,-1),0),
+    ])
+
+    #Header styles
+    self.facility_details_table_styles = TableStyle([
+      #All
+      ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
+      ("ALIGN",(0,0),(-1,-1),"CENTER"),
+      ("LEFTPADDING",(0,0),(-1,-1),0),
+      ("RIGHTPADDING",(0,0),(-1,-1),0),
+      ("FONTNAME",(0,0),(-1,-1),"Helvetica-Bold"),
+
+      #Title
+      ("TEXTCOLOR",(0,0),(-1,0),colors.midnightblue),
+      ("FONTSIZE",(0,0),(-1,0),10),
+
+      #Document Title
+      ("VALIGN",(0,1),(-1,1),"BOTTOM"),
+      ("TOPPADDING",(0,1),(-1,1),3),
+      ("BOTTOMPADDING",(0,1),(-1,1),1),
+      ("FONTSIZE",(0,1),(-1,1),10)
+    ])
     
-    # Create PDF object
-    pdf = PrescriptionPDF(hospital_name="CITY GENERAL HOSPITAL")
-    pdf.add_page()
+    #Main content styles
+    self.main_content_table_styles = TableStyle([
+      ("VALIGN",(0,0),(-1,-1),"TOP"),
+      ("ALIGN",(0,0),(-1,-1),"LEFT"),
+      ("LEFTPADDING",(0,0),(-1,-1),5),
+      ("RIGHTPADDING",(0,0),(-1,-1),5),
+    ])
+
+    #Footer styles
+    self.footer_table_styles = TableStyle([
+      ("SPAN",(0,0),(-1,0)),
+      ("TOPPADDING",(0,0),(-1,-1),0),
+      ("BOTTOMPADDING",(0,0),(-1,-1),0),
+      ("LEFTPADDING",(0,0),(-1,-1),0),
+      ("RIGHTPADDING",(0,0),(-1,-1),0),
+    ])
+
+    self.socials_style = ParagraphStyle(
+      name="FooterStyle",
+      fontSize=8,
+      alignment=TA_CENTER,
+    )
     
-    # Patient information
-    patient_data = {
-        'name': 'John A. Smith',
-        'dob': '1985-03-15',
-        'gender': 'Male',
-        'patient_id': 'CGH-2023-78945',
-        'date': datetime.now().strftime('%Y-%m-%d'),
-        'allergies': 'Penicillin, Sulfa drugs'
-    }
+    self.mobile_style = ParagraphStyle(
+      name="FooterStyle",
+      fontSize=8,
+      textColor=colors.darkgoldenrod,
+      alignment=TA_LEFT,
+    )
     
-    # Doctor information
-    doctor_data = {
-        'name': 'Sarah Johnson, MD',
-        'specialty': 'Internal Medicine',
-        'license': 'MED-789654-2023',
-        'contact': '555-123-4567'
-    }
+    self.address_style = ParagraphStyle(
+      name="FooterStyle",
+      fontSize=8,
+      textColor=colors.darkgoldenrod,
+      alignment=TA_LEFT,
+    )
     
-    # Medications
-    medications = [
-        {
-            'name': 'Amoxicillin 500mg',
-            'dosage': '1 tab',
-            'frequency': 'Every 8 hours',
-            'duration': '10 days',
-            'instructions': 'Take with food. Complete full course.'
-        },
-        {
-            'name': 'Ibuprofen 400mg',
-            'dosage': '1-2 tabs',
-            'frequency': 'Every 6-8 hours',
-            'duration': '5 days',
-            'instructions': 'As needed for pain. Take with food.'
-        },
-        {
-            'name': 'Loratadine 10mg',
-            'dosage': '1 tab',
-            'frequency': 'Once daily',
-            'duration': '30 days',
-            'instructions': 'For allergy relief. Take in morning.'
-        }
+  def header(self):
+    """generates header part of document"""
+
+    #Data
+    facility_logo = self.facility['logo']
+    facility_details = [
+      [self.facility['name']],
+      ["PRESCRIPTION FORM"]
     ]
     
-    # Additional notes
-    notes = "Patient advised to follow up in 2 weeks if symptoms persist. Avoid alcohol while taking antibiotics. Monitor for any signs of allergic reaction."
-    
-    # Build the prescription
-    pdf.add_patient_info_section(patient_data)
-    pdf.add_prescriber_info_section(doctor_data)
-    pdf.add_prescription_table(medications)
-    pdf.add_notes_section(notes)
-    pdf.add_warning_section()
-    pdf.add_signature_section()
-    
-    # Output the PDF
-    pdf.output(output_path)
-    print(f"Prescription generated: {output_path}")
+    #UI
+    logo = Image(filename=facility_logo,width=50,height=50)
+    details = Table(data=facility_details,style=self.facility_details_table_styles)
 
-def create_blank_prescription_template(output_path="prescription_template.pdf"):
-    """Create a blank prescription template"""
-    pdf = PrescriptionPDF(hospital_name="[HOSPITAL NAME]")
-    pdf.add_page()
+    header_container = ImageAndFlowables(logo,details,imageSide="left",imageLeftPadding=0,imageRightPadding=0,imageTopPadding=0,imageBottomPadding=0,imageHref="")
+
+    return [header_container]
+
+  def page_details(self):
+    """generates main content part of document"""
+    _meds = []
+    for index,med in enumerate(self.medicines):
+      _meds.append([
+        str(index + 1),
+        Paragraph(med["name"].upper(),style=ParagraphStyle(wordWrap="LTR",name="MedNameStyle",fontName="Helvetica",fontSize=8,alignment=TA_LEFT)),
+        Paragraph(med["dosage"].upper(),style=ParagraphStyle(wordWrap="LTR",name="MedNameStyle",fontName="Helvetica",fontSize=8,alignment=TA_LEFT)),
+        med["qty"]
+      ])
     
-    # Patient information (blank)
-    patient_data = {
-        'name': '[PATIENT NAME]',
-        'dob': '[DATE OF BIRTH]',
-        'gender': '[GENDER]',
-        'patient_id': '[PATIENT ID]',
-        'date': '[DATE]',
-        'allergies': '[ALLERGIES]'
-    }
-    
-    # Doctor information (blank)
-    doctor_data = {
-        'name': '[DOCTOR NAME]',
-        'specialty': '[SPECIALTY]',
-        'license': '[LICENSE NUMBER]',
-        'contact': '[CONTACT]'
-    }
-    
-    # Empty medications table
-    medications = [
-        {
-            'name': '[MEDICATION NAME]',
-            'dosage': '[DOSAGE]',
-            'frequency': '[FREQUENCY]',
-            'duration': '[DURATION]',
-            'instructions': '[SPECIAL INSTRUCTIONS]'
-        }
+    demographics = [
+      Paragraph(
+        f'''<font size=10>CLIENT DETAILS</font><br/>
+        <font>REG No.</font><font size=1 color='white'>nsbp;</font><font color='blue'>{self.client['reg_no']}</font>
+        <font size=5 color='white'>nsbp;</font>
+        <font>NAME</font><font size=1 color='white'>nsbp;</font><font color='blue'>{self.client['name']}</font>
+        <font size=5 color='white'>nsbp;</font>
+        <font>SEX</font><font size=1 color='white'>nsbp;</font><font color='blue'>{self.client['sex']}</font>
+        <font size=5 color='white'>nsbp;</font>
+        <font>AGE</font><font size=1 color='white'>nsbp;</font><font color='blue'>{self.client['age']}</font>
+        <font size=5 color='white'>nsbp;</font>
+        <font>PAYMENT</font><font size=1 color='white'>nsbp;</font><font color='blue'>{" <font color='black'>|</font> ".join(self.client['payment'])}</font>''',
+        ParagraphStyle(name="DetailsStyle",fontName="Helvetica-Bold",fontSize=8,alignment=TA_LEFT)
+      ),"","",""
     ]
     
-    # Build the template
-    pdf.add_patient_info_section(patient_data)
-    pdf.add_prescriber_info_section(doctor_data)
-    pdf.add_prescription_table(medications)
-    
-    # Add blank notes section
-    pdf.set_font('Arial', 'B', 12)
-    pdf.set_fill_color(240, 248, 255)
-    pdf.cell(0, 8, 'ADDITIONAL NOTES', ln=1, fill=True)
-    pdf.set_font('Arial', '', 10)
-    pdf.multi_cell(0, 6, "[ADDITIONAL INSTRUCTIONS OR NOTES]")
-    
-    pdf.ln(10)
-    pdf.add_warning_section()
-    pdf.add_signature_section()
-    
-    pdf.output(output_path)
-    print(f"Blank template generated: {output_path}")
+    prescriber = [
+      Paragraph(
+        f'''<font name='Helvetica-Bold' size=10>PRESCRIBER DETAILS</font><br/>
+        <font>NAME</font><font size=1 color='white'>nsbp;</font><font color='blue'>{self.prescriber['name']}</font>
+        <font size=5 color='white'>nsbp;</font>
+        <font>TITLE</font><font size=1 color='white'>nsbp;</font><font color='blue'>{self.prescriber['title']}</font>
+        <font size=5 color='white'>nsbp;</font>
+        <font>DATE</font><font size=1 color='white'>nsbp;</font><font color='blue'>{self.prescriber['prescription_time']}</font>
+        <font size=5 color='white'>nsbp;</font>''',
+        ParagraphStyle(name="DetailsStyle",fontSize=8,alignment=TA_LEFT)
+      )
+    ]
 
-if __name__ == "__main__":
-    print("Hospital Prescription Form Generator")
-    print("=" * 40)
+    dispenser = [
+      Paragraph(
+        f'''<font name='Helvetica-Bold' size=10>DISPENSER DETAILS</font><br/>
+        <font>NAME</font><font size=1 color='white'>nsbp;</font><font color='blue'>{self.dispenser['name']}</font>
+        <font size=5 color='white'>nsbp;</font>
+        <font>TITLE</font><font size=1 color='white'>nsbp;</font><font color='blue'>{self.dispenser['title']}</font>
+        <font size=5 color='white'>nsbp;</font>
+        <font>DATE</font><font size=1 color='white'>nsbp;</font><font color='blue'>{self.dispenser['dispensing_time']}</font>
+        <font size=5 color='white'>nsbp;</font>''',
+        ParagraphStyle(name="DetailsStyle",fontSize=8,alignment=TA_LEFT)
+      )
+    ]
     
-    # Generate sample prescription
-    generate_prescription("a.pdf")
+    procedures = [ListFlowable([
+      ListItem(Paragraph('niponipo')),
+      ListFlowable([
+        Paragraph('uo')
+      ])
+    ])]
+
+    medicines = [Table(
+      data=[
+        ["MEDICATIONS"],
+        ["","NAME","DOSAGE","QTY"],
+      ] + _meds,
+      colWidths=[self.grid_width*0.07,self.grid_width*0.35,self.grid_width*0.35,self.grid_width*0.1],
+      style=TableStyle([
+        ("GRID",(0,0),(-1,-1),0.5,colors.slategrey),
+        ("VALIGN",(0,0),(-1,-1),"MIDDLE"),
+        ("ALIGN",(-1,0),(-1,-1),"RIGHT"),
+        ("SPAN",(0,0),(-1,0)),
+        ("FONTNAME",(0,0),(-1,1),"Helvetica-Bold"),
+        ("FONTNAME",(0,2),(-1,-1),"Helvetica"),
+        ("FONTSIZE",(0,0),(-1,0),10),
+        ("FONTSIZE",(0,1),(-1,-1),9),
+        ("BACKGROUND",(0,0),(-1,1),colors.lightgrey),
+      ])
+    )]
+
+    main_content_table = Table(
+      data=[demographics,procedures,medicines,prescriber,dispenser],
+      colWidths=[self.grid_width],
+      style=self.main_content_table_styles
+    )
+
+    return [main_content_table]
+
+  def footer(self):
+    """generates footer part of document"""
+
+    address_paragraph = Paragraph(f"""
+      <font name='FontAwesome-Solid' size=8 color='blue'>{icons['map-marker-alt']}</font><font size=3 color='black'>&nbsp;&nbsp;</font><font name='Helvetica-BoldOblique' color='darkslategrey'>{self.contacts['address']}</font>
+      """,style=self.address_style)
     
-    # Generate blank template
-    create_blank_prescription_template("blank_prescription_form.pdf")
+    mobile_paragraph = Paragraph(f"""
+      <font name='FontAwesome-Solid' color='blue'>{icons['phone']}</font><font size=3 color='black'>&nbsp;&nbsp;</font><font name='Helvetica-BoldOblique' color='darkslategrey'>{self.contacts['mobile']}</font>
+      """,style=self.mobile_style)
     
-    print("\nFiles created successfully!")
-    print("1. sample_prescription.pdf - Example with sample data")
-    print("2. blank_prescription_form.pdf - Blank template for use")
+    socials_paragraph = Paragraph(f"{self.socials_str}<font name='Helvetica-BoldOblique' size=8 color='darkslategrey'>{self.contacts['socials'][0]}</font>",
+      style=self.socials_style
+    )
+
+    footer_table = Table(
+      data=[[address_paragraph],[mobile_paragraph,socials_paragraph]],
+      colWidths=[self.grid_width*0.3,self.grid_width*0.7],
+      style=self.footer_table_styles
+    )
+
+    return [footer_table]
+    
+  
+data = {
+  "filename": "a.pdf",
+  "facility": {
+    "name": "FUTURE SPECIALIZED DENTAL CLINIC",
+    "logo": "uix/assets/images/logos/future1.PNG"
+  },
+  "contacts": {
+    "address": "Morogoro Mjini,Ghorofa la Equity,Floor No. 3",
+    "mobile": "+255 717 006 007",
+    "socials": ["futurespecialisedentalclinic",("whatsapp","instagram","x","facebook")]
+  },
+  "client": {
+    "name": "abdulrahman kalingagh Nehru".upper(),
+    "reg_no": "2512003",
+    "age": "29Y8M".upper(),
+    "sex":"MALE",
+    "payment":{"CASH","STRATEGIS"}
+  },
+  "prescriber": {
+    "name": "Jane L. Smith",
+    "title": "MO",
+    "prescription_time":datetime.now().strftime("%d %b %Y %H:%M")
+  },
+  "dispenser": {
+    "name": "Alex X. Brown",
+    "title": "BPharm",
+    "dispensing_time":datetime.now().strftime("%d %b %Y %H:%M")
+  },
+  "medicines": [
+    {
+      "name":"nystatin 200000IU/ml 10ml susp",
+      "dosage":"5ml po qid for 7 days",
+      "qty":f"{1:,.0f}"
+    },
+    {
+      "name":"amoxicillin 500mg cap",
+      "dosage":"500mg po tds for 5 days",
+      "qty":f"{30:,.0f}"
+    },
+    {
+      "name":"ibuprofen 400mg tab",
+      "dosage":"400mg po tds for 5 days",
+      "qty":f"{1308:,.0f}"
+    }
+  ]
+}
+
+NexaDoc(data)
+
+
+

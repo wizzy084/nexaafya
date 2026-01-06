@@ -6,14 +6,82 @@ from collections import namedtuple
 from typing import Sequence
 
 #SQLMODEL IMPORTS
-from sqlalchemy import Boolean, Engine, false
+from sqlalchemy import Boolean, Engine
 from sqlmodel import Session,select
 
 #CUSTOM IMPORTS
 from .models import *
 
 
+
 #
+def unmodel_treatment_log(db_treatment_log:TreatmentLog):
+  """Converts a row in treatment_log table into a dictionary 'treatment_log'"""
+
+  _TreatmentLog = namedtuple("_TreatmentLog",["visit_id","treatment_log_id","medication","dosage","procedure","surgery","time","logger","remarks"])
+
+  return _TreatmentLog(
+    visit_id = db_treatment_log.visit_id,
+    treatment_log_id = db_treatment_log.treatment_log_id,
+    medication = db_treatment_log.medication,
+    dosage = db_treatment_log.dosage,
+    procedure = db_treatment_log.procedure,
+    surgery = db_treatment_log.surgery,
+    time = db_treatment_log.time,
+    logger = db_treatment_log.logger,
+    remarks = db_treatment_log.remarks
+  )
+
+def unmodel_bedrest(db_bedrest:Bedrest):
+  """Converts a row in bedrest table into a dictionary 'bedrest'"""
+
+  _Bedrest = namedtuple("_Bedrest",["visit_id","bedrest_id","bedrested_by","bedrest_time","discharge_time","discharged_by","active","cancelled","indications","department","section","ward_no","ward_name","bed_no","new","from_admission","payment"])
+
+  return _Bedrest(
+    visit_id = db_bedrest.visit_id,
+    bedrest_id = db_bedrest.bedrest_id,
+    bedrested_by = db_bedrest.bedrested_by,
+    bedrest_time = db_bedrest.start_time,
+    discharge_time = db_bedrest.end_time,
+    discharged_by = db_bedrest.discharged_by,
+    active = db_bedrest.active,
+    cancelled = db_bedrest.cancelled,
+    indications = json.loads(db_bedrest.indications) if db_bedrest.indications else [],
+    department = db_bedrest.department,
+    section = db_bedrest.section,
+    ward_no = db_bedrest.ward_no,
+    ward_name = db_bedrest.ward_name,
+    bed_no = db_bedrest.bed_no,
+    new = db_bedrest.new,
+    from_admission = db_bedrest.from_admission,
+    payment = unmodel_payment(db_bedrest.payment) if db_bedrest.payment else None
+  )
+
+def unmodel_admission(db_admission:Admission):
+  """Converts a row in admission table into a dictionary 'admission'"""
+
+  _Admission = namedtuple("_Admission",["visit_id","admission_id","admitted_by","admission_time","discharge_time","discharged_by","active","cancelled","indications","department","section","ward_no","ward_name","bed_no","new","from_bedrest","payment"])
+
+  return _Admission(
+    visit_id = db_admission.visit_id,
+    admission_id = db_admission.admission_id,
+    admitted_by = db_admission.admitted_by,
+    admission_time = db_admission.admission_time,
+    discharge_time = db_admission.discharge_time,
+    discharged_by = db_admission.discharged_by,
+    active = db_admission.active,
+    cancelled = db_admission.cancelled,
+    indications = json.loads(db_admission.indications) if db_admission.indications else [],
+    department = db_admission.department,
+    section = db_admission.section,
+    ward_no = db_admission.ward_no,
+    ward_name = db_admission.ward_name,
+    bed_no = db_admission.bed_no,
+    new = db_admission.new,
+    from_bedrest = db_admission.from_bedrest,
+    payment = unmodel_payment(db_admission.payment) if db_admission.payment else None
+  )
+
 def unmodel_payment(db_payment:Payment):
   """Converts a row(s) in payment table into a dictionary 'payment'"""
 
@@ -86,7 +154,7 @@ def unmodel_medication(db_medication:Medication):
     cancelled = db_medication.cancelled,
     cancelled_on = db_medication.cancelled_on,
     cancelled_by = db_medication.cancelled_by,
-    payment = unmodel_payment(db_medication.payment)
+    payment = unmodel_payment(db_medication.payment) if db_medication.payment else None
   )
 
 def unmodel_medical_item(db_medical_item:MedicalItem):
@@ -108,7 +176,7 @@ def unmodel_medical_item(db_medical_item:MedicalItem):
     cancelled = db_medical_item.cancelled,
     cancelled_on = db_medical_item.cancelled_on,
     cancelled_by = db_medical_item.cancelled_by,
-    payment = unmodel_payment(db_medical_item.payment)
+    payment = unmodel_payment(db_medical_item.payment) if db_medical_item.payment else None
   )
 
 def unmodel_vital_signs(db_vital_signs:VitalSigns):
@@ -128,7 +196,7 @@ def unmodel_vital_signs(db_vital_signs:VitalSigns):
     o2sat = db_vital_signs.oxygen_saturation,
     done = db_vital_signs.done,
     vitals_time = db_vital_signs.vitals_time,
-    payment = unmodel_payment(db_vital_signs.payment)
+    payment = unmodel_payment(db_vital_signs.payment) if db_vital_signs.payment else None
   )
 
 def unmodel_anthropometrics(db_anthropometrics:Anthropometrics):
@@ -146,7 +214,7 @@ def unmodel_anthropometrics(db_anthropometrics:Anthropometrics):
     muac = db_anthropometrics.muac,
     done = db_anthropometrics.done,
     anthropometrics_time = db_anthropometrics.anthropometrics_time,
-    payment = unmodel_payment(db_anthropometrics.payment)
+    payment = unmodel_payment(db_anthropometrics.payment) if db_anthropometrics.payment else None
   )
 
 def unmodel_clinical_history(db_clinical_history:ClinicalHistory):
@@ -354,7 +422,7 @@ def unmodel_laboratory(db_laboratory:Laboratory):
     results = db_laboratory.results,
     results_time = db_laboratory.results_time,
     processed = db_laboratory.processed,
-    test_performed_id = db_laboratory.test_performer_id,
+    test_performer_id = db_laboratory.test_performer_id,
     results_verifier_id = db_laboratory.results_verifier_id,
     results_doc = db_laboratory.results_doc,
     cancelled = db_laboratory.cancelled,
@@ -394,7 +462,7 @@ def unmodel_imaging(db_imaging:Imaging):
     edited = db_imaging.edited,
     last_edited_on = db_imaging.last_edited_on,
     editor_id = db_imaging.editor_id,
-    payment = [unmodel_payment(payment) for payment in db_imaging.payments][0]
+    payment = unmodel_payment(db_imaging.payment) if db_imaging.payment else None
   )
 
 def unmodel_diagnosis(db_diagnosis:Diagnosis):
@@ -442,13 +510,13 @@ def unmodel_procedure(db_procedure:Procedure):
     edited = db_procedure.edited,
     last_edited_on = db_procedure.last_edited_on,
     editor_id = db_procedure.editor_id,
-    payment = unmodel_payment(db_procedure.payment)
+    payment = unmodel_payment(db_procedure.payment) if db_procedure.payment else None
   )
 
 def unmodel_surgery(db_surgery:Surgery):
   """Converts data from surgery table rows into dictionaries"""
 
-  _Surgery = namedtuple("_Surgery",["visit_id","surgery_id","attendee_id","operation","planned_on","done","operation_time","count","time_in","time_out","surgeon","assistant_surgeon","scrub_nurse","running_nurse","anaesthetist","anaesthiologist","anaesthesia","surgery_notes","consent_form","check_list","anaesthesia_chart","cancelled","cancelled_by","cancelled_on","editable","edited","last_edited_on","editor_id","payment"])
+  _Surgery = namedtuple("_Surgery",["visit_id","surgery_id","attendee_id","operation","planned_on","done","operation_time","count","time_in","time_out","surgeon","assistant_surgeon","scrub_nurse","running_nurse","anaesthetist","anaesthesiologist","anaesthesia","surgery_notes","consent_form","check_list","anaesthesia_chart","cancelled","cancelled_by","cancelled_on","editable","edited","last_edited_on","editor_id","payment"])
 
   return _Surgery(
     visit_id = db_surgery.visit_id,
@@ -457,7 +525,7 @@ def unmodel_surgery(db_surgery:Surgery):
     operation = db_surgery.operation,
     planned_on = db_surgery.planned_on,
     done = db_surgery.done,
-    operation_date = db_surgery.operation_date,
+    operation_time = db_surgery.operation_time,
     count = db_surgery.count,
     time_in = db_surgery.time_in,
     time_out = db_surgery.time_out,
@@ -479,7 +547,7 @@ def unmodel_surgery(db_surgery:Surgery):
     edited = db_surgery.edited,
     last_edited_on = db_surgery.last_edited_on,
     editor_id = db_surgery.editor_id,
-    payment = unmodel_payment(db_surgery.payment)
+    payment = unmodel_payment(db_surgery.payment) if db_surgery.payment else None
   )
 
 def unmodel_consultation(db_consultation:Consultation):
@@ -512,7 +580,7 @@ def unmodel_consultation(db_consultation:Consultation):
 
 def unmodel_visit(db_visit:Visit):
   """Converts a row(s) in visit table into a dictionary 'visit'"""
-  _Visit = namedtuple("_Visit",["client_id","client_name","client_created_on","client_birthdate","client_gender","client_address","visit_id","start_time","end_time","active","cancelled","payment_mode","package","prescription_no","payments","consultations","anthropometrics","vital_signs","labs","imagings","procedures","surgeries","medications","medical_items","nonpharmacologicals"])
+  _Visit = namedtuple("_Visit",["client_id","client_name","client_created_on","client_birthdate","client_gender","client_address","visit_id","start_time","end_time","active","cancelled","payment_mode","package","prescription_no","payments","consultations","anthropometrics","vital_signs","labs","imagings","procedures","surgeries","medications","medical_items","nonpharmacologicals","treatment_logs"])
 
   return _Visit(
     client_id = db_visit.client_id,
@@ -539,7 +607,8 @@ def unmodel_visit(db_visit:Visit):
     surgeries = [unmodel_surgery(db_surgery) for db_surgery  in db_visit.surgeries],
     medications = [unmodel_medication(db_medication) for db_medication in db_visit.medications],
     medical_items = [unmodel_medical_item(db_medical_item) for db_medical_item in db_visit.medical_items],
-    nonpharmacologicals = [unmodel_nonpharmacological(db_nonpharmacological) for db_nonpharmacological in db_visit.non_pharmacologicals]
+    nonpharmacologicals = [unmodel_nonpharmacological(db_nonpharmacological) for db_nonpharmacological in db_visit.non_pharmacologicals],
+    treatment_logs = [unmodel_treatment_log(db_treatment_log) for db_treatment_log in db_visit.treatment_logs]
   )
 
 def unmodel_appointment(db_appointment:Appointment):
@@ -605,90 +674,4 @@ def unmodel_client(db_client:Client):
 
 
 
-###MISC FUNCTIONS
-def get_duration(row_date:datetime) -> dict[str,int]:
-  """Returns duration of 'date' from current time (now)"""
-  
-  duration = {"years":0,"months":0,"days":0,"hours":0,"minutes":0,"seconds":0,"milliseconds":0,"microseconds":0}
 
-  date,now = row_date,datetime.now()
-  delta_time = now - date
-  
-
-  years = delta_time.days//365
-  months = delta_time.days%365//30
-  days = delta_time.days%365%30
-  hours = delta_time.seconds//3600
-  minutes = delta_time.seconds%3600//60
-  seconds = delta_time.seconds%3600%60
-  milliseconds = delta_time.microseconds//1000
-  microseconds = delta_time.microseconds%1000
-
-  if years > 0:
-    duration["years"] = years
-  if months > 0:
-    duration["months"] = months
-  if days > 0:
-    duration["days"] = days
-  if hours > 0:
-    duration["hours"] = hours
-  if minutes > 0:
-    duration["minutes"] = minutes
-  if seconds > 0:
-    duration["seconds"] = seconds
-  if milliseconds > 0:
-    duration["milliseconds"] = milliseconds
-  if microseconds > 0:
-    duration["microseconds"] = microseconds
-
-  return duration
-
-def format_age(birthdate:str):
-  """Returns a string of formatted age based on the age returned from 'birthdate'"""
-
-  years,months,days,hours,minutes = "","","","",""
-  age_data = get_duration(birthdate)
-  
-  #Years
-  if age_data["years"] > 0:
-    years = f"{age_data['years']} years "
-    if age_data["months"] > 6:
-      months = f"{age_data['months']} months"
-  
-  #<1 year
-  else:
-    #Months
-    if age_data["months"] > 0:
-      months = f"{age_data['months']} months "
-      if age_data["days"] > 20:
-        days = f"{age_data['days']} days"
-    
-    #<1 month
-    else:
-      #Days
-      if age_data["days"] > 0:
-        days = f"{age_data['days']} days"
-      
-      #<1 day
-      else:
-        #Hours
-        if age_data["hours"] > 0:
-          hours = f"{age_data['hours']} hours"
-        
-        #<1 hour
-        else:
-          #Minutes
-          if age_data["minutes"] > 0:
-            minutes = f"{age_data['minutes']} minutes"
-  
-  return f"{years}{months}{days}{hours}{minutes}"
-
-def is_in_range(start_date:str,end_date:str,target_date:datetime):
-  """Returns True if 'target_date' is between 'start_date' and 'end_date'"""
-    
-  start_date,end_date,target_date = datetime.fromisoformat(start_date).date(),datetime.fromisoformat(end_date).date(),target_date.date()
-
-  if target_date >= start_date and target_date <= end_date:
-    return True
-  else:
-    return False

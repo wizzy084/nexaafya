@@ -39,6 +39,7 @@ payment_schemes = [
 facility = {
   "facility_id":f"dental-futuresmile",          #
   "name":"future smile specialized dental clinic",
+  "short_name":"future dental clinic",
   "tag":"ftr",
   "postcode":67102,
   "category":"dental",
@@ -61,6 +62,257 @@ default_subscription = {
   "tier":"standard",
   "cost":0,"paid_amount":0,"pending_amount":0,"end_time":datetime.now() + timedelta(days=30)
 }
+
+#DEPARTMENTS
+departments = [
+  {
+    "department_id":"opd",
+    "facility_id":"dental-futuresmile",
+    "name":"outpatient",
+    "display_icon":"fa-solid fa-hospital",
+    "clinical":True,
+    "sections":[
+      {
+        "section_id":"opd-reception",
+        "department_id":"opd",
+        "name":"reception",
+        "display_icon":"fa-solid fa-id-card-clip"
+      },
+      {
+        "section_id":"opd-triage",
+        "department_id":"opd",
+        "name":"triage",
+        "display_icon":"fa-solid fa-heart-pulse"
+      },
+      {
+        "section_id":"opd-consults",
+        "department_id":"opd",
+        "name":"consultations",
+        "display_icon":"fa-solid fa-stethoscope",
+        "rooms":[
+          {
+            "room_id":"consult-1",
+            "section_id":"opd-consults",
+            "room_no":1,
+            "name":None,
+            "for_priority_clients":True
+          },
+          {
+            "room_id":"consult-2",
+            "section_id":"opd-consults",
+            "room_no":2,
+            "name":None,
+            "for_priority_clients":False
+          }
+        ]
+      },
+      {
+        "section_id":"opd-injections",
+        "department_id":"opd",
+        "name":"injections",
+        "display_icon":"fa-solid fa-syringe",
+      },
+      {
+        "section_id":"opd-observations",
+        "department_id":"opd",
+        "name":"observations",
+        "display_icon":"fa-solid fa-bed-pulse",
+        "wards":[
+          {
+            "ward_id":"obs-1",
+            "section_id":"opd-observations",
+            "ward_no":1,
+            "name":"pediatric",
+            "general":True
+          },
+          {
+            "ward_id":"obs-2",
+            "section_id":"opd-observations",
+            "ward_no":2,
+            "name":"adult",
+            "general":True
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "department_id":"finances",
+    "facility_id":"dental-futuresmile",
+    "name":"finances",
+    "display_icon":"fa-solid fa-coins",
+    "clinical":True,
+    "sections":[
+      {
+        "section_id":"finances-admin",
+        "department_id":"finances",
+        "name":"admin",
+        "display_icon":"fa-solid fa-id-card-briefcase"
+      },
+      {
+        "section_id":"finances-opd-billing",
+        "department_id":"finances",
+        "name":"opd billings",
+        "display_icon":"fa-solid fa-hand-holding-collar"
+      },
+      {
+        "section_id":"finances-revenues",
+        "department_id":"finances",
+        "name":"revenues",
+        "display_icon":"fa-solid fa-sack-dollar"
+      },
+      {
+        "section_id":"finances-expenditures",
+        "department_id":"finances",
+        "name":"expenditures",
+        "display_icon":"fa-solid fa-hand-holding-collar"
+      },
+    ]
+  },
+  {
+    "department_id":"lab",
+    "facility_id":"dental-futuresmile",
+    "name":"laboratory",
+    "display_icon":"fa-solid fa-microscope",
+    "clinical":True,
+    "sections":[
+      {
+        "section_id":"lab-admin",
+        "department_id":"lab",
+        "name":"admin",
+        "display_icon":"fa-solid fa-id-card-briefcase-medical"
+      },
+      {
+        "section_id":"lab-reception",
+        "department_id":"lab",
+        "name":"reception",
+        "display_icon":"fa-solid fa-id-card-clip"
+      },
+      {
+        "section_id":"lab-phlebotomy",
+        "department_id":"lab",
+        "name":"phlebotomy",
+        "display_icon":"fa-solid fa-droplet"
+      },
+      {
+        "section_id":"lab-chemistry",
+        "department_id":"lab",
+        "name":"clinical chemistry",
+        "display_icon":"fa-solid fa-flask-vial"
+      },
+      {
+        "section_id":"lab-micro",
+        "department_id":"lab",
+        "name":"microbiology",
+        "display_icon":"fa-solid fa-vial-virus"
+      },
+      {
+        "section_id":"lab-para",
+        "department_id":"lab",
+        "name":"parasitology",
+        "display_icon":"fa-solid fa-vial-virus"
+      },
+      {
+        "section_id":"lab-hematology",
+        "department_id":"lab",
+        "name":"haematology",
+        "display_icon":"fa-solid fa-droplet"
+      },
+    ]
+  },
+  {
+    "department_id":"imagings",
+    "facility_id":"dental-futuresmile",
+    "name":"imagings",
+    "display_icon":"fa-solid fa-x-ray",
+    "clinical":True,
+    "sections":[
+      {
+        "section_id":"imagings-admin",
+        "department_id":"imagings",
+        "name":"admin",
+        "display_icon":"fa-solid fa-id-card-briefcase-medical"
+      },
+      {
+        "section_id":"imagings-reception",
+        "department_id":"imagings",
+        "name":"reception",
+        "display_icon":"fa-solid fa-id-card-clip"
+      },
+      {
+        "section_id":"imagings-x-ray",
+        "department_id":"imagings",
+        "name":"x ray",
+        "display_icon":"fa-solid fa-id-card-clip"
+      },
+      {
+        "section_id":"imagings-ultrasound",
+        "department_id":"imagings",
+        "name":"ultrasound",
+        "display_icon":"fa-solid fa-x-ray"
+      },
+    ]
+  },
+  {
+    "department_id":"pharm",
+    "facility_id":"dental-futuresmile",
+    "name":"pharmacy",
+    "display_icon":"fa-solid fa-pills",
+    "clinical":True,
+    "sections":[
+      {
+        "section_id":"pharm-admin",
+        "department_id":"pharm",
+        "name":"admin",
+        "display_icon":"fa-solid fa-briefcase-medical"
+      },
+      {
+        "section_id":"pharm-reception",
+        "department_id":"pharm",
+        "name":"reception",
+        "display_icon":"fa-solid fa-id-card-clip"
+      },
+      {
+        "section_id":"pharm-main",
+        "department_id":"pharm",
+        "name":"main store",
+        "display_icon":"fa-solid fa-house-medical"
+      },
+      {
+        "section_id":"pharm-opd-dispesping",
+        "department_id":"pharm",
+        "name":"opd dispensing",
+        "display_icon":"fa-solid fa-prescription-bottle-medical"
+      },
+    ]
+  },
+  {
+    "department_id":"logistics",
+    "facility_id":"dental-futuresmile",
+    "name":"logistics",
+    "display_icon":"fa-solid fa-warehouse",
+    "sections":[
+      {
+        "section_id":"logistics-admin",
+        "department_id":"logistics",
+        "name":"admin",
+        "display_icon":"fa-solid fa-id-card-briefcase-medical"
+      },
+      {
+        "section_id":"logistics-procurement",
+        "department_id":"logistics",
+        "name":"procurement",
+        "display_icon":"fa-solid fa-hand-holding-collar"
+      },
+      {
+        "section_id":"logistics-distribution",
+        "department_id":"logistics",
+        "name":"distribution",
+        "display_icon":"fa-solid fa-sack-dollar"
+      }
+    ]
+  },
+]
 
 other_services = [
   {
@@ -942,6 +1194,7 @@ users = [
     "birthdate":date.fromisoformat("2025-03-03"),
     "gender":None,
     "password":"n3x@s0ft",
+    "access":None,
     "roles":["director","admin","super"]
   },
   {
@@ -955,7 +1208,85 @@ users = [
     "birthdate":date.fromisoformat("2025-03-03"),
     "gender":"male",
     "password":"kimei01",
+    "access":{
+      "opd":["opd-consults","opd-observations","opd-injections"],
+      "logistics":["logistics-admin","logistics-procurement","logistics-distribution"],
+      "finances":["finances-admin","finances-reception","finances-opd-billings","finances-revenues","finances-expenditures"],
+      "pharm":["pharm-reception","pharm-admin","pharm-main","pharm-opd-dispensing"],
+      "imagings":["imagings-admin","imagings-reception","imagings-x-ray","imagings-ultrasound"],
+      "lab":["lab-admin","lab-reception","lab-phlebotomy","lab-chemistry","lab-haematology","lab-micro","lab-para"]
+    },
     "roles":["doctor","director"]
+  },
+  {
+    "username":"hillmj",
+    "title":"ms",
+    "qualification":"nta 6:degree of dental surgery",
+    "designation":"",
+    "first_name":"maria",
+    "middle_name":"jensen",
+    "last_name":"hill",
+    "birthdate":date.fromisoformat("1985-05-03"),
+    "gender":"female",
+    "password":"1234",
+    "access":{"opd":["opd-reception"]},
+    "roles":["receptionist"]
+  },
+  {
+    "username":"kyandowr",
+    "title":"dr",
+    "qualification":"nta 8:doctor of medicine",
+    "designation":"mo",
+    "first_name":"wisdom",
+    "middle_name":"rustico",
+    "last_name":"kyando",
+    "birthdate":date.fromisoformat("1995-10-06"),
+    "gender":"male",
+    "password":"1234",
+    "access":{"opd":["opd-consults","opd-injections","opd-mtheatre"]},
+    "roles":["doctor"]
+  },
+  {
+    "username":"chazij",
+    "title":"mr",
+    "qualification":"nta 6:diploma of pharmacy",
+    "designation":"pharm tech",
+    "first_name":"justine",
+    "middle_name":"",
+    "last_name":"chazi",
+    "birthdate":date.fromisoformat("1993-08-13"),
+    "gender":"male",
+    "password":"1234",
+    "access":{"pharm":["opd-dispensing","main-store"]},
+    "roles":["pharm technologist"]
+  },
+  {
+    "username":"jabirs",
+    "title":"ms",
+    "qualification":"nta 6:degree of dental surgery",
+    "designation":"cpa",
+    "first_name":"fadyah",
+    "middle_name":"",
+    "last_name":"jabir",
+    "birthdate":date.fromisoformat("2003-05-03"),
+    "gender":"female",
+    "password":"1234",
+    "access":{"finances":["opd-billings"]},
+    "roles":["cashier"]
+  },
+  {
+    "username":"majigedj",
+    "title":"ms",
+    "qualification":"nta 6:degree of dental surgery",
+    "designation":"rn",
+    "first_name":"debora",
+    "middle_name":"jacob",
+    "last_name":"majige",
+    "birthdate":date.fromisoformat("1993-05-23"),
+    "gender":"female",
+    "password":"1234",
+    "access":{"opd":["opd-triage","opd-injections","opd-mtheatre"]},
+    "roles":["nurse"]
   },
 ]
 
