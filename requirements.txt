@@ -44,7 +44,7 @@ MarkupSafe==3.0.2
 mdurl==0.1.2
 multidict==6.1.0
 nicegui==3.4.1
-nltk==3.9.1
+nltk==3.10.0
 numpy==2.2.5
 orjson==3.10.15
 packaging==25.0
